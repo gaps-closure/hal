@@ -100,16 +100,27 @@ halmap *get_mappings(config_t *cfg) {
 /* XXX: Given the fromfd, determine input dev from devs */
 /* XXX: Given fromfd and pdu, determine from selector <dev,sec,mux,typ> */
 /* XXX: Return entry matching the from selector in the halmap list */
-halmap *find_halmap_entry(int fromfd, pdu p, device *devs, halmap *map) {
+halmap *find_halmap_entry(int fromfd, pdu *p, device *devs, halmap *map) {
   halmap * ret = NULL;
   return ret;
 }
 
-/* XXX: given the halmap entry, determine and apply appropriate codec */
-/* XXX: return pdu, so caller can send to pdu to the to-selector */
+/* XXX: Given the halmap entry, determine and apply appropriate codec */
+/* XXX: Return pdu, so caller can send to pdu to the to-selector */
 pdu *codec(halmap *mapentry, pdu *inpdu) {
   pdu * ret = NULL;
   return ret;
+}
+
+/* XXX: Read and return pdu from fd, do we need more info about device? */
+pdu *read_pdu(int fd) {
+  pdu * ret = NULL;
+  return ret;
+}
+
+/* XXX: Determine the write fd from the halmap entry, then write pdu */
+void write_pdu(halmap *mapentry, pdu *p) {
+  return;
 }
 
 #define PARENT_READ  read_pipe[0]
@@ -119,7 +130,7 @@ pdu *codec(halmap *mapentry, pdu *inpdu) {
 
 int main(int argc, char **argv) {
   config_t  cfg;           /* Configuration */
-  int       nreadfds;      /* Number of read file descriptors for select */
+  int       maxrfd;        /* Maximum file descriptor number for select */
   fd_set    readfds;       /* File descriptor set for select */
   char     *zcpath;        /* Path to zc executable */
   device    zcroot;        /* Fake device for zc */
@@ -206,7 +217,9 @@ int main(int argc, char **argv) {
   }
 
   FD_ZERO(&readfds);
-  for(nreadfds = 0, d = &zcroot; d != NULL && d->enabled != 0; nreadfds++, d = d->next) {
+  maxrfd = -1;
+  for(d = &zcroot; d != NULL && d->enabled != 0; d = d->next) {
+    if (d->readfd >= maxrfd) maxrfd = d->readfd + 1;
     FD_SET(d->readfd, &readfds);
   }
 
@@ -214,19 +227,16 @@ int main(int argc, char **argv) {
   while (1) {
     int nready; 
 
-    if((nready = select(nreadfds, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
-    for (int i=0; i < nreadfds && nready > 0; i++) {
+    if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
+    for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
+        pdu *inp, *outp;
+	halmap *h;
         nready--;
-        /* XXX: read pdu p */
-
-        /* XXX: find matching halmap entry h given fd and p */
-        /* halmap *h = find_halmap_entry(fromfd, p, devs, map) */
-
-        /* XXX:   apply codec to p based on h */
-        /* pdu *outdata = codec(h,p); */
-
-        /* XXX: write outdata to correct output fd based on h; may need queueing to handle blocking write */
+	inp  = read_pdu(i);
+        h    = find_halmap_entry(i, inp, devs, map);
+        outp = codec(h, inp);
+	write_pdu(h, outp);
       }
     }
   }
