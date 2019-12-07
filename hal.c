@@ -105,10 +105,9 @@ halmap *find_halmap_entry(int fromfd, pdu *p, device *devs, halmap *map) {
   return ret;
 }
 
-/* XXX: Given the halmap entry, determine and apply appropriate codec */
-/* XXX: Return pdu, so caller can send to pdu to the to-selector */
+/* XXX: Determine codec from halmap entry, apply and return transformed pdu */
 pdu *codec(halmap *mapentry, pdu *inpdu) {
-  pdu * ret = NULL;
+  pdu *ret = NULL;
   return ret;
 }
 
