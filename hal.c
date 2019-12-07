@@ -112,15 +112,25 @@ pdu *codec(halmap *mapentry, pdu *inpdu) {
   return ret;
 }
 
+#define PARENT_READ  read_pipe[0]
+#define PARENT_WRITE write_pipe[1]
+#define CHILD_WRITE  read_pipe[1]
+#define CHILD_READ   write_pipe[0]
+
 int main(int argc, char **argv) {
-  config_t  cfg;      /* Configuration */
-  int       nreadfds; /* Number of read file descriptors for select */
-  fd_set    readfds;  /* File descriptor set for select */
-  char     *zcpath;   /* Path to zc executable */
-  device    zcroot;   /* Fake device for zc */
-  device   *devs;     /* Linked list of enabled devices */
-  halmap   *map;      /* Linked list of selector mappings */
-  device   *d;        /* Temporary pointer */
+  config_t  cfg;           /* Configuration */
+  int       nreadfds;      /* Number of read file descriptors for select */
+  fd_set    readfds;       /* File descriptor set for select */
+  char     *zcpath;        /* Path to zc executable */
+  device    zcroot;        /* Fake device for zc */
+  device   *devs;          /* Linked list of enabled devices */
+  halmap   *map;           /* Linked list of selector mappings */
+  device   *d;             /* Temporary pointer */
+  int       pid;           /* Process ID of child or parent from fork call */
+  int       read_pipe[2];  /* Read pipes for parent-child communication */
+  int       write_pipe[2]; /* Write pipes for parent-child communication */
+  int       zcsubpid;      /* Subscriber PID */
+  int       zcpubpid;      /* Publisher PID */
 
   read_config(argc, argv, &cfg);
   zcpath = get_zcpath(&cfg);
@@ -128,42 +138,81 @@ int main(int argc, char **argv) {
   map    = get_mappings(&cfg);
   config_destroy(&cfg);
 
-  FD_ZERO(&readfds);
+  if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
+    fprintf(stderr, "Pipe creation failed\n");
+    exit(EXIT_FAILURE);
+  }
 
-  fprintf(stderr, "About to exec: %s\n", zcpath);
+  if ((pid = fork()) < 0) {
+    fprintf(stderr, "Fork failed\n");
+    exit(EXIT_FAILURE);
+  } else if (pid == 0) { /* subscriber child */
+    close(PARENT_READ);
+    close(PARENT_WRITE);
+    /* dup2(CHILD_READ, STDIN_FILENO); */
+    close(CHILD_READ);
+    dup2(CHILD_WRITE, STDOUT_FILENO);
+    /* XXX: Arguments should come from config file */
+    char *argv2[] = {"-b", "sub", "ipc://halsub", NULL};
+    if(execvp(zcpath, argv2) < 0) perror("execvp()");
+    exit(EXIT_FAILURE);
+  } else { /* save subscriber child pid in parent */
+    zcsubpid = pid;
+  }
+
+  if ((pid = fork()) < 0) {
+    fprintf(stderr, "Fork failed\n");
+    exit(EXIT_FAILURE);
+  } else if (pid == 0) { /* publisher child */
+    close(PARENT_READ);
+    close(PARENT_WRITE);
+    dup2(CHILD_READ, STDIN_FILENO);
+    /* dup2(CHILD_WRITE, STDOUT_FILENO); */
+    close(CHILD_WRITE);
+    /* XXX: Arguments should come from config file */
+    char *argv2[] = {"-b", "pub", "ipc://halpub", NULL};
+    if(execvp(zcpath, argv2) < 0) perror("execvp()");
+    exit(EXIT_FAILURE);
+  } else { /* save publisher child pid in parent */
+    zcpubpid = pid;
+  }
+
+  fprintf(stderr, "Spawned %s subscriber %d and publisher %d\n", zcpath, zcsubpid, zcpubpid);
+
+  close(CHILD_READ);
+  close(CHILD_WRITE);
+
+  /* Set up fake device for zc for uniform handling in halmap */
   zcroot.enabled = 1;
-  zcroot.id = "zc";
-  zcroot.path = "zcpath";
-  zcroot.model = "NONE";
-  zcroot.next = devs;
-  /* XXX: Fork, check success, then exec zc in child */
-  /* XXX: Parent continues with HAL, must waitpid for child */
-  /* XXX: Create pipes so that parent can get stdin/stdout handles to communicate with child */
-  /* XXX: Update the readfd and writefd in zcroot */
-  /* zcroot.readfd = xx */
-  /* zcroot.writefd = xx */
+  zcroot.id      = "zc";
+  zcroot.path    = "zcpath";
+  zcroot.model   = "NONE";
+  zcroot.next    = devs;
+  zcroot.readfd  = PARENT_READ;
+  zcroot.writefd = PARENT_WRITE;
 
   /* Count devices, open enabled devices and get in/out handles for device */
   for(d = devs; d != NULL; d = d->next) {
     int fd;
     if (d->enabled == 0) continue;
     fprintf(stderr, "About to open device: %s %s\n", d->id, d->path);
-    /* XXX: Open device for read-write, get fd and update device entry */
-    /* fd = open(d->path, O_RDWR) */
-    /* XXX: Handle failure case fd = -1 */
-    /* d.readfd = fd; */
-    /* d.writefd = fd; */
+    /* Open device for read-write, get fd and update device entry */
+    if ((fd = open(d->path, O_RDWR)) < 0) {
+      fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
+      exit(EXIT_FAILURE);
+    }
+    d->readfd = fd;
+    d->writefd = fd;
   }
 
-  for(nreadfds = 0, d = &zcroot; d != NULL; nreadfds++, d = d->next) {
-    /* FD_SET(d->readfd, &readfds); */
+  FD_ZERO(&readfds);
+  for(nreadfds = 0, d = &zcroot; d != NULL && d->enabled != 0; nreadfds++, d = d->next) {
+    FD_SET(d->readfd, &readfds);
   }
 
   /* Select across readfds */
   while (1) {
     int nready; 
-
-    break; /* XXX */
 
     if((nready = select(nreadfds, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
     for (int i=0; i < nreadfds && nready > 0; i++) {
