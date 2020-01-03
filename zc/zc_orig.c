@@ -35,9 +35,7 @@ size_t send_from_stdin(void* socket) {
   // read from stdin
   char* buffer = malloc(STDIN_READ_SIZE);
   while(1) {
-fprintf(stderr, "zc wiating to read from stdin\n");
     size_t read = fread(buffer+total, 1, STDIN_READ_SIZE, stdin);
-    if(verbose) fprintf(stderr, "Read %ld (total=%ld) bytes on stdin (to be forwarded to ZMQ-pub)\n", read, total);
     total += read;
     if(ferror(stdin)) {
       fprintf(stderr,"fread error %d: %s\n",errno,strerror(errno));
@@ -46,7 +44,6 @@ fprintf(stderr, "zc wiating to read from stdin\n");
     if(feof(stdin)) break;
     buffer = realloc(buffer,total+STDIN_READ_SIZE);
   }
-fprintf(stderr, "Prepare to send %ld bytes to zmq\n", total);
   // prepare and send zmq message
   int err;
   zmq_msg_t msg;
@@ -71,20 +68,16 @@ size_t recv_to_stdout(void* socket) {
 
     err = zmq_msg_init(&msg);
     if(err) exit_with_zmq_error("zmq_msg_init");
-
-fprintf(stderr, "zc waiting to read from ZMQ\n");
-
+    
     err = zmq_recvmsg(socket, &msg, 0);
     if(err==-1) exit_with_zmq_error("zmq_recvmsg");
 
     // print message to stdout
-      
-      
     size_t size = zmq_msg_size(&msg);
     total += size;
-    if(verbose) fprintf(stderr, "zc received %ld bytes on ZMQ-sub (and forwarding to stdout, with flush)\n", size);
+    if(verbose) fprintf(stderr, "receiving %ld bytes\n", size);
     fwrite(zmq_msg_data(&msg), 1, size, stdout);
-    fflush(stdout);
+
     err = zmq_msg_close(&msg);
     if(err) exit_with_zmq_error("zmq_msg_close");
 
@@ -154,9 +147,6 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-fprintf(stderr, "started zc type=%d\n", type);
-
-    
   void *ctx = zmq_init(1);
   if(ctx == NULL) exit_with_zmq_error("zmq_init");
 
