@@ -127,11 +127,11 @@ pdu *read_pdu(int fd, char *buf, int *len) {
 void write_pdu(halmap *mapentry, pdu *p, char *buf, int fd) {
   int   rv;
 
-  char out[40];
+  //  char out[40];
+  //  rv = write(fd, out, strlen(buf));
     
-  char* line = "bbbbbbbbbbbbbbbbbbbbbbbb\n\0";
+  char* line = "bbbbbbbbbbbbbbbbbbbbbbbb\nEOF\n\0";
   rv = write(fd, line, strlen(line));
-//  rv = write(fd, out, strlen(buf));
   fprintf(stderr, "HAL writes on fd=%d rv=%d (len=%ld):\n%s\n", fd, rv, strlen(line), line);
   return;
 }
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 
   read_config(argc, argv, &cfg);
   zcpath = get_zcpath(&cfg);
-  zcpath = "zc";
+  //zcpath = "zc";
   devs   = get_devices(&cfg);
   map    = get_mappings(&cfg);
   config_destroy(&cfg);
@@ -248,7 +248,8 @@ int main(int argc, char **argv) {
     dup2(CHILD_READ, STDIN_FILENO);
     close(CHILD_WRITE);
     /* XXX: Arguments should come from config file */
-    char *argv2[] = {zcpath, "-b", "-v", "pub", "ipc://halpub", NULL};
+    // char *argv2[] = {zcpath, "-b", "-v", "pub", "ipc://halpub", NULL};
+    char *argv2[] = {zcpath, "-b", "-d", "EOF", "-v", "pub", "ipc://halpub", NULL};
     if(execvp(argv2[0], argv2) < 0) perror("execvp()");
     exit(EXIT_FAILURE);
   } else { /* save publisher child pid in parent */
