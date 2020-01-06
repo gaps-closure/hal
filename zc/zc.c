@@ -15,6 +15,7 @@ void print_help() {
   printf("OPTION: one of the following options:\n");
   printf(" -h --help : print this message\n");
   printf(" -b --bind : bind instead of connect\n");
+  printf(" -d --delim : string marking end of stdin stream\n");
   printf(" -n --nbiter : number of iterations (0 for infinite loop)\n");
   printf(" -v --verbose : print some messages in stderr\n");
   printf("TYPE: set ZMQ socket type in req/rep/pub/sub/push/pull\n");
@@ -30,12 +31,15 @@ void free_buffer(void* data,void* hint) {
   free(data);
 }
 
-size_t send_from_stdin(void* socket) {
+size_t send_from_stdin(void* socket, char *delim) {
   size_t total = 0;
+  int    i, delim_len = (int) strlen(delim);
+  char*  s;
+  char*  buffer = malloc(STDIN_READ_SIZE);
+    
   // read from stdin
-  char* buffer = malloc(STDIN_READ_SIZE);
   while(1) {
-fprintf(stderr, "zc wiating to read from stdin\n");
+    if(verbose) fprintf(stderr, "zc waiting to read from stdin\n");
     size_t read = fread(buffer+total, 1, STDIN_READ_SIZE, stdin);
     if(verbose) fprintf(stderr, "Read %ld (total=%ld) bytes on stdin (to be forwarded to ZMQ-pub)\n", read, total);
     total += read;
@@ -43,10 +47,20 @@ fprintf(stderr, "zc wiating to read from stdin\n");
       fprintf(stderr,"fread error %d: %s\n",errno,strerror(errno));
       exit(-2);
     }
+    // test for end of input, based on: a) speciied delimiter, b) EOF signal
+    if ( (delim != NULL) && (total >= delim_len) ) {
+      if(verbose) fprintf(stderr,"zc testing for delimiter string (len=%d): %s\n", delim_len, delim);
+      s = strstr(buffer, delim);
+      if (s != NULL) {
+        total -= strlen(s);
+        buffer[total] = 0;
+        if(verbose) fprintf(stderr,"Delimited string len=%ld: %s\n", total, buffer);
+        break;
+      }
+    }
     if(feof(stdin)) break;
     buffer = realloc(buffer,total+STDIN_READ_SIZE);
   }
-fprintf(stderr, "Prepare to send %ld bytes to zmq\n", total);
   // prepare and send zmq message
   int err;
   zmq_msg_t msg;
@@ -57,7 +71,8 @@ fprintf(stderr, "Prepare to send %ld bytes to zmq\n", total);
 
   err = zmq_sendmsg(socket, &msg, 0);
   if(err==-1) exit_with_zmq_error("zmq_sendmsg");
-
+    
+  clearerr(stdin);     /* clears stdin end-of-file and error indicators (prevent looping) */
   return total;
 }
 
@@ -72,14 +87,11 @@ size_t recv_to_stdout(void* socket) {
     err = zmq_msg_init(&msg);
     if(err) exit_with_zmq_error("zmq_msg_init");
 
-fprintf(stderr, "zc waiting to read from ZMQ\n");
-
+    if(verbose) fprintf(stderr, "\nzc waiting to read from ZMQ\n");
     err = zmq_recvmsg(socket, &msg, 0);
     if(err==-1) exit_with_zmq_error("zmq_recvmsg");
 
     // print message to stdout
-      
-      
     size_t size = zmq_msg_size(&msg);
     total += size;
     if(verbose) fprintf(stderr, "zc received %ld bytes on ZMQ-sub (and forwarding to stdout, with flush)\n", size);
@@ -99,19 +111,21 @@ int main(int argc, char** argv) {
   static struct option options[] = {
     {"help",    no_argument,       0, 'h'},
     {"bind",    no_argument,       0, 'b'},
+    {"delim",   required_argument, 0, 'd'},
     {"nbiter",  required_argument, 0, 'n'},
     {"verbose", no_argument,       0, 'v'},
-    {0, 0, 0, 0}
+    {0,         0,                 0, 0}
   };
 
   int bind = 0;
+  char *delim = NULL;
   int type = 0;
   char* endpoint = 0;
   int nbiter = 0;
 
   int iopt = 0;
   while(1) {
-     int c = getopt_long(argc,argv,"hbn:v",options, &iopt);
+     int c = getopt_long(argc,argv,"hbd:n:v",options, &iopt);
      if(c==-1)
        break;
      switch(c) {
@@ -121,6 +135,9 @@ int main(int argc, char** argv) {
          break;
        case 'b':
          bind = 1;
+         break;
+       case 'd':
+         delim = optarg;
          break;
        case 'n':
          nbiter = atoi(optarg);
@@ -154,7 +171,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-fprintf(stderr, "started zc type=%d\n", type);
+  if(verbose) fprintf(stderr, "started zc: type=%d\n", type);
 
     
   void *ctx = zmq_init(1);
@@ -189,7 +206,7 @@ fprintf(stderr, "started zc type=%d\n", type);
       case ZMQ_REQ:
       case ZMQ_PUB:
       case ZMQ_PUSH:
-        send_from_stdin(socket);
+        send_from_stdin(socket, delim);
     }
     switch(type) {
       case ZMQ_REQ:
@@ -200,7 +217,7 @@ fprintf(stderr, "started zc type=%d\n", type);
     }
     switch(type) {
       case ZMQ_REP:
-        send_from_stdin(socket);
+        send_from_stdin(socket, delim);
     }
   }
 
