@@ -33,23 +33,27 @@ void free_buffer(void* data,void* hint) {
 
 size_t send_from_stdin(void* socket, char *delim) {
   size_t total = 0;
-  int    i, delim_len = (int) strlen(delim);
+  int    i, per_read_count=STDIN_READ_SIZE, delim_len=0;
   char*  s;
   char*  buffer = malloc(STDIN_READ_SIZE);
     
   // read from stdin
+  if (delim != NULL)  {
+    per_read_count = 1;
+    delim_len = (int) strlen(delim);
+  }
+  if(verbose) fprintf(stderr, "zc waiting to read from stdin (up to %d bytes per read)\n", per_read_count);
   while(1) {
-    if(verbose) fprintf(stderr, "zc waiting to read from stdin\n");
-    size_t read = fread(buffer+total, 1, STDIN_READ_SIZE, stdin);
-    if(verbose) fprintf(stderr, "Read %ld (total=%ld) bytes on stdin (to be forwarded to ZMQ-pub)\n", read, total);
+    size_t read = fread(buffer+total, 1, per_read_count, stdin);
+    if(verbose) fprintf(stderr, "Read %ld (total=%ld) bytes on stdin\n", read, total);
     total += read;
     if(ferror(stdin)) {
       fprintf(stderr,"fread error %d: %s\n",errno,strerror(errno));
       exit(-2);
     }
-    // test for end of input, based on: a) speciied delimiter, b) EOF signal
+    // test for end of stdin input, based on: a) speciied delimiter, b) EOF signal
     if ( (delim != NULL) && (total >= delim_len) ) {
-      if(verbose) fprintf(stderr,"zc testing for delimiter string (len=%d): %s\n", delim_len, delim);
+//      if(verbose) fprintf(stderr,"zc testing for delimiter %s (len=%d): \n", delim, delim_len);
       s = strstr(buffer, delim);
       if (s != NULL) {
         total -= strlen(s);
@@ -67,7 +71,7 @@ size_t send_from_stdin(void* socket, char *delim) {
   err = zmq_msg_init_data(&msg, buffer, total, free_buffer, NULL);
   if(err) exit_with_zmq_error("zmq_msg_init_data");
 
-  if(verbose) fprintf(stderr, "sending %ld bytes\n", total);
+  if(verbose) fprintf(stderr, "sending %ld bytes into ZMQ\n", total);
 
   err = zmq_sendmsg(socket, &msg, 0);
   if(err==-1) exit_with_zmq_error("zmq_sendmsg");
