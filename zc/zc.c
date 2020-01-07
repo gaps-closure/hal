@@ -31,7 +31,7 @@ void free_buffer(void* data,void* hint) {
   free(data);
 }
 
-size_t send_from_stdin(void* socket, char *delim) {
+size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
   size_t total = 0;
   int    i, per_read_count=STDIN_READ_SIZE, delim_len=0;
   char*  s;
@@ -42,7 +42,7 @@ size_t send_from_stdin(void* socket, char *delim) {
     per_read_count = 1;
     delim_len = (int) strlen(delim);
   }
-  if(verbose) fprintf(stderr, "zc waiting to read from stdin (up to %d bytes per read)\n", per_read_count);
+  if(verbose) fprintf(stderr, "zc waits for stdin (up to %d bytes/read) to send to %s\n", per_read_count, endpoint);
   while(1) {
     size_t read = fread(buffer+total, 1, per_read_count, stdin);
     if(verbose) fprintf(stderr, "Read %ld (total=%ld) bytes on stdin\n", read, total);
@@ -80,7 +80,7 @@ size_t send_from_stdin(void* socket, char *delim) {
   return total;
 }
 
-size_t recv_to_stdout(void* socket) {
+size_t recv_to_stdout(void* socket, char *endpoint) {
   size_t total = 0;
   int err;
   int64_t more = 1;
@@ -91,7 +91,7 @@ size_t recv_to_stdout(void* socket) {
     err = zmq_msg_init(&msg);
     if(err) exit_with_zmq_error("zmq_msg_init");
 
-    if(verbose) fprintf(stderr, "\nzc waiting to read from ZMQ\n");
+    if(verbose) fprintf(stderr, "\nzc waits to read from ZMQ %s to send to stdout\n", endpoint);
     err = zmq_recvmsg(socket, &msg, 0);
     if(err==-1) exit_with_zmq_error("zmq_recvmsg");
 
@@ -210,18 +210,18 @@ int main(int argc, char** argv) {
       case ZMQ_REQ:
       case ZMQ_PUB:
       case ZMQ_PUSH:
-        send_from_stdin(socket, delim);
+        send_from_stdin(socket, delim, endpoint);
     }
     switch(type) {
       case ZMQ_REQ:
       case ZMQ_REP:
       case ZMQ_SUB:
       case ZMQ_PULL:
-        recv_to_stdout(socket);
+        recv_to_stdout(socket, endpoint);
     }
     switch(type) {
       case ZMQ_REP:
-        send_from_stdin(socket, delim);
+        send_from_stdin(socket, delim, endpoint);
     }
   }
 
