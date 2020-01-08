@@ -13,6 +13,20 @@ sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
+```
+# Example basic testing (run each command in separate window in hal directory):
+# Start HAL, sender, and receiver; type in sender window some text lines with an EOF at the end (or ^D)
+./hal sample.cfg
+zc/zc -v sub ipc://halpub
+zc/zc -v -dEOF pub ipc://halsub
+
+# If devices are enabled in sample.cfg, then corresponding devices must be configured
+netcat -4 -l -k 127.0.0.1 1234
+sudo socat -d -d -lf socat_log.txt pty,link=/dev/vcom1,raw,ignoreeof,unlink-close=0,echo=0 tcp:127.0.0.1:1234,ignoreeof &
+sudo chmod 777 /dev/vcom1
+echo "hello you" > /dev/vcom1
+cat /dev/vcom1
+```
 
 **This directory needs to be moved out of emulator into its own repository, as it
 is a CLOSURE component that applies to both real and emulated systems.**
