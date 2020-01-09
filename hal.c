@@ -322,9 +322,11 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
 
   FD_ZERO(readfds);
   maxrfd = -1;
-  for(d = dev_linked_list_root; d != NULL && d->enabled != 0; d = d->next) {
-    if (d->readfd >= maxrfd) maxrfd = d->readfd + 1;
-    FD_SET(d->readfd, readfds);
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+    if (d->enabled != 0) {
+      if (d->readfd >= maxrfd) maxrfd = d->readfd + 1;
+      FD_SET(d->readfd, readfds);
+    }
   }
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
@@ -423,7 +425,7 @@ int main(int argc, char **argv) {
     int nready; 
           
     maxrfd = select_init(&zcroot,  &readfds);
-    // fprintf(stderr, "Waiting for input on fds (max+1=%d)\n", maxrfd);
+    // fprintf(stderr, "HAL Waiting for input on fds (max+1=%d)\n", maxrfd);
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
     // fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
