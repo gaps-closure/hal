@@ -146,18 +146,18 @@ void devices_print_all(device *root)  {
 
 /* Loop through devs linked list, find device with fd as its read file descriptor */
 device *find_device_for_readfd(device *root, int fd) {
-  for(device *d = root; d != NULL && d->enabled != 0; d = d->next) {
-    // fprintf(stderr, "fd=%d: dev=%s rfd=%d wfd=%d\n", fd, d->id, d->readfd, d->writefd);
-    if (d->readfd == fd)  return (d);
+  for(device *d = root; d != NULL; d = d->next) {
+    // fprintf(stderr, "%s: fd=%d: dev=%s rfd=%d wfd=%d\n", __func__, fd, d->id, d->readfd, d->writefd);
+    if ( (d->enabled != 0) && (d->readfd == fd) ) return (d);
   }
   return ((device *) NULL);
 }
 
 /* Loop through devs linked list, find and return entry matching "id" */
 device *find_device_by_id(device *root, char *id) {
-  for(device *d = root; d != NULL && d->enabled != 0; d = d->next) {
-    // fprintf(stderr, "list=%s find=%s\n", d->id, id);
-    if (strcmp(d->id, id) == 0)  return d;
+  for(device *d = root; d != NULL; d = d->next) {
+    // fprintf(stderr, "%s: list=%s find=%s\n", __func__, d->id, id);
+    if ( (d->enabled != 0) && (strcmp(d->id, id) == 0) )  return d;
   }
   return ((device *) NULL);
 }
