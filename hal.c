@@ -209,12 +209,24 @@ halmap *halmap_find(pdu *p, halmap *map_root) {
 }
 
 /* XXX: Determine codec from halmap entry, apply and return transformed pdu */
-pdu *codec(halmap *mapentry, pdu *ipdu) {
+pdu *codec(halmap *h, pdu *ipdu) {
   pdu *opdu = NULL;
 
+  if (strcmp(h->codec,"hal2be") == 0) {
+    // opdu = hal2be(ipdu); 
+  } 
+  else if (strcmp(h->codec,"be2hal") == 0) {
+    // opdu = be2hal(ipdu);
+  }
+  else {
+    // XXX: Error message codec unknown 
+    // return
+  }
+  
   // XXX: must apply appropriate transformation based on codec specified in mapentry
   // XXX: Doing null transform for now
-  opdu = ipdu;
+  opdu = ipdu;  // XXX: remove once codec functions are available
+
   return opdu;
 }
 
@@ -244,9 +256,19 @@ pdu *read_pdu(device *idev) {
   fd = idev->readfd;
   len = read(fd, buf, MAXPDU - 1);
   buf[len] = '\0';
-  fprintf(stderr, "HAL read input on fd=%d rv=%d (len=%ld):\n%s\n", fd, len, strlen(buf), buf);
+  fprintf(stderr, "HAL read input on %s (fd=%d rv=%d len=%ld):\n%s\n", idev->id, fd, len, strlen(buf), buf);
   ret = malloc(sizeof(pdu));
 
+  if (strcmp(idev->model, "haljson") == 0) {
+    //XXX: extract mux, sec, typ and payload from data read from app
+    //     set to psel below
+    // parse_haljson(buf,len); // must get mux, sec, typ, and payload out
+  } else if (strcmp(idev->model, "bkend") == 0) {
+    //XXX: extract mux, sec, typ and payload from data read from device
+    // parse_bkend(buf,len); // Must get mux, sec, typ, and payload out
+  } else {
+    //XXX: print error, unkwown device model, return NULL
+  }
   ret->psel.dev = strdup(idev->id);
   ret->psel.mux = strdup("app1");  //XXX: fix
   ret->psel.sec = strdup("m1");    //XXX: fix
@@ -263,10 +285,10 @@ void write_pdu(device *odev, pdu *p, char *delim) {
 
   fd = odev->writefd;
   rv = write(fd, p->payload, p->len);
-  fprintf(stderr, "HAL wrote data on fd=%d rv=%d (len=%d):\n%s\n", fd, rv, p->len, (char *) p->payload);
+  fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d):\n%s\n", odev->id, fd, rv, p->len, (char *) p->payload);
   if (strcmp(odev->id, "zc") == 0) {
     rv = write(fd, delim, strlen(delim));
-    fprintf(stderr, "HAL wrote delimiter on fd=%d rv=%d (len=%ld):\n%s\n", fd, rv, strlen(delim), delim);
+    fprintf(stderr, "HAL wrote delimiter on %s (fd=%d rv=%d len=%ld):\n%s\n", odev->id, fd, rv, strlen(delim), delim);
   }
 }
 
@@ -405,7 +427,7 @@ int main(int argc, char **argv) {
   zcroot.enabled = 1;
   zcroot.id      = "zc";
   zcroot.path    = "zcpath";
-  zcroot.model   = "NONE";
+  zcroot.model   = "haljson";
   zcroot.next    = devs;
   zcroot.readfd  = PARENT_READ;
   zcroot.writefd = PARENT_WRITE;
@@ -439,6 +461,7 @@ int main(int argc, char **argv) {
   /* XXX: Log to specified logfile, not stderr */
   /* XXX: Properly daemonize, close standard fds, trap signals etc. */
   /* XXX: Deal with frag/defrag and other functionality etc. */
+  /* XXX: Organize code with device, HAL, and codec/parser in separate files */
 
   return 0;
 }
