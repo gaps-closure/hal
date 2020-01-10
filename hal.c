@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>	
 #include <sys/time.h>
@@ -8,7 +9,7 @@
 #include <fcntl.h>
 #include <libconfig.h>
 
-/* Device structure */
+/* HAL Device structure */
 typedef struct _dev {
   int enabled;
   int readfd;
@@ -19,7 +20,7 @@ typedef struct _dev {
   struct _dev *next;
 } device;
 
-/* Selector structure used in HAL map entries */
+/* HAL Selector structure used in HAL map entries */
 typedef struct _sel {
   char *dev;
   char *mux;
@@ -35,15 +36,31 @@ typedef struct _hal {
   struct _hal *next;
 } halmap;
 
-/* PDU structure */
+/* Internal HAL PDU structure */
 typedef struct _pdu {
   selector  psel;
   int       len;
   void     *payload;
 } pdu;
 
+/* BKEND packet structure */
+typedef struct _bkd {
+  uint32_t  session_tag;            /* App Mux */
+  uint32_t  message_tag;            /* Security */
+  uint32_t  message_tlv_count;      /* TLV count (1 for demo) */
+  uint32_t  tlv_data_tag;           /* Type (e.g., DATA_PAYLOAD_1) */
+  uint32_t  tlv_data_payload_bytes; /* Length (in bytes) */
+  uint8_t   tlv_data[236];          /* Value (up to 236 (256 - 5*4) bytes of payload) */
+} bkend;
+
+
 /* Maximum PDU size */
 #define MAXPDU 4096
+#define HALJSON_MAX_TAGS 3
+
+#define HALJSON_DELIM_DATA " "
+#define HALJSON_DELIM_TAGS "-"
+
 
 /* Parse the configuration file */
 void read_config (int argc, char **argv, config_t *cfg) {
@@ -245,6 +262,84 @@ void pdu_delete(pdu *pdu) {
   free(pdu);
 }
 
+/* Put data from buf (using haljson model) into internal HAL PDU */
+/* XXX: QUick fix for phase 1 (move to using haljson structure once defined) */
+void parse_from_haljson_model (char *buf, const char *dev_id, pdu *p) {
+  char        *tag, *tag2, *tag_next;
+  char        *data;
+  int          i;
+    
+  tag  = strtok(buf, HALJSON_DELIM_DATA);
+  data = strtok(NULL, HALJSON_DELIM_DATA);
+  if ( (tag==NULL) || (data==NULL) ) {
+    fprintf(stderr, "Error in PDU arrive on device %s\n", dev_id);
+    fprintf(stderr, "tag=%s data=%s\n", tag, data);
+    exit (1);
+  }
+  tag_next  = strtok(tag, HALJSON_DELIM_TAGS);
+  for (i=0; tag_next != NULL; i++) {
+//      fprintf(stderr, "i=%d: tag_next=%s\n", i, tag_next);
+    if (i==1) p->psel.mux = strdup(tag_next);
+    if (i==2) p->psel.sec = strdup(tag_next);
+    if (i==3) p->psel.typ = strdup(tag_next);
+    if (i>HALJSON_MAX_TAGS) {
+      fprintf(stderr, "Error, too many tag field (> %d) on device %s\n", HALJSON_MAX_TAGS, dev_id);
+      exit (1);
+    }
+    tag_next = strtok(NULL, HALJSON_DELIM_TAGS);
+  }
+  if (i<HALJSON_MAX_TAGS) {
+    fprintf(stderr, "Error, too few tag field (< %d) on device %s\n", HALJSON_MAX_TAGS, dev_id);
+    exit (1);
+  }
+  p->payload = data;              //XXX: create copy of buf to allow multiple reads in parallel?
+  p->len = strlen(data);
+}
+
+/* Put data from internal PDU into buf (using haljson model) */
+/* XXX: QUick fix for phase 1 (move to using haljson structure once defined) */
+void parse_into_haljson_model (char *buf, const char *dev_id, pdu *p) {
+  fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
+  strcpy(buf, "tag");
+  strcat(buf, HALJSON_DELIM_TAGS);
+  strcat(buf, p->psel.mux);
+  strcat(buf, HALJSON_DELIM_TAGS);
+  strcat(buf, p->psel.sec);
+  strcat(buf, HALJSON_DELIM_TAGS);
+  strcat(buf, p->psel.typ);
+  strcat(buf, HALJSON_DELIM_DATA);
+  strcat(buf, p->payload);
+  fprintf(stderr, "%s: buf(len=%ld)='%s'\n", __func__, strlen(buf), buf);
+}
+
+void bkend_print(bkend *b) {
+  int i;
+  fprintf(stderr, "%s: ", __func__);
+  fprintf(stderr, "mux=%u ", b->session_tag);
+  fprintf(stderr, "sec=%u ", b->message_tag);
+  for (i=0; i < b->message_tlv_count; i++) {
+    fprintf(stderr, "typ=%u ", b->tlv_data_tag);
+    fprintf(stderr, ": (len=%ld) %s\n", strlen(b->tlv_data), b->tlv_data);
+  }
+}
+
+int parse_into_bkend_model (char *buf, const char *dev_id, pdu *p) {
+  bkend  *b;
+  
+  fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
+  
+  b = (bkend *) buf;
+  /* XXX: FIXME (just assumes only one format for now) */
+  b->session_tag = 1;
+  b->message_tag = 2;
+  b->message_tlv_count = 1;
+  b->tlv_data_tag = 3;
+  b->tlv_data_payload_bytes = p->len;
+  strcpy(b->tlv_data, p->payload);
+  bkend_print(b);
+  return ((p->len) + 20);
+}
+
 /* Read device and return pdu */
 /* XXX: Use idev to determines how to parse, then extract selector info and fill psel */
 pdu *read_pdu(device *idev) {
@@ -252,43 +347,68 @@ pdu *read_pdu(device *idev) {
   static char  buf[MAXPDU];
   int          len;
   int          fd;
+  const char  *dev_id;
 
+  dev_id = idev->id;
   fd = idev->readfd;
   len = read(fd, buf, MAXPDU - 1);
   buf[len] = '\0';
-  fprintf(stderr, "HAL read input on %s (fd=%d rv=%d len=%ld):\n%s\n", idev->id, fd, len, strlen(buf), buf);
+  fprintf(stderr, "HAL read input on %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, len, strlen(buf), buf);
   ret = malloc(sizeof(pdu));
 
+  fprintf(stderr, "extract mux, sec, typ and payload (using model %s) from data: %s", idev->model, buf);
   if (strcmp(idev->model, "haljson") == 0) {
-    //XXX: extract mux, sec, typ and payload from data read from app
-    //     set to psel below
-    // parse_haljson(buf,len); // must get mux, sec, typ, and payload out
+    parse_from_haljson_model (buf, dev_id, ret);
   } else if (strcmp(idev->model, "bkend") == 0) {
     //XXX: extract mux, sec, typ and payload from data read from device
     // parse_bkend(buf,len); // Must get mux, sec, typ, and payload out
+    ret->psel.mux = strdup("app1");  //XXX: fix
+    ret->psel.sec = strdup("m1");    //XXX: fix
+    ret->psel.typ = strdup("d1");    //XXX: fix
+    ret->payload = buf;              //XXX: create copy of buf to allow multiple reads in parallel?
+    ret->len = strlen(buf);
+  } else if (strcmp(idev->model, "notag") == 0) {
+    ret->psel.mux = strdup("app1");  //XXX: fix
+    ret->psel.sec = strdup("m1");    //XXX: fix
+    ret->psel.typ = strdup("d1");    //XXX: fix
+    ret->payload = buf;              //XXX: create copy of buf to allow multiple reads in parallel?
+    ret->len = strlen(buf);
   } else {
-    //XXX: print error, unkwown device model, return NULL
+    fprintf(stderr, "Error, unkwown device model: %s\n", idev->model);
+    exit (22);
   }
-  ret->psel.dev = strdup(idev->id);
-  ret->psel.mux = strdup("app1");  //XXX: fix
-  ret->psel.sec = strdup("m1");    //XXX: fix
-  ret->psel.typ = strdup("d1");    //XXX: fix
-  ret->payload = buf;              //XXX: create copy of buf to allow multiple reads in parallel?
-  ret->len = strlen(buf);
+  ret->psel.dev = strdup(dev_id);
+pdu_print(ret);
   return ret;
 }
 
 /* Write pdu to specified fd */
 void write_pdu(device *odev, pdu *p, char *delim) {
-  int rv;
-  int fd;
+  int          rv;
+  int          fd;
+  int          len;
+  const char  *dev_id;
+  const char  *dev_model;
+  static char  buf[MAXPDU]={0};
 
+
+  dev_id = odev->id;
+  dev_model = odev->model;
+  if (strcmp(dev_model, "haljson") == 0) {
+    parse_into_haljson_model (buf, dev_id, p);
+  } else if (strcmp(dev_model, "bkend") == 0) {
+    fprintf(stderr, "XXX: Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
+    len = parse_into_bkend_model (buf, dev_id, p);
+    bkend_print((bkend *) buf);
+//    fprintf(stderr, "XXX: for now just copy data\n");
+//    strcpy(buf, p->payload);
+  }
   fd = odev->writefd;
-  rv = write(fd, p->payload, p->len);
-  fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d):\n%s\n", odev->id, fd, rv, p->len, (char *) p->payload);
-  if (strcmp(odev->id, "zc") == 0) {
+  rv = write(fd, buf, len);
+  fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d):\n%s\n", dev_id, fd, rv, len, (char *) p->payload);
+  if (strcmp(dev_id, "zc") == 0) {
     rv = write(fd, delim, strlen(delim));
-    fprintf(stderr, "HAL wrote delimiter on %s (fd=%d rv=%d len=%ld):\n%s\n", odev->id, fd, rv, strlen(delim), delim);
+    fprintf(stderr, "HAL wrote delimiter on %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, rv, strlen(delim), delim);
   }
 }
 
@@ -302,7 +422,7 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
   if(idev == NULL) { 
     fprintf(stderr, "Device not found for input fd");
     return; 
-  }
+  } 
 
   ipdu = read_pdu(idev);
   if(ipdu == NULL) { 
@@ -363,6 +483,7 @@ int main(int argc, char **argv) {
   int       maxrfd;        /* Maximum file descriptor number for select */
   fd_set    readfds;       /* File descriptor set for select */
   char     *zcpath;        /* Path to zc executable */
+  char     *zcmodel;       /* model of APP tag and data */
   char     *zcpub;         /* Publisher URL */
   char     *zcsub;         /* Subscriber URL */
   char     *delim;         /* Data end delimiter */
@@ -376,12 +497,13 @@ int main(int argc, char **argv) {
   int       zcpubpid;      /* Publisher PID */
 
   read_config(argc, argv, &cfg);
-  devs   = get_devices(&cfg);
-  zcpath = get_cfgstr(&cfg, "zcpath");
-  zcpub  = get_cfgstr(&cfg, "zcpub");
-  zcsub  = get_cfgstr(&cfg, "zcsub");
-  delim  = get_cfgstr(&cfg, "delim");
-  map    = get_mappings(&cfg);
+  devs    = get_devices(&cfg);
+  zcpath  = get_cfgstr(&cfg, "zcpath");
+  zcmodel = get_cfgstr(&cfg, "zcmodel");
+  zcpub   = get_cfgstr(&cfg, "zcpub");
+  zcsub   = get_cfgstr(&cfg, "zcsub");
+  delim   = get_cfgstr(&cfg, "delim");
+  map     = get_mappings(&cfg);
   config_destroy(&cfg);
 
   if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
@@ -427,7 +549,7 @@ int main(int argc, char **argv) {
   zcroot.enabled = 1;
   zcroot.id      = "zc";
   zcroot.path    = "zcpath";
-  zcroot.model   = "haljson";
+  zcroot.model   = zcmodel;
   zcroot.next    = devs;
   zcroot.readfd  = PARENT_READ;
   zcroot.writefd = PARENT_WRITE;
