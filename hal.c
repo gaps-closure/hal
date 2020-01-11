@@ -9,6 +9,12 @@
 #include <fcntl.h>
 #include <libconfig.h>
 
+#define MAXPDU 4096
+#define BKEND_MAX_TLVS 4
+#define HALJSON_MAX_TAGS 3
+#define HALJSON_DELIM_DATA " "
+#define HALJSON_DELIM_TAGS "-"
+
 /* HAL Device structure */
 typedef struct _dev {
   int enabled;
@@ -45,21 +51,13 @@ typedef struct _pdu {
 
 /* BKEND packet structure */
 typedef struct _bkd {
-  uint32_t  session_tag;            /* App Mux */
-  uint32_t  message_tag;            /* Security */
-  uint32_t  message_tlv_count;      /* TLV count (1 for demo) */
-  uint32_t  tlv_data_tag;           /* Type (e.g., DATA_PAYLOAD_1) */
-  uint32_t  tlv_data_payload_bytes; /* Length (in bytes) */
-  uint8_t   tlv_data[236];          /* Value (up to 236 (256 - 5*4) bytes of payload) */
+  uint32_t  session_tag;                    /* App Mux */
+  uint32_t  message_tag;                    /* Security */
+  uint32_t  message_tlv_count;              /* TLV count (1 for demo) */
+  uint32_t  tlv_data_tag[BKEND_MAX_TLVS];   /* Type (e.g., DATA_PAYLOAD_1) */
+  uint32_t  tlv_data_len[BKEND_MAX_TLVS];   /* Length (in bytes) */
+  uint8_t   tlv_data[BKEND_MAX_TLVS][236];  /* Value (up to 236 (256 - 5*4) bytes of payload) */
 } bkend;
-
-
-/* Maximum PDU size */
-#define MAXPDU 4096
-#define HALJSON_MAX_TAGS 3
-
-#define HALJSON_DELIM_DATA " "
-#define HALJSON_DELIM_TAGS "-"
 
 
 /* Parse the configuration file */
@@ -262,9 +260,14 @@ void pdu_delete(pdu *pdu) {
   free(pdu);
 }
 
+/* Print haljson (assuming entire input is a string) */
+void haljson_print(char *buf) {
+  fprintf(stderr, "%s (len=%ld)='%s'\n", __func__, strlen(buf), buf);
+}
+
 /* Put data from buf (using haljson model) into internal HAL PDU */
-/* XXX: QUick fix for phase 1 (move to using haljson structure once defined) */
-void parse_from_haljson_model (char *buf, const char *dev_id, pdu *p) {
+/* XXX: QUick fix for phase 1 (use haljson structure, once defined) */
+void haljson_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
   char        *tag, *tag2, *tag_next;
   char        *data;
   int          i;
@@ -298,7 +301,7 @@ void parse_from_haljson_model (char *buf, const char *dev_id, pdu *p) {
 
 /* Put data from internal PDU into buf (using haljson model) */
 /* XXX: QUick fix for phase 1 (move to using haljson structure once defined) */
-void parse_into_haljson_model (char *buf, const char *dev_id, pdu *p) {
+void haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
   strcpy(buf, "tag");
   strcat(buf, HALJSON_DELIM_TAGS);
@@ -309,33 +312,37 @@ void parse_into_haljson_model (char *buf, const char *dev_id, pdu *p) {
   strcat(buf, p->psel.typ);
   strcat(buf, HALJSON_DELIM_DATA);
   strcat(buf, p->payload);
-  fprintf(stderr, "%s: buf(len=%ld)='%s'\n", __func__, strlen(buf), buf);
+  haljson_print(buf);
 }
 
+/* Print bkend (assuming data is a string) */
 void bkend_print(bkend *b) {
   int i;
   fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ", b->session_tag);
-  fprintf(stderr, "sec=%u ", b->message_tag);
+  fprintf(stderr, "mux=%u ",  b->session_tag);
+  fprintf(stderr, "sec=%u ",  b->message_tag);
   for (i=0; i < b->message_tlv_count; i++) {
-    fprintf(stderr, "typ=%u ", b->tlv_data_tag);
-    fprintf(stderr, ": (len=%ld) %s\n", strlen(b->tlv_data), b->tlv_data);
+    fprintf(stderr, "ty=%u", b->tlv_data_tag[i]);
+    fprintf(stderr, ": (l=%ld) %s\n", strlen(b->tlv_data[i]), b->tlv_data[i]);
   }
 }
 
+/* Put data from buf (using haljson model) into internal HAL PDU */
+/* return length of buffer */
 int parse_into_bkend_model (char *buf, const char *dev_id, pdu *p) {
   bkend  *b;
   
   fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
-  
   b = (bkend *) buf;
   /* XXX: FIXME (just assumes only one format for now) */
   b->session_tag = 1;
   b->message_tag = 2;
   b->message_tlv_count = 1;
-  b->tlv_data_tag = 3;
-  b->tlv_data_payload_bytes = p->len;
-  strcpy(b->tlv_data, p->payload);
+  for (int i=0; i < b->message_tlv_count; i++) {
+    b->tlv_data_tag[i] = 3;
+    b->tlv_data_len[i] = p->len;
+    strcpy(b->tlv_data[i], p->payload);
+  }
   bkend_print(b);
   return ((p->len) + 20);
 }
@@ -358,7 +365,7 @@ pdu *read_pdu(device *idev) {
 
   fprintf(stderr, "extract mux, sec, typ and payload (using model %s) from data: %s", idev->model, buf);
   if (strcmp(idev->model, "haljson") == 0) {
-    parse_from_haljson_model (buf, dev_id, ret);
+    haljson_parse_into_PDU (buf, dev_id, ret);
   } else if (strcmp(idev->model, "bkend") == 0) {
     //XXX: extract mux, sec, typ and payload from data read from device
     // parse_bkend(buf,len); // Must get mux, sec, typ, and payload out
@@ -395,7 +402,7 @@ void write_pdu(device *odev, pdu *p, char *delim) {
   dev_id = odev->id;
   dev_model = odev->model;
   if (strcmp(dev_model, "haljson") == 0) {
-    parse_into_haljson_model (buf, dev_id, p);
+    haljson_parse_from_PDU (buf, dev_id, p);
   } else if (strcmp(dev_model, "bkend") == 0) {
     fprintf(stderr, "XXX: Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
     len = parse_into_bkend_model (buf, dev_id, p);

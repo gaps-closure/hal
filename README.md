@@ -20,6 +20,12 @@ sudo apt install -y libconfig-dev
 zc/zc -v sub ipc://halpub
 zc/zc -v -dEOF pub ipc://halsub
 
+# To write PDU from application enter a string preceeded by a haljson tag
+# in the zc pub window. For example:
+tag-app1-m1-d1 abcdefg
+```
+
+```
 # If devices are enabled in sample.cfg, then corresponding devices must be configured
 netcat -4 -l -k 127.0.0.1 1234
 sudo socat -d -d -lf socat_log.txt pty,link=/dev/vcom1,raw,ignoreeof,unlink-close=0,echo=0 tcp:127.0.0.1:1234,ignoreeof &
