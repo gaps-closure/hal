@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <libconfig.h>
+#include <arpa/inet.h>
 
 #define MAXPDU 4096
 #define BKEND_MAX_TLVS 4
@@ -49,14 +50,19 @@ typedef struct _pdu {
   void     *payload;
 } pdu;
 
+/* BKEND TLV */
+typedef struct _btlv {
+  uint32_t  data_tag;     /* Type (e.g., DATA_PAYLOAD_1) */
+  uint32_t  data_len;     /* Length (in bytes) */
+  uint8_t   data[236];    /* Value (up to 236 (256 - 5*4) bytes of payload) */
+} bkend_tlv;
+
 /* BKEND packet structure */
 typedef struct _bkd {
-  uint32_t  session_tag;                    /* App Mux */
-  uint32_t  message_tag;                    /* Security */
-  uint32_t  message_tlv_count;              /* TLV count (1 for demo) */
-  uint32_t  tlv_data_tag[BKEND_MAX_TLVS];   /* Type (e.g., DATA_PAYLOAD_1) */
-  uint32_t  tlv_data_len[BKEND_MAX_TLVS];   /* Length (in bytes) */
-  uint8_t   tlv_data[BKEND_MAX_TLVS][236];  /* Value (up to 236 (256 - 5*4) bytes of payload) */
+  uint32_t  session_tag;           /* App Mux */
+  uint32_t  message_tag;           /* Security */
+  uint32_t  message_tlv_count;     /* TLV count (1 for demo) */
+  bkend_tlv tlv[BKEND_MAX_TLVS];   /* TLV */
 } bkend;
 
 
@@ -317,33 +323,38 @@ void haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
 
 /* Print bkend (assuming data is a string) */
 void bkend_print(bkend *b) {
-  int i;
+  bkend_tlv *tlv;
+  
   fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ",  b->session_tag);
-  fprintf(stderr, "sec=%u ",  b->message_tag);
-  for (i=0; i < b->message_tlv_count; i++) {
-    fprintf(stderr, "ty=%u", b->tlv_data_tag[i]);
-    fprintf(stderr, ": (l=%ld) %s\n", strlen(b->tlv_data[i]), b->tlv_data[i]);
+  fprintf(stderr, "mux=%u ",  ntohl(b->session_tag));
+  fprintf(stderr, "sec=%u ",  ntohl(b->message_tag));
+  for (int i=0; i < ntohl(b->message_tlv_count); i++) {
+    tlv = &(b->tlv[i]);
+    fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
+    fprintf(stderr, "l=%d ",   ntohl(tlv->data_len));
+    fprintf(stderr, "%s] ",          tlv->data);
   }
+  fprintf(stderr, "\n");
 }
 
 /* Put data from buf (using haljson model) into internal HAL PDU */
 /* return length of buffer */
 int parse_into_bkend_model (char *buf, const char *dev_id, pdu *p) {
-  bkend  *b;
-  
+  bkend     *b;
+  bkend_tlv *tlv;
+
   fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
   b = (bkend *) buf;
   /* XXX: FIXME (just assumes only one format for now) */
-  b->session_tag = 1;
-  b->message_tag = 2;
-  b->message_tlv_count = 1;
-  for (int i=0; i < b->message_tlv_count; i++) {
-    b->tlv_data_tag[i] = 3;
-    b->tlv_data_len[i] = p->len;
-    strcpy(b->tlv_data[i], p->payload);
+  b->session_tag = htonl(4);
+  b->message_tag = htonl(2);
+  b->message_tlv_count = htonl(1);
+  for (int i=0; i < 1; i++) {
+    tlv = &(b->tlv[i]);
+    tlv->data_tag = htonl(3);
+    tlv->data_len = htonl(p->len);
+    strcpy(tlv->data, p->payload);
   }
-  bkend_print(b);
   return ((p->len) + 20);
 }
 
@@ -415,7 +426,7 @@ void write_pdu(device *odev, pdu *p, char *delim) {
   fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d):\n%s\n", dev_id, fd, rv, len, (char *) p->payload);
   if (strcmp(dev_id, "zc") == 0) {
     rv = write(fd, delim, strlen(delim));
-    fprintf(stderr, "HAL wrote delimiter on %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, rv, strlen(delim), delim);
+    fprintf(stderr, "HAL wrote delimiter to %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, rv, strlen(delim), delim);
   }
 }
 
