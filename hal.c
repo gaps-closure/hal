@@ -252,8 +252,8 @@ pdu *codec(halmap *h, pdu *ipdu) {
 }
 
 void pdu_print(pdu *pdu) {
-  fprintf(stderr, "PDU (dev=%s,mux=%s,sec=%s,typ=%s): %s\n", 
-		  pdu->psel.dev, pdu->psel.mux, pdu->psel.sec, pdu->psel.typ, (char *) pdu->payload);
+  fprintf(stderr, "PDU dev=%s,mux=%s,sec=%s,typ=%s (len=%d): %s\n",
+		  pdu->psel.dev, pdu->psel.mux, pdu->psel.sec, pdu->psel.typ, pdu->len, (char *) pdu->payload);
 }
 
 /* Free memory allocated for PDU */
@@ -307,7 +307,7 @@ void haljson_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
 
 /* Put data from internal PDU into buf (using haljson model) */
 /* XXX: QUick fix for phase 1 (move to using haljson structure once defined) */
-void haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
+int haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
   strcpy(buf, "tag");
   strcat(buf, HALJSON_DELIM_TAGS);
@@ -319,6 +319,9 @@ void haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   strcat(buf, HALJSON_DELIM_DATA);
   strcat(buf, p->payload);
   haljson_print(buf);
+  
+  fprintf(stderr, "LEN=%ld\n", strlen(buf));
+  return (strlen(buf));
 }
 
 /* Print bkend (assuming data is a string) */
@@ -337,16 +340,21 @@ void bkend_print(bkend *b) {
   fprintf(stderr, "\n");
 }
 
-/* Put data from buf (using haljson model) into internal HAL PDU */
+/* Put data from buf (using bkend model) into internal HAL PDU */
 /* return length of buffer */
-int parse_into_bkend_model (char *buf, const char *dev_id, pdu *p) {
+int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   bkend     *b;
   bkend_tlv *tlv;
-
+  char      *s;
+  int       d;
+  
   fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
   b = (bkend *) buf;
   /* XXX: FIXME (just assumes only one format for now) */
-  b->session_tag = htonl(4);
+  s = p->psel.mux;
+  d = s[(strlen(s)-1)] - '0';
+  fprintf(stderr, "ZZZ: Convert session tag from haljson (%s) into bkend (%d)\n", s, d);
+  b->session_tag = htonl(d);
   b->message_tag = htonl(2);
   b->message_tlv_count = htonl(1);
   for (int i=0; i < 1; i++) {
@@ -356,6 +364,38 @@ int parse_into_bkend_model (char *buf, const char *dev_id, pdu *p) {
     strcpy(tlv->data, p->payload);
   }
   return ((p->len) + 20);
+}
+
+/* Put data from buf (using bkend model) into internal HAL PDU */
+void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
+  bkend     *b;
+  bkend_tlv *tlv;
+    
+  fprintf(stderr, "Put bkend model data from dev=%s into internal HAL PDU\n", dev_id);
+  b = (bkend *) buf;
+  bkend_print((bkend *) buf);
+  
+  p->psel.dev = strdup(dev_id);
+  p->psel.mux = strdup("app1");
+  p->psel.sec = strdup("m1");
+  p->psel.typ = strdup("d1");
+  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
+  for (int i=0; i < ntohl(b->message_tlv_count); i++) {
+    tlv = &(b->tlv[0]);
+    fprintf(stderr, "ZZZZ: len=%d\n", ntohl(tlv->data_len));
+    p->len = ntohl(tlv->data_len);
+    strcpy(p->payload, tlv->data);
+  }
+/*
+  p->psel.mux = ntohl(b->session_tag);
+  p->psel.sec = ntohl(b->message_tag);
+  for (int i=0; i < b->ntohl(message_tlv_count); i++) {
+    tlv = &(b->tlv[i]);
+    p->psel.typ = ntohl(tlv->data_tag);
+    p->len      = ntohl(tlv->data_len);
+    strcpy(p->payload, tlv->data);
+  }
+ */
 }
 
 /* Read device and return pdu */
@@ -380,11 +420,7 @@ pdu *read_pdu(device *idev) {
   } else if (strcmp(idev->model, "bkend") == 0) {
     //XXX: extract mux, sec, typ and payload from data read from device
     // parse_bkend(buf,len); // Must get mux, sec, typ, and payload out
-    ret->psel.mux = strdup("app1");  //XXX: fix
-    ret->psel.sec = strdup("m1");    //XXX: fix
-    ret->psel.typ = strdup("d1");    //XXX: fix
-    ret->payload = buf;              //XXX: create copy of buf to allow multiple reads in parallel?
-    ret->len = strlen(buf);
+    bkend_parse_into_PDU (buf, dev_id, ret);
   } else if (strcmp(idev->model, "notag") == 0) {
     ret->psel.mux = strdup("app1");  //XXX: fix
     ret->psel.sec = strdup("m1");    //XXX: fix
@@ -413,10 +449,10 @@ void write_pdu(device *odev, pdu *p, char *delim) {
   dev_id = odev->id;
   dev_model = odev->model;
   if (strcmp(dev_model, "haljson") == 0) {
-    haljson_parse_from_PDU (buf, dev_id, p);
+    len = haljson_parse_from_PDU (buf, dev_id, p);
   } else if (strcmp(dev_model, "bkend") == 0) {
     fprintf(stderr, "XXX: Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
-    len = parse_into_bkend_model (buf, dev_id, p);
+    len = bkend_parse_from_PDU (buf, dev_id, p);
     bkend_print((bkend *) buf);
 //    fprintf(stderr, "XXX: for now just copy data\n");
 //    strcpy(buf, p->payload);
