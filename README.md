@@ -23,7 +23,7 @@ zc/zc -v -dEOF pub ipc://halsub
 # To write PDU from application enter a string preceeded by a haljson tag
 # in the zc pub window. For example:
 tag-app1-m1-d1 ABCDEFGHIJK
-tag-app4-m1-d1 ABCDEFGHIJK
+tag-app2-m2-d2 LMNOPQRST
 ```
 
 ```
@@ -42,7 +42,8 @@ stdbuf -oL xxd -r -p | netcat -4 -l -k 127.0.0.1 1234 2>&1 | od -t x1
 # XXX Need to remove buffering on output from above command...
 
 # To write PDU from bkend enter hex input (into netcast, via xxd). For example:
-00 00 00 04 00 00 00 02 00 00 00 01 00 00 00 03 00 00 00 0c 61 62 63 64 65 66 67 68 69 6a 6b 0a
+00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 0c 61 62 63 64 65 66 67 68 69 6a 6b 0a
+00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 02 00 00 00 0a 6c 6d 6e 6f 70 71 72 73 74 0a
 ```
 
 **This directory needs to be moved out of emulator into its own repository, as it

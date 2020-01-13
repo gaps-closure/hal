@@ -340,6 +340,28 @@ void bkend_print(bkend *b) {
   fprintf(stderr, "\n");
 }
 
+/* Default Convert from haljson string to bkend integer (in network order) */
+int haljson_to_bkend(char *s) {
+  int d;
+  
+  d = s[(strlen(s)-1)] - '0';     /* get last digit of string */
+  fprintf(stderr, "ZZZ: Convert from haljson string (%s) into bkend int (%d)\n", s, d);
+  return (htonl(d));
+}
+
+/* Default Convert to haljson string from bkend integer (in network order) */
+char *haljson_from_bkend(int d, char *prefix) {
+  char r[12];
+  char temp[12] = "";
+
+  strcpy(temp, prefix);
+  sprintf(r, "%d", ntohl(d));
+  strcat(temp, r);
+  fprintf(stderr, "QQQ: Convert to haljson string (%s) from bkend int (%d)\n", temp, ntohl(d));
+  return (strdup(temp));
+}
+
+
 /* Put data from buf (using bkend model) into internal HAL PDU */
 /* return length of buffer */
 int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
@@ -350,16 +372,12 @@ int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   
   fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);
   b = (bkend *) buf;
-  /* XXX: FIXME (just assumes only one format for now) */
-  s = p->psel.mux;
-  d = s[(strlen(s)-1)] - '0';
-  fprintf(stderr, "ZZZ: Convert session tag from haljson (%s) into bkend (%d)\n", s, d);
-  b->session_tag = htonl(d);
-  b->message_tag = htonl(2);
+  b->session_tag = haljson_to_bkend(p->psel.mux);
+  b->message_tag = haljson_to_bkend(p->psel.sec);
   b->message_tlv_count = htonl(1);
   for (int i=0; i < 1; i++) {
     tlv = &(b->tlv[i]);
-    tlv->data_tag = htonl(3);
+    tlv->data_tag = haljson_to_bkend(p->psel.typ);
     tlv->data_len = htonl(p->len);
     strcpy(tlv->data, p->payload);
   }
@@ -372,30 +390,23 @@ void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
   bkend_tlv *tlv;
     
   fprintf(stderr, "Put bkend model data from dev=%s into internal HAL PDU\n", dev_id);
+  p->psel.dev = strdup(dev_id);
+
+  /* XXX: FIXME: Hardcoded for now */
   b = (bkend *) buf;
   bkend_print((bkend *) buf);
-  
-  p->psel.dev = strdup(dev_id);
-  p->psel.mux = strdup("app1");
-  p->psel.sec = strdup("m1");
-  p->psel.typ = strdup("d1");
-  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
+  p->psel.mux = haljson_from_bkend(b->session_tag, "app");
+  p->psel.sec = haljson_from_bkend(b->message_tag, "m");
+//  p->psel.sec = strdup("m1");
+//  p->psel.typ = strdup("d1");
+//  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
   for (int i=0; i < ntohl(b->message_tlv_count); i++) {
     tlv = &(b->tlv[0]);
-    fprintf(stderr, "ZZZZ: len=%d\n", ntohl(tlv->data_len));
+//    fprintf(stderr, "ZZZZ: len=%d\n", ntohl(tlv->data_len));
+    p->psel.typ = haljson_from_bkend(tlv->data_tag, "d");
     p->len = ntohl(tlv->data_len);
     strcpy(p->payload, tlv->data);
   }
-/*
-  p->psel.mux = ntohl(b->session_tag);
-  p->psel.sec = ntohl(b->message_tag);
-  for (int i=0; i < b->ntohl(message_tlv_count); i++) {
-    tlv = &(b->tlv[i]);
-    p->psel.typ = ntohl(tlv->data_tag);
-    p->len      = ntohl(tlv->data_len);
-    strcpy(p->payload, tlv->data);
-  }
- */
 }
 
 /* Read device and return pdu */
@@ -491,13 +502,15 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
     return; 
   }
   // halmap_print_one(h);
-  
+
+  /*
   opdu = codec(h, ipdu);
   if(opdu == NULL) { 
     fprintf(stderr, "Output PDU is NULL"); 
     pdu_delete(ipdu);
     return;
   }
+   */
   // pdu_delete(ipdu);
   // pdu_print(opdu);
   
@@ -507,8 +520,8 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
     return; 
   }
 
-  write_pdu(odev, opdu, delim);
-  pdu_delete(opdu);
+  write_pdu(odev, ipdu, delim);
+  pdu_delete(ipdu);
 }
 
 /* Iniitialize file descriptor set for select (from linked-list of devices) */
@@ -549,7 +562,9 @@ int main(int argc, char **argv) {
   int       write_pipe[2]; /* Write pipes for parent-child communication */
   int       zcsubpid;      /* Subscriber PID */
   int       zcpubpid;      /* Publisher PID */
-
+  
+//  char      z[33], str1[12] = "Hello";
+//  haljson_from_bkend(z, htonl(1), str1); exit(1);
   read_config(argc, argv, &cfg);
   devs    = get_devices(&cfg);
   zcpath  = get_cfgstr(&cfg, "zcpath");
