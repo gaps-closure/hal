@@ -12,6 +12,7 @@
 
 #define MAXPDU 4096
 #define BKEND_MAX_TLVS 4
+#define BKEND_MIN_HEADER_BYTES 20
 #define HALJSON_MAX_TAGS 3
 #define HALJSON_DELIM_DATA " "
 #define HALJSON_DELIM_TAGS "-"
@@ -27,7 +28,7 @@ typedef struct _dev {
   struct _dev *next;
 } device;
 
-/* HAL Selector structure used in HAL map entries */
+/* HAL Selector structure used in HAL map entries and PDUs */
 typedef struct _sel {
   char *dev;
   char *mux;
@@ -165,8 +166,8 @@ void devices_print_all(device *root)  {
     fprintf(stderr, "\n");
 }
 
-/* Loop through devs linked list, find device with fd as its read file descriptor */
-device *find_device_for_readfd(device *root, int fd) {
+/* Loop through devs linked list, return device with fd as its read file descriptor */
+device *find_device_by_readfd(device *root, int fd) {
   for(device *d = root; d != NULL; d = d->next) {
     // fprintf(stderr, "%s: fd=%d: dev=%s rfd=%d wfd=%d\n", __func__, fd, d->id, d->readfd, d->writefd);
     if ( (d->enabled != 0) && (d->readfd == fd) ) return (d);
@@ -211,13 +212,13 @@ void halmap_print_one(halmap *hm) {
 void halmap_print_all(halmap *map_root) {
     fprintf(stderr, "HAL map list (%p): ", (void *) map_root);
     for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
-        fprintf(stderr, "[%s ->", hm->from.dev);
-        fprintf(stderr, " %s] ", hm->to.dev);
+      fprintf(stderr, "[%s %s -> ", hm->from.dev, hm->from.mux);
+      fprintf(stderr, "%s %s] ", hm->to.dev, hm->to.mux);
     }
     fprintf(stderr, "\n");
 }
 
-/* Return entry with from selector matching PDU selector from the halmap list */
+/* Return halmap with from selector matching PDU selector from the halmap list */
 halmap *halmap_find(pdu *p, halmap *map_root) {
   for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
     if ( strcmp(hm->from.dev, p->psel.dev) == 0 
@@ -251,8 +252,10 @@ pdu *codec(halmap *h, pdu *ipdu) {
   return opdu;
 }
 
+/* Print a inofrmation from an internal PDU */
 void pdu_print(pdu *pdu) {
-  fprintf(stderr, "PDU dev=%s,mux=%s,sec=%s,typ=%s (len=%d): %s\n",
+  if (pdu == NULL)  fprintf(stderr, "Cannot print NULL PDU\n");
+  else              fprintf(stderr, "PDU dev=%s,mux=%s,sec=%s,typ=%s (len=%d): %s\n",
 		  pdu->psel.dev, pdu->psel.mux, pdu->psel.sec, pdu->psel.typ, pdu->len, (char *) pdu->payload);
 }
 
@@ -301,7 +304,7 @@ void haljson_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
     fprintf(stderr, "Error, too few tag field (< %d) on device %s\n", HALJSON_MAX_TAGS, dev_id);
     exit (1);
   }
-  p->payload = data;              //XXX: create copy of buf to allow multiple reads in parallel?
+  p->payload = data;              //XXX:  copy buf to allow multiple reads in parallel?
   p->len = strlen(data);
 }
 
@@ -318,9 +321,7 @@ int haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   strcat(buf, p->psel.typ);
   strcat(buf, HALJSON_DELIM_DATA);
   strcat(buf, p->payload);
-  haljson_print(buf);
-  
-  fprintf(stderr, "LEN=%ld\n", strlen(buf));
+//  haljson_print(buf);
   return (strlen(buf));
 }
 
@@ -344,8 +345,9 @@ void bkend_print(bkend *b) {
 int haljson_to_bkend(char *s) {
   int d;
   
+  /* XXX: may need diferent mappings for some sessions */
   d = s[(strlen(s)-1)] - '0';     /* get last digit of string */
-  fprintf(stderr, "ZZZ: Convert from haljson string (%s) into bkend int (%d)\n", s, d);
+//  fprintf(stderr, "Convert haljson string (%s) into bkend int (%d)\n", s, d);
   return (htonl(d));
 }
 
@@ -357,13 +359,14 @@ char *haljson_from_bkend(int d, char *prefix) {
   strcpy(temp, prefix);
   sprintf(r, "%d", ntohl(d));
   strcat(temp, r);
-  fprintf(stderr, "QQQ: Convert to haljson string (%s) from bkend int (%d)\n", temp, ntohl(d));
+//  fprintf(stderr, "Convert into haljson string (%s) from bkend int (%d)\n", temp, ntohl(d));
+  /* XXX Free memory when done */
   return (strdup(temp));
 }
 
 
-/* Put data from buf (using bkend model) into internal HAL PDU */
-/* return length of buffer */
+/* Put data into buf (using bkend model) from internal HAL PDU */
+/* Returns length of buffer */
 int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   bkend     *b;
   bkend_tlv *tlv;
@@ -381,31 +384,34 @@ int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
     tlv->data_len = htonl(p->len);
     strcpy(tlv->data, p->payload);
   }
-  return ((p->len) + 20);
+  /* XXX: Fix length to depend on message_tlv_count */
+  return ((p->len) + BKEND_MIN_HEADER_BYTES);
 }
 
 /* Put data from buf (using bkend model) into internal HAL PDU */
-void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
+void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p, int len) {
   bkend     *b;
   bkend_tlv *tlv;
     
   fprintf(stderr, "Put bkend model data from dev=%s into internal HAL PDU\n", dev_id);
+  
+  /* XXX: Handle case where BKEND message is split - using framing? */
+  if (len < BKEND_MIN_HEADER_BYTES) {
+    fprintf(stderr, "XXX: BKEND Message split?: len=%d\n", len);
+    exit (22);
+  }
+  
   p->psel.dev = strdup(dev_id);
-
-  /* XXX: FIXME: Hardcoded for now */
   b = (bkend *) buf;
   bkend_print((bkend *) buf);
   p->psel.mux = haljson_from_bkend(b->session_tag, "app");
   p->psel.sec = haljson_from_bkend(b->message_tag, "m");
-//  p->psel.sec = strdup("m1");
-//  p->psel.typ = strdup("d1");
 //  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
   for (int i=0; i < ntohl(b->message_tlv_count); i++) {
     tlv = &(b->tlv[0]);
-//    fprintf(stderr, "ZZZZ: len=%d\n", ntohl(tlv->data_len));
     p->psel.typ = haljson_from_bkend(tlv->data_tag, "d");
     p->len = ntohl(tlv->data_len);
-    strcpy(p->payload, tlv->data);
+    p->payload = tlv->data;
   }
 }
 
@@ -425,13 +431,11 @@ pdu *read_pdu(device *idev) {
   fprintf(stderr, "HAL read input on %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, len, strlen(buf), buf);
   ret = malloc(sizeof(pdu));
 
-  fprintf(stderr, "extract mux, sec, typ and payload (using model %s) from data: %s", idev->model, buf);
+//  fprintf(stderr, "extract mux, sec, typ and payload (using model %s) from data: %s", idev->model, buf);
   if (strcmp(idev->model, "haljson") == 0) {
     haljson_parse_into_PDU (buf, dev_id, ret);
   } else if (strcmp(idev->model, "bkend") == 0) {
-    //XXX: extract mux, sec, typ and payload from data read from device
-    // parse_bkend(buf,len); // Must get mux, sec, typ, and payload out
-    bkend_parse_into_PDU (buf, dev_id, ret);
+    bkend_parse_into_PDU   (buf, dev_id, ret, len);
   } else if (strcmp(idev->model, "notag") == 0) {
     ret->psel.mux = strdup("app1");  //XXX: fix
     ret->psel.sec = strdup("m1");    //XXX: fix
@@ -470,10 +474,10 @@ void write_pdu(device *odev, pdu *p, char *delim) {
   }
   fd = odev->writefd;
   rv = write(fd, buf, len);
-  fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d):\n%s\n", dev_id, fd, rv, len, (char *) p->payload);
+  fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d): %s\n", dev_id, fd, rv, len, (char *) p->payload);
   if (strcmp(dev_id, "zc") == 0) {
     rv = write(fd, delim, strlen(delim));
-    fprintf(stderr, "HAL wrote delimiter to %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, rv, strlen(delim), delim);
+    fprintf(stderr, "HAL wrote delimiter to %s (fd=%d rv=%d len=%ld): %s\n", dev_id, fd, rv, strlen(delim), delim);
   }
 }
 
@@ -483,7 +487,7 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
   device *idev, *odev;
   halmap *h;
   
-  idev = find_device_for_readfd(devs, ifd);
+  idev = find_device_by_readfd(devs, ifd);
   if(idev == NULL) { 
     fprintf(stderr, "Device not found for input fd");
     return; 

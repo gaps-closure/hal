@@ -13,37 +13,53 @@ sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
-```
-# Example basic testing (run each command in separate window in hal directory):
-# Start HAL, sender, and receiver; type in sender window some text lines with an EOF at the end (or ^D)
-./hal sample.cfg
-zc/zc -v sub ipc://halpub
-zc/zc -v -dEOF pub ipc://halsub
+Testing with a socat device sending and receiving BKEND Format binary data
 
-# To write PDU from application enter a string preceeded by a haljson tag
-# in the zc pub window. For example:
-tag-app1-m1-d1 ABCDEFGHIJK
-tag-app2-m2-d2 LMNOPQRST
+A) Setup (run each command in a separate window).
 ```
+# 1) netcat listens on localhost port 1234 and converts packets to and from hex format
+#    on stdout and stdin
+stdbuf -oL xxd -r -p | netcat -4 -l -k 127.0.0.1 1234 2>&1 | od -t x1 -w1 -v
 
-```
-# If devices are enabled in sample.cfg, then corresponding devices must be configured
-netcat -4 -l -k 127.0.0.1 1234
-sudo socat -d -d -lf socat_log.txt pty,link=/dev/vcom1,raw,ignoreeof,unlink-close=0,echo=0 tcp:127.0.0.1:1234,ignoreeof &
+# 2) Start a serial device (/dev/vcom1) that communicates to netcat
+sudo socat -d -d -lf socat_log.txt pty,link=/dev/vcom1,raw,ignoreeof,unlink-close=0,echo=0 tcp:127.0.0.1:1234,ignoreeof
 sudo chmod 777 /dev/vcom1
-echo "hello you" > /dev/vcom1
-cat /dev/vcom1
+
+# 3) Start the HAL and the Application(s) send and receive emulation (using zc)
+#    Note: Make sure the socat device (/dev/vcom1) is enabled in sample.cfg.
+./hal sample.cfg
+zc/zc -v -dEOF pub ipc://halsub
+zc/zc -v sub ipc://halpub
+#    Note: To emulate mutiple apps by starting additional (identical) pairs of zc pub/sub commands
 ```
 
+B) Passing data ( between app and device)
 ```
-# If using bkend model, then pass netcat (binary): a) output through od
-# and b) input through xxd 
-stdbuf -oL xxd -r -p | netcat -4 -l -k 127.0.0.1 1234 2>&1 | od -t x1
-# XXX Need to remove buffering on output from above command...
+# 1) Send from APP by typing in a zc halsub window, using a haljson formated tag and string.
+#    (three '-' separated tag strings [mux, sec, typ], a space. and a data string)
+#    For example, to emulate sending from app1:
+tag-app1-m1-d1 ABCDEFGHIJK
+#    To emulate sending from app1:
+tag-app2-m2-d2 LMNOPQRST
+#    Note: Output from both apps will be printed in the netcat window (in hex)
 
-# To write PDU from bkend enter hex input (into netcast, via xxd). For example:
+# 2) Send from device by typing in the netcat window, using a bkend formated hex data
+#    (Five uint32_t (4-byte) tags [mux, sec, count, typ, len] followed by the data)
+#    For example, to emulate sending to app1:
 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 0c 61 62 63 64 65 66 67 68 69 6a 6b 0a
+#    To emulate sending to app2:
 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 02 00 00 00 0a 6c 6d 6e 6f 70 71 72 73 74 0a
+#    Note: Output will be printed in the APP zc halpub window (as a string)
+```
+
+
+Loopback APP-side testing (without a device)
+```
+# 1) Start the HAL and the Application(s) send and receive emulation (using zc)
+./hal sample_zc_loopback.cfg
+zc/zc -v -dEOF pub ipc://halsub
+zc/zc -v sub ipc://halpub
+#    Note: sample_zc_loopback.cfg disables all devices and routes from zc to zc
 ```
 
 **This directory needs to be moved out of emulator into its own repository, as it
