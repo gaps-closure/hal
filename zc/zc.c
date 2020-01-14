@@ -16,6 +16,7 @@ void print_help() {
   printf(" -h --help : print this message\n");
   printf(" -b --bind : bind instead of connect\n");
   printf(" -d --delim : string marking end of stdin stream\n");
+  printf(" -f --filter : ZMQ subscriber incoming message filter string (default is all messages)\n");
   printf(" -n --nbiter : number of iterations (0 for infinite loop)\n");
   printf(" -v --verbose : print some messages in stderr\n");
   printf("TYPE: set ZMQ socket type in req/rep/pub/sub/push/pull\n");
@@ -123,13 +124,14 @@ int main(int argc, char** argv) {
 
   int bind = 0;
   char *delim = NULL;
+  char filter[64]= "\0";
   int type = 0;
   char* endpoint = 0;
   int nbiter = 0;
-
   int iopt = 0;
+  
   while(1) {
-     int c = getopt_long(argc,argv,"hbd:n:v",options, &iopt);
+     int c = getopt_long(argc,argv,"hbd:f:n:v",options, &iopt);
      if(c==-1)
        break;
      switch(c) {
@@ -142,6 +144,9 @@ int main(int argc, char** argv) {
          break;
        case 'd':
          delim = optarg;
+         break;
+       case 'f':
+         strcpy(filter, optarg);
          break;
        case 'n':
          nbiter = atoi(optarg);
@@ -197,7 +202,8 @@ int main(int argc, char** argv) {
   }
 
   if(type==ZMQ_SUB) {
-    zmq_setsockopt(socket,ZMQ_SUBSCRIBE,"",0); 
+    if(verbose) fprintf(stderr,"Subscriber input filter = \"%s\"\n",filter);
+    zmq_setsockopt(socket,ZMQ_SUBSCRIBE,filter,strlen(filter));
   }
 
   if(type==ZMQ_PUB) {

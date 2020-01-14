@@ -25,12 +25,15 @@ stdbuf -oL xxd -r -p | netcat -4 -l -k 127.0.0.1 1234 2>&1 | od -t x1 -w1 -v
 sudo socat -d -d -lf socat_log.txt pty,link=/dev/vcom1,raw,ignoreeof,unlink-close=0,echo=0 tcp:127.0.0.1:1234,ignoreeof
 sudo chmod 777 /dev/vcom1
 
-# 3) Start the HAL and the Application(s) send and receive emulation (using zc)
+# 3) Start HAL and 2 Applications (app1 and app2) emulationed with zc
 #    Note: Make sure the socat device (/dev/vcom1) is enabled in sample.cfg.
 ./hal sample.cfg
 zc/zc -v -dEOF pub ipc://halsub
-zc/zc -v sub ipc://halpub
-#    Note: To emulate mutiple apps by starting additional (identical) pairs of zc pub/sub commands
+zc/zc -v -f 'tag-app1' sub ipc://halpub
+zc/zc -v -dEOF pub ipc://halsub
+zc/zc -v -f 'tag-app2' sub ipc://halpub
+#    Note: Publisher or app1 and app2 are the same (just use different tags - see below)
+#          Add more zc pub-sub pairs (with new sub filter) to emulate further apps
 ```
 
 B) Passing data ( between app and device)
