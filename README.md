@@ -18,7 +18,7 @@ sudo apt install -y libconfig-dev
 Run 5 scripts (each in separate windows) to start the monitor, netwrok device, HAL, and 2 APPs  
 ```
 # 1) Start the monoitor
-sudo tshark -i lo -f "port 12345" -f -x 
+sudo tshark -i lo -f "port 12345" -x 
 
 # 2) Start the network device 
 ./net.sh
