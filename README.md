@@ -15,17 +15,17 @@ sudo apt install -y libconfig-dev
 
 # TESTING WITH SCRIPTS
 
-Run scripts (each in separate windows) to start the netwrok device, HAL, one or more APPs, and monitor  
+Run 5 scripts (each in separate windows) to start the monitor, netwrok device, HAL, and 2 APPs  
 ```
 # 1) Start the monoitor
-sudo tshark -i lo -f "port 12345" -f "tcp.flags.ack==0" -x 
+sudo tshark -i lo -f "port 12345" -f -x 
 
 # 2) Start the network device 
 ./net.sh
 
 # 3) Start HAL (run 'make' if hal.c or zc.c has been modified)
 ./hal sample.cfg
-sa  
+
 # 4) Start APPs 1 and 2
 ./app 1
 ./app 2
