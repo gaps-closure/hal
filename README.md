@@ -13,6 +13,26 @@ sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
+# TESTING WITH SCRIPTS
+
+Run scripts (each in separate windows) to start the netwrok device, HAL, one or more APPs, and monitor  
+```
+# 1) Start the monoitor
+sudo tshark -i lo -f "port 12345" -f "tcp.flags.ack==0" -x 
+
+# 2) Start the network device 
+./net.sh
+
+# 3) Start HAL (run 'make' if hal.c or zc.c has been modified)
+./hal sample.cfg
+sa  
+# 4) Start APPs 1 and 2
+./app 1
+./app 2
+```
+
+# RAW TESTING
+
 Testing with a socat device sending and receiving BKEND Format binary data
 
 A) Setup (run each command in a separate window).
