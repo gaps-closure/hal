@@ -312,7 +312,8 @@ void haljson_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
   int          i;
     
   tag  = strtok(buf, HALJSON_DELIM_DATA);
-  data = strtok(NULL, HALJSON_DELIM_DATA);
+  //data = strtok(NULL, HALJSON_DELIM_DATA);
+  data = buf + strlen(tag) + 1; // Skip past tag and delimiter space
   if ( (tag==NULL) || (data==NULL) ) {
     fprintf(stderr, "Error in PDU arrive on device %s\n", dev_id);
     fprintf(stderr, "tag=%s data=%s\n", tag, data);
