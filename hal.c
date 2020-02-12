@@ -67,7 +67,7 @@ typedef struct _bkd {
 } bkend;
 
 
-void print_help() {
+void print_help(void) {
   printf("Hardware Abstraction Layer (HAL) for gaps CLOSURE project\n");
   printf("Usage: hal [OPTION]... CONFIG-FILE\n");
   printf("OPTION: one of the following options:\n");
@@ -81,7 +81,7 @@ int verbose=0;
 /* Parse the configuration file */
 void read_config (int argc, char **argv, config_t *cfg) {
   int opt;
-  char  *file_name;
+  char  *file_name= NULL;
   
   if (argc < 2) {
     print_help();
@@ -307,7 +307,7 @@ void haljson_print(char *buf) {
 /* Put data from buf (using haljson model) into internal HAL PDU */
 /* XXX: QUick fix for phase 1 (use haljson structure, once defined) */
 void haljson_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
-  char        *tag, *tag2, *tag_next;
+  char        *tag, *tag_next;
   char        *data;
   int          i;
     
@@ -401,8 +401,6 @@ char *haljson_from_bkend(int d, char *prefix) {
 int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
   bkend     *b;
   bkend_tlv *tlv;
-  char      *s;
-  int       d;
   
   if(verbose) {fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);}
   b = (bkend *) buf;
@@ -488,7 +486,7 @@ pdu *read_pdu(device *idev) {
 void write_pdu(device *odev, pdu *p, char *delim) {
   int          rv;
   int          fd;
-  int          len;
+  int          len=0;
   const char  *dev_id;
   const char  *dev_model;
   static char  buf[MAXPDU]={0};
@@ -517,7 +515,7 @@ void write_pdu(device *odev, pdu *p, char *delim) {
 
 /* Process input from device (with 'input_fd') and send to output */
 void process_input(int ifd, halmap *map, device *devs, char *delim) {
-  pdu    *ipdu, *opdu;
+  pdu    *ipdu; //, *opdu;
   device *idev, *odev;
   halmap *h;
   
