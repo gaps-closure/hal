@@ -1,29 +1,36 @@
 This directory contains the CLOSURE Hardware Abstraction Layer (HAL) Service.
 The HAL Service runs as a daemon (typically started by a systemd script at boot 
 time).  Based on its conifguration file (e.g., sample.cfg) HAL opens, conigures 
-and manages cross domain guard devices (real or emualted). It then mediates 
+and manages cross domain guard devices (real or emualted). It also mediates 
 the  exchange between the application and the guard devices, handling the 
 encoding/decoding, multiplexing/demultiplexing, segmentation/reassembly and 
-rate control as applicable.
+rate control, as applicable.
 
 
 # HAL API
+The figure below show the data and control-plane APIs between HAL and the 
+partitioned application programs.
+
+<img src="https://github.com/gaps-closure/hal/hal_api.png">
+
 ## HAL Data-Plane API
 
 The HAL Data-Plane API gives single uniform high-level interface to APPs, 
 abstracting the different hardware APIs used by cross-domain programs. 
 The API allows applications to a) send and receive arbitary binary data and 
-b) set the tag (mux, sec, typ) values. The tag settings control multiplexing, 
-security and data formatting: 
+b) set the tag (mux, sec, typ) values that control multiplexing, security and 
+data formatting: 
 * The tag session ID (mux) determines which application will receive the data.
 * The tag security ID (sec) determines the security policies required.
-* The tag data type (typ) identifies the type of application data (and its associated DFDL description). 
+* The tag data type (typ) identifies the type of application data (and its 
+  associated DFDL description). 
 
-In order to send and receive cross-domain data via HAL, applications
- programs use the CLOSURE API functions. The C-program API is available  
- by including  "closure.h" and linking with the CLOSURE library (libclosure.a).  
+In order to send and receive cross-domain data via HAL, applications programs 
+use CLOSURE API functions. The C-program API is available by including  
+"closure.h" and linking with the CLOSURE library (libclosure.a).  
 
-The API provides functions to write and read the CLOSURE tag information:
+The API provides functions to write/read the HAL tag structure from/to mux, 
+sec and typ values:
 ```
 tag_write (hal_tag *tag, uint32_t  mux, uint32_t  sec, uint32_t  typ);
 tag_read  (hal_tag *tag, uint32_t *mux, uint32_t *sec, uint32_t *typ);
@@ -43,35 +50,37 @@ gaps-asyn-receive (uint8_t *adu, size_t *adu_len, hal_tag *tag);
 ```
 
 ## HAL Control-Plane API
-HAL Control-Plane API provisions using a libconfig File
+HAL Control-Plane API provisions using a libconfig File, which contains:
 * HAL maps (routes):
   [fromdev, frommux, fromsec, fromtyp, todev, tomux, tosec, totyp, codec]
   
-  * Determine how packets are routed from the arriving device to a destination device 
-  (Devices including communication hardware (e.g., /dev/vcom1 or eth0) or on the 
-  CLOSURE API to applications).
-  * Determine possible packet tag and data transformations. 
+  * Determine how packets are routed from arriving device to a departing device (based on tag information).  
+  Devices include hardware interfaces (e.g., serial or ethernet) and the CLOSURE API.
+  * Determine packet data transformations (codec), based on data-type DFDL schema file name.
 
 * Device configurations:
   * Device IDs (e.g., /dev/gaps1), 
-  * Infomration about the devices (e.g., addresses, ports).
-  * Give Max message size (HAL may perform Segment and Reassemble (SAR)), 
-  * Set Max rate (bits/second).
+  * Devices configuration (e.g., addresses, ports).
+  * GAPS packet header DFDL schema file name.
+  * Max packet size (HAL may perform Segment and Reassemble (SAR)), 
+  * Max rate (bits/second).
 
 * Cross Domain Guard (CDG) provisioning:
-  * ASN.1/DFDL schema per data type
-  * Associates MLS policy rules (e.g., pass/allow/filter), based on the DFDL-described data-plane fields (in a device-specific PDU).
+  * DFDL schema file per: a) data-type, and b) per GAPS packet header format.
+  * MLS policy rules (e.g., pass/allow/filter), based on the DFDL-described data-plane fields (in a device-specific PDU).
   * CDG hardware configuration (including pipeline setup?)
+
+* Cross Domain Guard (CDG) provisioning:
 
 # Prerequisites
 
-Make sure to install pre-requisites.
+Make sure to install HAL pre-requisites.
 ```
 sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
-Compile HAL, together with closure libarary, HAL utilities, and application (e.g., app_test)
+Compile HAL, together with the closure libarary (libclosure.a), HAL utilities, and application (e.g., app_test.c)
 ```
 cd ~/gaps/top-level/hal/
 make clean; make
