@@ -1,11 +1,48 @@
-This directory will include the Hardware Abstraction Layer (HAL) Service which
-abstracts the TA1 API for use by the cross-domain programs. The HAL Service
-runs as a daemon (typically started by a systemd script at boot time).  
+This directory contains the CLOSURE Hardware Abstraction Layer (HAL) Service.
+The HAL Service runs as a daemon (typically started by a systemd script at boot 
+time).  Based on its conifguration file (e.g., sample.cfg) HAL opens, conigures 
+and manages cross domain guard devices (real or emualted). It then mediates 
+the  exchange between the application and the guard devices, handling the 
+encoding/decoding, multiplexing/demultiplexing, segmentation/reassembly and 
+rate control as applicable.
 
-It allows application to send and receive cross-domain data and tags over
-ZeroMQ. It opens and manages cross domain guard devices (real or emualted). It
-mediates the exchange between the application and the guard devices, handling
-the encoding/decoding and multiplexing/demultiplexing as applicable.
+
+# HAL Data-Plane API
+
+The HAL Data-Plane API gives single uniform high-level interface to APPs, 
+abstracting the different hardware APIs used by cross-domain programs. 
+
+In order to send and receive cross-domain data via HAL, applications use the 
+CLOSURE API functions. The API is available to application programs by 
+including "closure.h" and linking with the CLOSURE library (libclosure.a).  
+The API allows applications to send and receive arbitary binary data and 
+set the tag (mux, sec, typ) values. 
+
+The tag settings control multiplexing, security and data formatting: 
+* The session ID (mux) determines which application will receive the data.
+* The Security ID (sec) determine the security policies required.
+* The Data type (typ) iidentify the type of application data (and its associated DFDL description). 
+The API provides functions to write and read the CLOSURE tag information:
+```
+tag_write (hal_tag *tag, uint32_t  mux, uint32_t  sec, uint32_t  typ);
+tag_read  (hal_tag *tag, uint32_t *mux, uint32_t *sec, uint32_t *typ);
+```
+Before sending the data, the APP must also encode/decode data to/from the 
+CLOSURE serialized Application Data Units (adu) format based on its type. 
+For example, to send/receive PNT data  (pnt1), it sets typ=DATA_TYP_PNT:
+```
+gaps_data_encode(uint8_t *adu, uint8_t *adu_len, uint8_t *pnt1, uint8_t *pnt_len, int DATA_TYP_PNT);
+gaps_data_decode(uint8_t *adu, uint8_t *adu_len, uint8_t *pnt1, uint8_t *pnt_len, int DATA_TYP_PNT);
+```
+The APP can then send/receive the adu based on a specified tag value. For
+asynchronous communication, the CLOSURE API provides the following functions:
+```
+gaps-asyn-send    (uint8_t *adu, size_t  adu_len, hal_tag  tag);
+gaps-asyn-receive (uint8_t *adu, size_t *adu_len, hal_tag *tag);
+```
+
+
+# Prerequisites
 
 Make sure to install pre-requisites.
 ```
@@ -13,9 +50,51 @@ sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
-# TESTING WITH SCRIPTS
+Compile HAL, together with closure libarary, HAL utilities, and application (e.g., app_test)
+```
+cd ~/gaps/top-level/hal/
+make clean; make
+```
 
-Run 5 scripts (each in separate windows) to start the monitor, netwrok device, HAL, and 2 APPs  
+# TESTING with an APP (using the CLOSURE API) with HAL
+
+Runs the test applicaiton (send and receiving encoded data) using the CLOSURE API, with HAL and a socat device
+(to emulate the network).
+
+```
+cd ~/gaps/top-level/hal/
+# 1) Start the network device 
+./net.sh
+
+# 2a) Start HAL as a loopback device
+./hal sample_loopback.cfg
+# 2b) Start HAL sending to device
+./hal sample.cfg
+
+
+# 3) Start the test APP
+./app_test
+```
+
+# TESTING with an APP (using the CLOSURE API)  -  in isolation 
+
+Runs the test applicaiton (send and receiving encoded data) using the CLOSURE API; but without HAL (using 'zc' utility to 
+emulate HAL sub and pub. 
+```
+cd ~/gaps/top-level/hal/
+# 1) Model the HAL subscriber:
+zc/zc -b sub ipc://halsub | od -t x1 -w1 -v
+# 2) Start the test APP
+./app_test
+# 3) Model the HAL publisher:
+echo "008200A50064800043C00000020000" | xxd -r -p | zc/zc -b pub ipc://halpub
+```
+
+
+# TESTING with ZC with HAL
+Runs HAL and a socat device (to emulate the network); but uses zcat to emulate a test applicaiton (without the CLOSURE API) 
+Run 5 scripts (each in separate windows): to start the monitor, netwrok device, HAL, and 2 APPs.
+
 ```
 # 1) Start the monoitor
 sudo tshark -i lo -f "port 12345" -T fields -e data
@@ -35,7 +114,7 @@ sudo tshark -i lo -f "port 12345" -T fields -e data
 ./app 2
 ```
 
-# RAW TESTING
+# RAW TESTING - USING ZC and SOCAT
 
 Testing with a socat device sending and receiving BKEND Format binary data
 
@@ -88,6 +167,3 @@ zc/zc -v -dEOF pub ipc://halsub
 zc/zc -v sub ipc://halpub
 #    Note: sample_zc_loopback.cfg disables all devices and routes from zc to zc
 ```
-
-**This directory needs to be moved out of emulator into its own repository, as it
-is a CLOSURE component that applies to both real and emulated systems.**
