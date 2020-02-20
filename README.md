@@ -11,7 +11,7 @@ rate control, as applicable.
 The figure below show the data and control-plane APIs between HAL and the 
 partitioned application programs.
 
-<img src="https://github.com/gaps-closure/hal/hal_api.png">
+![HAL API](hal_api.png)
 
 ## HAL Data-Plane API
 
