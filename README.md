@@ -7,21 +7,22 @@ encoding/decoding, multiplexing/demultiplexing, segmentation/reassembly and
 rate control as applicable.
 
 
-# HAL Data-Plane API
+# HAL API
+## HAL Data-Plane API
 
 The HAL Data-Plane API gives single uniform high-level interface to APPs, 
 abstracting the different hardware APIs used by cross-domain programs. 
+The API allows applications to a) send and receive arbitary binary data and 
+b) set the tag (mux, sec, typ) values. The tag settings control multiplexing, 
+security and data formatting: 
+* The tag session ID (mux) determines which application will receive the data.
+* The tag security ID (sec) determines the security policies required.
+* The tag data type (typ) identifies the type of application data (and its associated DFDL description). 
 
-In order to send and receive cross-domain data via HAL, applications use the 
-CLOSURE API functions. The API is available to application programs by 
-including "closure.h" and linking with the CLOSURE library (libclosure.a).  
-The API allows applications to send and receive arbitary binary data and 
-set the tag (mux, sec, typ) values. 
+In order to send and receive cross-domain data via HAL, applications
+ programs use the CLOSURE API functions. The C-program API is available  
+ by including  "closure.h" and linking with the CLOSURE library (libclosure.a).  
 
-The tag settings control multiplexing, security and data formatting: 
-* The session ID (mux) determines which application will receive the data.
-* The Security ID (sec) determine the security policies required.
-* The Data type (typ) iidentify the type of application data (and its associated DFDL description). 
 The API provides functions to write and read the CLOSURE tag information:
 ```
 tag_write (hal_tag *tag, uint32_t  mux, uint32_t  sec, uint32_t  typ);
@@ -41,6 +42,26 @@ gaps-asyn-send    (uint8_t *adu, size_t  adu_len, hal_tag  tag);
 gaps-asyn-receive (uint8_t *adu, size_t *adu_len, hal_tag *tag);
 ```
 
+## HAL Control-Plane API
+HAL Control-Plane API provisions using a libconfig File
+* HAL maps (routes):
+  [fromdev, frommux, fromsec, fromtyp, todev, tomux, tosec, totyp, codec]
+  
+  * Determine how packets are routed from the arriving device to a destination device 
+  (Devices including communication hardware (e.g., /dev/vcom1 or eth0) or on the 
+  CLOSURE API to applications).
+  * Determine possible packet tag and data transformations. 
+
+* Device configurations:
+  * Device IDs (e.g., /dev/gaps1), 
+  * Infomration about the devices (e.g., addresses, ports).
+  * Give Max message size (HAL may perform Segment and Reassemble (SAR)), 
+  * Set Max rate (bits/second).
+
+* Cross Domain Guard (CDG) provisioning:
+  * ASN.1/DFDL schema per data type
+  * Associates MLS policy rules (e.g., pass/allow/filter), based on the DFDL-described data-plane fields (in a device-specific PDU).
+  * CDG hardware configuration (including pipeline setup?)
 
 # Prerequisites
 
@@ -56,7 +77,8 @@ cd ~/gaps/top-level/hal/
 make clean; make
 ```
 
-# TESTING with an APP (using the CLOSURE API) with HAL
+# TESTING 
+## Using a Test APP (using the CLOSURE API) with HAL
 
 Runs the test applicaiton (send and receiving encoded data) using the CLOSURE API, with HAL and a socat device
 (to emulate the network).
@@ -76,7 +98,7 @@ cd ~/gaps/top-level/hal/
 ./app_test
 ```
 
-# TESTING with an APP (using the CLOSURE API)  -  in isolation 
+## Using a Test APP (using the CLOSURE API)  -  in isolation 
 
 Runs the test applicaiton (send and receiving encoded data) using the CLOSURE API; but without HAL (using 'zc' utility to 
 emulate HAL sub and pub. 
@@ -91,7 +113,7 @@ echo "008200A50064800043C00000020000" | xxd -r -p | zc/zc -b pub ipc://halpub
 ```
 
 
-# TESTING with ZC with HAL
+## Using ZC with HAL - using scripts
 Runs HAL and a socat device (to emulate the network); but uses zcat to emulate a test applicaiton (without the CLOSURE API) 
 Run 5 scripts (each in separate windows): to start the monitor, netwrok device, HAL, and 2 APPs.
 
@@ -114,7 +136,7 @@ sudo tshark -i lo -f "port 12345" -T fields -e data
 ./app 2
 ```
 
-# RAW TESTING - USING ZC and SOCAT
+## Using ZC with HAL - using raw commands
 
 Testing with a socat device sending and receiving BKEND Format binary data
 
