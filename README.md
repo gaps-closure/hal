@@ -25,9 +25,9 @@ data formatting:
 * The tag data type (typ) identifies the type of application data (and its 
   associated DFDL description). 
 
-In order to send and receive cross-domain data via HAL, applications programs 
-use CLOSURE API functions. The C-program API is available by including  
-"closure.h" and linking with the CLOSURE library (libclosure.a).  
+In order to send and receive cross-domain data via HAL, applications programs use 
+CLOSURE API functions. The C-program API is available by including  "closure.h" and 
+linking with the CLOSURE library (libclosure.a).  
 
 The API provides functions to write/read the HAL tag structure from/to mux, 
 sec and typ values:
@@ -39,8 +39,8 @@ Before sending the data, the APP must also encode/decode data to/from the
 CLOSURE serialized Application Data Units (adu) format based on its type. 
 For example, to send/receive PNT data  (pnt1), it sets typ=DATA_TYP_PNT:
 ```
-gaps_data_encode(uint8_t *adu, uint8_t *adu_len, uint8_t *pnt1, uint8_t *pnt_len, int DATA_TYP_PNT);
-gaps_data_decode(uint8_t *adu, uint8_t *adu_len, uint8_t *pnt1, uint8_t *pnt_len, int DATA_TYP_PNT);
+gaps_data_encode(uint8_t *adu, size_t *adu_len, uint8_t *pnt1, size_t *pnt1_len, int DATA_TYP_PNT);
+gaps_data_decode(uint8_t *adu, size_t *adu_len, uint8_t *pnt1, size_t *pnt1_len, int DATA_TYP_PNT);
 ```
 The APP can then send/receive the adu based on a specified tag value. For
 asynchronous communication, the CLOSURE API provides the following functions:
@@ -49,6 +49,41 @@ gaps-asyn-send    (uint8_t *adu, size_t  adu_len, hal_tag  tag);
 gaps-asyn-receive (uint8_t *adu, size_t *adu_len, hal_tag *tag);
 ```
 
+Below is an example program app_test.c
+```
+#include "closure.h"
+
+void pnt_set (pnt_datatype *pnt) {
+    pnt->message_id  = 130;
+    pnt->track_index = 165;
+    pnt->lon         = 100;
+    pnt->lon_frac    = 32768;
+    pnt->lat         = 67;
+    pnt->latfrac     = 49152;
+    pnt->alt         = 2;
+    pnt->altfrac     = 0;
+}
+
+int main(int argc, char **argv) {
+  uint8_t       adu[ADU_SIZE_MAX];
+  size_t        adu_len, pnt1_len;
+  pnt_datatype  pnt1;
+  gaps_tag      tag;
+  
+  /* a) Create CLOSURE inputs (data and tag) */
+  pnt1_len=(size_t) sizeof(pnt1);
+  pnt_set(&pnt1); pnt_print(&pnt1);
+  tag_write(&tag, 1, 2, DATA_TYP_PNT);
+  /* b) Encode data and sent to CLOSURE */
+  gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, DATA_TYP_PNT);
+  gaps_asyn_send(adu,  adu_len,  tag);
+  /* c) Receive data from CLOSURE and decode */
+  gaps_asyn_recv(adu, &adu_len, &tag);
+  gaps_data_decode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, DATA_TYP_PNT);
+  fprintf(stderr, "app received "); tag_print(&tag); pnt_print(&pnt1);
+  return (0);
+}
+```
 ## HAL Control-Plane API
 HAL Control-Plane API provisions using a libconfig File, which contains:
 * HAL maps (routes):
