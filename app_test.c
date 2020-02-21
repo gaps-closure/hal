@@ -1,85 +1,41 @@
 /*
  * APP_TEST.C
- *   Sample program to call libclosure.a functions
+ *   Sample application using the CLOSURE API to communicate via GAPS hardware
  *
- * February 2019
- * A. McAuley, Perspecta Labs (amcauley@perspectalabs.com)
- *
- * For description and revision history see README.txt
+ * February 2020, Perspecta Labs
  */
 
-//#include "network.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <zmq.h>
-#include <unistd.h>
+#include "closure.h"
 
-
-#define ADU_SIZE_MAX 100
-
-int verbose=1;
-
-void exit_with_zmq_error(const char* where) {
-    fprintf(stderr,"%s error %d: %s\n",where,errno,zmq_strerror(errno));
-    exit(-1);
+void pnt_set (pnt_datatype *pnt) {
+    pnt->message_id  = 130;
+    pnt->track_index = 165;
+    pnt->lon         = 100;
+    pnt->lon_frac    = 32768;
+    pnt->lat         = 67;
+    pnt->latfrac     = 49152;
+    pnt->alt         = 2;
+    pnt->altfrac     = 0;
 }
 
-void gaps_asyn_send(void *socket, uint8_t *buff, size_t len) {
-//    echo "$TAG $DATA" | zc/zc $ZC_COMMON_FLAGS -dEOF -n 1 pub $HALSUB
-    for (int i = 0; i < len; i++)
-    {
-        fprintf(stderr, "%02X", buff[i]);
-    }
-    fprintf(stderr, "\n");
-    
-//    char buff [10];
-    printf ("ZMQ Sending...\n");
-    zmq_send (socket, buff, len, 0);
-//    zmq_recv (socket, buff, 10, 0);
-//    printf ("Received %s\n", buffer);
-}
-
-void encode(uint8_t *buff, size_t *len) {
-    uint8_t     data1[] = {0x0, 0x82, 0x0, 0xa5, 0x0, 0x64, 0x80, 0x0, 0x43, 0xc0, 0x0, 0x0, 0x2, 0x0, 0x0};
-    
-    *len = sizeof(data1);
-    memcpy (buff, data1, *len);
-    return;
-}
-
-void * z_connect(int type, const char* endpoint) {
-    int err;
-    
-    void *ctx = zmq_ctx_new ();
-    if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
-    
-    void *socket = zmq_socket(ctx, type);
-    if(socket == NULL) exit_with_zmq_error("zmq_socket");
-    
-    err = zmq_connect(socket, endpoint);
-    if(err) exit_with_zmq_error("zmq_connect");
-    
-    if(verbose) fprintf(stderr,"connected (%d) to %s\n", type, endpoint);
-    
-    usleep(10000); // let a chance for the connection to be established before sending a message
-    
-    return (socket);
-}
-
-
-/*
- * MAIN
- */
 int main(int argc, char **argv) {
-    uint8_t  adu[ADU_SIZE_MAX];
-    size_t   len;
-    void     *socket;
-    
-    socket = z_connect(ZMQ_PUB, "ipc://halsub");
-    encode(adu, &len);
-    gaps_asyn_send(socket, adu, len);
-                   
-    return (0);
+  uint8_t       adu[ADU_SIZE_MAX];
+  size_t        adu_len, pnt1_len;
+  pnt_datatype  pnt1;
+  gaps_tag      tag;
+  uint32_t      mux=1, sec=2, typ=DATA_TYP_PNT;
+
+  /* a) Create CLOSURE inputs (data and tag) */
+  pnt1_len=(size_t) sizeof(pnt1);
+  pnt_set(&pnt1); pnt_print(&pnt1);
+  if (argc >= 2)  mux = atoi(argv[1]);
+  tag_write(&tag, mux, sec, typ);
+  /* b) Encode data and send to CLOSURE */
+  gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
+  gaps_asyn_send(adu,  adu_len,  tag);
+  /* c) Receive data from CLOSURE and decode */
+  gaps_asyn_recv(adu, &adu_len, &tag);
+  gaps_data_decode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
+  fprintf(stderr, "app received "); tag_print(&tag); pnt_print(&pnt1);
+  return (0);
 }

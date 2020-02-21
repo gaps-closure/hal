@@ -1,25 +1,33 @@
 CC          = gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes -lzmq
+CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
 LDFLAGS     = -lconfig
-LDLIBS      = -lzmq
+LDLIBS      = -L. -lclosure -lzmq 
 
-# INSTALLPATH = /usr/local/bin
-INSTALLPATH = ./bin
+all: zcbin libclosure.a hal app_test
 
-all: app_test zcbin hal
+app_test: app_test.o libclosure.a
+	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
 
-app_test: app_test.o 
-	$(CC) -o $@ $< $(CFLAGS) 
+hal: hal.o libclosure.a
+	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS) $(LDFLAGS)
 
 app_test.o: app_test.c 
 	$(CC) $(CFLAGS) -c $<
 
-hal: hal.o 
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+closure.o:  closure.c
+	$(CC) $(CFLAGS) -c $< 
+
+hal.o: hal.c 
+	$(CC) $(CFLAGS) -c $<
 
 zcbin: 
 	make CC=$(CC) -C ./zc
+
+libclosure.a: closure.o   # link library files into a static library
+	ar rcs libclosure.a closure.o
+
+libs: libclosure.a
 
 clean:
 	rm -f *.o zc/*.o

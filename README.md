@@ -48,6 +48,9 @@ asynchronous communication, the CLOSURE API provides the following functions:
 gaps-asyn-send    (uint8_t *adu, size_t  adu_len, hal_tag  tag);
 gaps-asyn-receive (uint8_t *adu, size_t *adu_len, hal_tag *tag);
 ```
+For the send function, the tag specifies the packet tag information that 
+accompanies the data; for the receive function, the tag both specifies the desired
+packets and returns the tag field in the received packet.
 
 Below is an example program app_test.c
 ```
@@ -69,20 +72,23 @@ int main(int argc, char **argv) {
   size_t        adu_len, pnt1_len;
   pnt_datatype  pnt1;
   gaps_tag      tag;
-  
+  uint32_t      mux=1, sec=2, typ=DATA_TYP_PNT;
+
   /* a) Create CLOSURE inputs (data and tag) */
   pnt1_len=(size_t) sizeof(pnt1);
   pnt_set(&pnt1); pnt_print(&pnt1);
-  tag_write(&tag, 1, 2, DATA_TYP_PNT);
-  /* b) Encode data and sent to CLOSURE */
-  gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, DATA_TYP_PNT);
+  if (argc >= 2)  mux = atoi(argv[1]);
+  tag_write(&tag, mux, sec, typ);
+  /* b) Encode data and send to CLOSURE */
+  gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   gaps_asyn_send(adu,  adu_len,  tag);
   /* c) Receive data from CLOSURE and decode */
   gaps_asyn_recv(adu, &adu_len, &tag);
-  gaps_data_decode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, DATA_TYP_PNT);
+  gaps_data_decode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   fprintf(stderr, "app received "); tag_print(&tag); pnt_print(&pnt1);
   return (0);
 }
+
 ```
 ## HAL Control-Plane API
 HAL Control-Plane API provisions using a libconfig File, which contains:
@@ -137,7 +143,6 @@ cd ~/gaps/top-level/hal/
 # 2b) Start HAL sending to device
 ./hal sample.cfg
 
-
 # 3) Start the test APP
 ./app_test
 ```
@@ -149,11 +154,11 @@ emulate HAL sub and pub.
 ```
 cd ~/gaps/top-level/hal/
 # 1) Model the HAL subscriber:
-zc/zc -b sub ipc://halsub | od -t x1 -w1 -v
+zc/zc -b sub ipc://halsub_am | od -t x1 -w1 -v
 # 2) Start the test APP
 ./app_test
 # 3) Model the HAL publisher:
-echo "008200A50064800043C00000020000" | xxd -r -p | zc/zc -b pub ipc://halpub
+echo "00000002 00000003 00000001 00000010 008200A5 00648000 0043C000 00020000" | xxd -r -p | zc/zc -b pub ipc://halpub_am
 ```
 
 
