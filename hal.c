@@ -1,7 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+/**********************************************************************/
+/* HAL Library Includes and Deinitions */
+/**********************************************************************/
+
+#include "closure.h"
+
 #include <unistd.h>	
 #include <sys/time.h>
 #include <sys/types.h>
@@ -10,33 +12,40 @@
 #include <libconfig.h>
 #include <arpa/inet.h>
 
-#define MAXPDU 4096
 #define BKEND_MAX_TLVS 4
 #define BKEND_MIN_HEADER_BYTES 20
 #define HALJSON_MAX_TAGS 3
 #define HALJSON_DELIM_DATA " "
 #define HALJSON_DELIM_TAGS "-"
 
-/* HAL Device structure */
+#define ADU_SIZE_MAX   100
+#define PACKET_MAX     (ADU_SIZE_MAX + 30)
+
+int hal_verbose=0;
+
+/**********************************************************************/
+/* HAL Structures */
+/*********t************************************************************/
+/* HAL Device */
 typedef struct _dev {
-  int enabled;
-  int readfd;
-  int writefd;
+  int         enabled;
+  int         readfd;
+  int         writefd;
   const char *id;
   const char *path;
   const char *model;
+  const char *host;
+  int         port;
   struct _dev *next;
 } device;
 
-/* HAL Selector structure used in HAL map entries and PDUs */
+/* HAL Selector (used in HAL map entries and PDUs) */
 typedef struct _sel {
-  char *dev;
-  char *mux;
-  char *sec;
-  char *typ;
+  char     *dev;
+  gaps_tag  tag;
 } selector;
 
-/* HAL map entry structure */
+/* HAL map entry */
 typedef struct _hal {
   selector    from;
   selector    to;
@@ -44,11 +53,11 @@ typedef struct _hal {
   struct _hal *next;
 } halmap;
 
-/* Internal HAL PDU structure */
+/* Internal PDU (NB: PDU data is opaque - serialized for network transer) */
 typedef struct _pdu {
-  selector  psel;
-  int       len;
-  void     *payload;
+  selector  psel;                 /* Input device and tag info */
+  size_t    data_len;
+  uint8_t   data[ADU_SIZE_MAX];
 } pdu;
 
 /* BKEND TLV */
@@ -58,7 +67,7 @@ typedef struct _btlv {
   uint8_t   data[236];    /* Value (up to 236 (256 - 5*4) bytes of payload) */
 } bkend_tlv;
 
-/* BKEND packet structure */
+/* BKEND packet */
 typedef struct _bkd {
   uint32_t  session_tag;           /* App Mux */
   uint32_t  message_tag;           /* Security */
@@ -67,42 +76,53 @@ typedef struct _bkd {
 } bkend;
 
 
-void print_help(void) {
-  printf("Hardware Abstraction Layer (HAL) for gaps CLOSURE project\n");
-  printf("Usage: hal [OPTION]... CONFIG-FILE\n");
-  printf("OPTION: one of the following options:\n");
-  printf(" -h --help : print this message\n");
-  printf(" -v --verbose : print some messages in stderr\n");
-  printf("CONFIG-FILE: path to file with HAL configuration information (e.g., sample.cfg)\n");
+/**********************************************************************/
+/* HAL Print (structures) */
+/*********t************************************************************/
+/* Print a information from an internal PDU */
+void pdu_print(pdu *pdu) {
+  if (pdu == NULL)  fprintf(stderr, "Cannot print NULL PDU\n");
+  else {
+    fprintf(stderr, "PDU dev=%s ", pdu->psel.dev);
+    tag_print(&(pdu->psel.tag));
+    data_print("Encoded-Data", pdu->data, pdu->data_len);
+  }
 }
 
-int verbose=0;
-
-/* Parse the configuration file */
-void read_config (int argc, char **argv, config_t *cfg) {
-  int opt;
-  char  *file_name= NULL;
-  
-  if (argc < 2) {
-    print_help();
-    exit(EXIT_FAILURE);
-  }
-  while((opt =  getopt(argc, argv, "v")) != EOF)
-  {
-    switch (opt)
-    {
-      case 'v':
-        verbose = 1;
-        break;
-      default:
-        printf("\nSkipping undefined Option (%d)\n", opt);
-        print_help();
+/* Print list of devices for debugging */
+void devices_print_all(device *root)  {
+  fprintf(stderr, "HAL device list (%p):\n", (void *) root);
+  for(device *d = root; d != NULL; d = d->next) {
+    fprintf(stderr, "  [%s: v=%d m=%s p=%s r=%d w=%d", d->id, d->enabled, d->model, d->path, d->readfd, d->writefd);
+    if ( (strncmp(d->path, "/dev/", 5)) && (strncmp(d->path, "zcpat", 5)) ) {
+      fprintf(stderr, " h=%s p=%d", d->host, d->port);
     }
+    fprintf(stderr, "]\n");
   }
-  if(optind<argc) {
-     file_name = argv[optind++];
-  }
-  if(verbose) fprintf(stderr, "Read script options: v=%d conifg-file=%s (optind=%d)\n", verbose, file_name, optind);
+//  fprintf(stderr, "\n");
+}
+
+/* Print a single HAL map entry for debugging */
+void halmap_print_one(halmap *hm) {
+  fprintf(stderr, "  [%s ", hm->from.dev); tag_print(&(hm->from.tag));
+  fprintf(stderr, "-> %s ", hm->to.dev); tag_print(&(hm->to.tag));
+  fprintf(stderr, ", codec=%s]\n", hm->codec);
+}
+
+/* Print list of HAL map entries for debugging */
+void halmap_print_all(halmap *map_root) {
+    fprintf(stderr, "HAL map list (%p):\n", (void *) map_root);
+    for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
+      halmap_print_one(hm);
+    }
+    fprintf(stderr, "\n");
+}
+
+/**********************************************************************/
+/* HAL Configuration file (read and parse) */
+/*********t************************************************************/
+/* Read conifg file */
+void cfg_read (config_t *cfg, char  *file_name) {
   config_init(cfg);
   if(! config_read_file(cfg, file_name))
   {
@@ -110,15 +130,41 @@ void read_config (int argc, char **argv, config_t *cfg) {
     config_destroy(cfg);
     exit(EXIT_FAILURE);
   }
-  if(verbose) fprintf(stderr, "Read configuration file: %s\n", file_name);
+  if(hal_verbose) fprintf(stderr, "Config file %s exists\n", file_name);
 }
 
 /* Get a top-level string item from config */
 char *get_cfgstr(config_t *cfg, char *fld) {
   const char *ret;
-  if(config_lookup_string(cfg, fld, &ret)) return strdup(ret);
-  fprintf(stderr, "No '%s' setting in configuration file.\n", fld);
-  exit(EXIT_FAILURE);
+  if(!config_lookup_string(cfg, fld, &ret)) {
+    fprintf(stderr, "No '%s' setting in configuration file.\n", fld);
+    exit(EXIT_FAILURE);
+  }
+  return strdup(ret);
+}
+
+/* Get field parameter from config (exit if param is not found and non-optional) */
+const char * get_param_str(config_setting_t *dev, const char *name, int optional, int field_num) {
+  const char *val="";         /* not use NULL to avoid lookup failure */
+
+//  fprintf(stderr, "%s %s\n", __func__, name);
+  if( (!config_setting_lookup_string(dev, name, &val)) && (!optional) ) {
+//    fprintf(stderr, "BBB\n");
+    fprintf(stderr, "Missing a non-optional field '%s' (for device %d)\n", name, field_num);
+    exit(EXIT_FAILURE);
+  }
+  return (strdup(val));
+}
+
+/* Get field parameter from config (exit if param is not found and non-optional) */
+int get_param_int(config_setting_t *dev, const char *name, int optional, int field_num) {
+  int  val = -1;
+  
+  if ( (!config_setting_lookup_int(dev, name, &val)) && (!optional) ) {
+    fprintf(stderr, "Missing a non-optional field '%s' (for device %d)\n", name, field_num);
+    exit(EXIT_FAILURE);
+  }
+  return (val);
 }
 
 /* Construct linked list of devices from config */
@@ -132,27 +178,20 @@ device *get_devices(config_t *cfg) {
       fprintf(stderr, "Memory allocation failed");
       exit(EXIT_FAILURE);
     }
-    for(int i = 0; i < count; i++) {  
-      int enabled;
-      const char *id, *path, *model;
+    for(int i = 0; i < count; i++) {
       config_setting_t *dev = config_setting_get_elem(devs, i);
-      if(!(config_setting_lookup_string(dev, "id", &id)
-           && config_setting_lookup_string(dev, "path", &path)
-           && config_setting_lookup_string(dev, "model", &model)
-           && config_setting_lookup_int(dev, "enabled", &enabled)
-         )) {
-        fprintf(stderr, "Incorrect fields for device %d\n", i);
-        exit(EXIT_FAILURE);
-      }
-      ret[i].enabled = enabled;
-      ret[i].id      = strdup(id);
-      ret[i].path    = strdup(path);
-      ret[i].model   = strdup(model);
-      ret[i].next    = i < count - 1 ? &ret[i+1] : (device *) NULL;
+      ret[i].id      = get_param_str(dev, "id",      0, i);
+      ret[i].path    = get_param_str(dev, "path",    0, i);
+      ret[i].model   = get_param_str(dev, "model",   0, i);
+      ret[i].host    = get_param_str(dev, "host",    1, i);
+      ret[i].enabled = get_param_int(dev, "enabled", 0, i);
+      ret[i].port    = get_param_int(dev, "port",    1, i);
       ret[i].readfd  = -1; /* to be set when opened */
       ret[i].writefd = -1; /* to be set when opened */
+      ret[i].next    = i < count - 1 ? &ret[i+1] : (device *) NULL;
     }
   }
+  if(hal_verbose) {fprintf(stderr, "Config file "); devices_print_all(ret);}
   return ret;
 }
 
@@ -168,33 +207,117 @@ halmap *get_mappings(config_t *cfg) {
       fprintf(stderr, "Memory allocation failed");
       exit(EXIT_FAILURE);
     }
-    for(int i = 0; i < count; i++) {  
+    for(int i = 0; i < count; i++) {
+      const char *from_dev, *to_dev, *codec;
+      int   from_mux, from_sec, from_typ, to_mux, to_sec, to_typ;
+      
       config_setting_t *entry = config_setting_get_elem(hmaps, i);
-      if config_setting_is_array(entry) {
-        ret[i].from.dev = strdup(config_setting_get_string_elem(entry,0));
-        ret[i].from.mux = strdup(config_setting_get_string_elem(entry,1));
-        ret[i].from.sec = strdup(config_setting_get_string_elem(entry,2));
-        ret[i].from.typ = strdup(config_setting_get_string_elem(entry,3));
-        ret[i].to.dev   = strdup(config_setting_get_string_elem(entry,4));
-        ret[i].to.mux   = strdup(config_setting_get_string_elem(entry,5));
-        ret[i].to.sec   = strdup(config_setting_get_string_elem(entry,6));
-        ret[i].to.typ   = strdup(config_setting_get_string_elem(entry,7));
-        ret[i].codec    = strdup(config_setting_get_string_elem(entry,8));
-        ret[i].next     = i < count - 1 ? &ret[i+1] : (halmap *) NULL;
+      if(!(  config_setting_lookup_string(entry, "from_dev", &from_dev)
+          && config_setting_lookup_string(entry, "to_dev",   &to_dev)
+          && config_setting_lookup_string(entry, "codec",    &codec)
+          && config_setting_lookup_int(   entry, "from_mux", &from_mux)
+          && config_setting_lookup_int(   entry, "from_sec", &from_sec)
+          && config_setting_lookup_int(   entry, "from_typ", &from_typ)
+        && config_setting_lookup_int(   entry, "to_mux", &to_mux)
+        && config_setting_lookup_int(   entry, "to_sec", &to_sec)
+        && config_setting_lookup_int(   entry, "to_typ", &to_typ)
+        )) {
+             fprintf(stderr, "Incorrect fields for device %d\n", i);
+             exit(EXIT_FAILURE);
       }
+      ret[i].from.dev = strdup(from_dev);
+      ret[i].to.dev   = strdup(to_dev);
+      ret[i].codec    = strdup(codec);
+      ret[i].from.tag.mux = from_mux;
+      ret[i].from.tag.sec = from_sec;
+      ret[i].from.tag.typ = from_typ;
+      ret[i].to.tag.mux = to_mux;
+      ret[i].to.tag.sec = to_sec;
+      ret[i].to.tag.typ = from_typ;
+
+      /*
+      config_setting_t *tag = config_lookup(cfg, maps.[i].from_tag);
+  fprintf(stderr, "tag=%p\n", tag);
+
+ && config_setting_lookup_int(entry, "from_tag", from_list)
+
+      fprintf(stderr, "from_list=%d\n", from_list[0]);
+
+       int tag_count = config_setting_length(entry->from_tag);
+      fprintf(stderr, "tag_count=%d\n", tag_count);
+
+
+      const config_setting_t *tag;
+      tag = config_lookup(cfg, "maps.from_tag");
+if(tag != NULL) {
+      int tag_count = config_setting_length(tag);
+}
+           printf("I have %d retries:\n", count);
+           for (n = 0; n < count; n++) {
+             printf("\t#%d. %d\n", n + 1,
+               config_setting_get_int_elem(retries, n));
+           }
+      if config_setting_is_array(entry) {
+             = strdup(config_setting_get_string_elem(entry,0));
+        ret[i].from.tag.mux = config_setting_get_int_elem(entry,1);
+        ret[i].from.tag.sec = config_setting_get_int_elem(entry,2);
+        ret[i].from.tag.typ = config_setting_get_int_elem(entry,3);
+        ret[i].to.dev       = strdup(config_setting_get_string_elem(entry,4));
+        ret[i].to.tag.mux   = config_setting_get_int_elem(entry,5);
+        ret[i].to.tag.sec   = config_setting_get_int_elem(entry,6);
+        ret[i].to.tag.typ   = config_setting_get_int_elem(entry,7);
+        ret[i].codec        = strdup(config_setting_get_string_elem(entry,8));
+ */
+      ret[i].next         = i < count - 1 ? &ret[i+1] : (halmap *) NULL;
     }
   }
+  if(hal_verbose) {fprintf(stderr, "Config file "); halmap_print_all(ret);}
   return ret;
 }
 
-/* Print list of devices for debugging */
-void devices_print_all(device *root)  {
-    fprintf(stderr, "HAL device list (%p): ", (void *) root);
-    for(device *d = root; d != NULL; d = d->next) {
-        fprintf(stderr, "[%s: v=%d rfd=%d wfd=%d] ", d->id, d->enabled, d->readfd, d->writefd);
-    }
-    fprintf(stderr, "\n");
+/**********************************************************************/
+/* HAL get options */
+/*********t************************************************************/
+void opts_print(void) {
+  printf("Hardware Abstraction Layer (HAL) for gaps CLOSURE project\n");
+  printf("Usage: hal [OPTION]... CONFIG-FILE\n");
+  printf("OPTION: one of the following options:\n");
+  printf(" -h --help : print this message\n");
+  printf(" -v --hal_verbose : print some messages in stderr\n");
+  printf("CONFIG-FILE: path to file with HAL configuration information (e.g., sample.cfg)\n");
 }
+
+/* Parse the configuration file */
+char *opts_get (int argc, char **argv) {
+  int opt;
+  char  *file_name= NULL;
+  
+  if (argc < 2) {
+    opts_print();
+    exit(EXIT_FAILURE);
+  }
+  while((opt =  getopt(argc, argv, "v")) != EOF)
+  {
+    switch (opt)
+    {
+      case 'v':
+        hal_verbose = 1;
+        break;
+      default:
+        printf("\nSkipping undefined Option (%d)\n", opt);
+        opts_print();
+    }
+  }
+  if(optind<argc) {
+     file_name = argv[optind++];
+  }
+  if(hal_verbose) fprintf(stderr, "Read script options: v=%d conifg-file=%s (optind=%d)\n", hal_verbose, file_name, optind);
+  return (file_name);
+}
+
+/**********************************************************************/
+/* HAL Device Processing */
+/*********t************************************************************/
 
 /* Loop through devs linked list, return device with fd as its read file descriptor */
 device *find_device_by_readfd(device *root, int fd) {
@@ -220,41 +343,51 @@ void devices_open(device *dev_linked_list_root) {
 
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled == 0) continue;
-    if(verbose) fprintf(stderr, "About to open device: %s %s\n", d->id, d->path);
-    /* Open device for read-write, get fd and update device entry */
-    if ((fd = open(d->path, O_RDWR)) < 0) {
-      fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
-      exit(EXIT_FAILURE);
+    if(hal_verbose) fprintf(stderr, "About to open device: %s %s test=%d\n", d->id, d->path, strncmp(d->path, "/dev/", 5));
+    if (!strncmp(d->path, "/dev/", 5))  {
+      /* Open device for read-write, get fd and update device entry */
+      if ((fd = open(d->path, O_RDWR)) < 0) {
+        fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
+        exit(EXIT_FAILURE);
+      }
+    }
+    else {
+      if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+      {
+        printf("\n Socket creation error for %s\n", d->id);
+        exit(EXIT_FAILURE);
+      }
+      struct sockaddr_in serv_addr;
+      serv_addr.sin_family = AF_INET;
+      serv_addr.sin_port = htons(d->port);
+      if(inet_pton(AF_INET, d->host, &serv_addr.sin_addr)<=0)
+      {
+        printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path);
+        exit(EXIT_FAILURE);
+      }
+      if (connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+      {
+        printf("\nConnection Failed for %s %s\n", d->id, d->path);
+        exit(EXIT_FAILURE);
+      }
     }
     d->readfd = fd;
     d->writefd = fd;
+    if(hal_verbose) fprintf(stderr, "File open succeeded for %s (with fdr=%d fdw=%d)\n", d->id, fd, fd);
   }
 }
 
-/* Print a single HAL map entry for debugging */
-void halmap_print_one(halmap *hm) {
-    fprintf(stderr, "HAL map  (%p): ", (void *) hm);
-    fprintf(stderr, "[%s ->", hm->from.dev);
-    fprintf(stderr, " %s]\n", hm->to.dev);
-}
-
-/* Print list of HAL map entries for debugging */
-void halmap_print_all(halmap *map_root) {
-    fprintf(stderr, "HAL map list (%p): ", (void *) map_root);
-    for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
-      fprintf(stderr, "[%s %s -> ", hm->from.dev, hm->from.mux);
-      fprintf(stderr, "%s %s] ", hm->to.dev, hm->to.mux);
-    }
-    fprintf(stderr, "\n");
-}
+/**********************************************************************/
+/* HAL MAP processing */
+/*********t************************************************************/
 
 /* Return halmap with from selector matching PDU selector from the halmap list */
 halmap *halmap_find(pdu *p, halmap *map_root) {
   for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
     if ( strcmp(hm->from.dev, p->psel.dev) == 0 
-         && strcmp(hm->from.mux, p->psel.mux) == 0 
-         && strcmp(hm->from.sec, p->psel.sec) == 0 
-         && strcmp(hm->from.typ, p->psel.typ) == 0 ) 
+         && (hm->from.tag.mux == p->psel.tag.mux)
+         && (hm->from.tag.sec == p->psel.tag.sec)
+         && (hm->from.tag.typ == p->psel.tag.typ))
       return (hm);
   }
   return (halmap *) NULL;
@@ -282,78 +415,34 @@ pdu *codec(halmap *h, pdu *ipdu) {
   return opdu;
 }
 
-/* Print a inofrmation from an internal PDU */
-void pdu_print(pdu *pdu) {
-  if (pdu == NULL)  fprintf(stderr, "Cannot print NULL PDU\n");
-  else              fprintf(stderr, "PDU dev=%s,mux=%s,sec=%s,typ=%s (len=%d): %s\n",
-		  pdu->psel.dev, pdu->psel.mux, pdu->psel.sec, pdu->psel.typ, pdu->len, (char *) pdu->payload);
-}
-
+/**********************************************************************/
+/* PDU functions (including coding and decoding) */
+/*********t************************************************************/
 /* Free memory allocated for PDU */
 void pdu_delete(pdu *pdu) {
   free(pdu->psel.dev);
-  free(pdu->psel.mux);
-  free(pdu->psel.sec);
-  free(pdu->psel.typ);
-  // free(pdu->payload); // XXX
-  free(pdu);
 }
 
-/* Print haljson (assuming entire input is a string) */
-void haljson_print(char *buf) {
-  fprintf(stderr, "%s (len=%ld)='%s'\n", __func__, strlen(buf), buf);
+/* Put closure packet (in buf) into internal HAL PDU structure (*p) */
+void closure_parse_into_PDU (pdu *out, cpkt *in) {
+  tag_decode(&(out->psel.tag), &(in->tag));
+  len_decode(&(out->data_len), in->data_len);
+  memcpy(out->data, in->data, out->data_len);
+//  pdu_print(p);
 }
 
-/* Put data from buf (using haljson model) into internal HAL PDU */
-/* XXX: QUick fix for phase 1 (use haljson structure, once defined) */
-void haljson_parse_into_PDU (char *buf, const char *dev_id, pdu *p) {
-  char        *tag, *tag_next;
-  char        *data;
-  int          i;
-    
-  tag  = strtok(buf, HALJSON_DELIM_DATA);
-  //data = strtok(NULL, HALJSON_DELIM_DATA);
-  data = buf + strlen(tag) + 1; // Skip past tag and delimiter space
-  if ( (tag==NULL) || (data==NULL) ) {
-    fprintf(stderr, "Error in PDU arrive on device %s\n", dev_id);
-    fprintf(stderr, "tag=%s data=%s\n", tag, data);
-    exit (1);
-  }
-  tag_next  = strtok(tag, HALJSON_DELIM_TAGS);
-  for (i=0; tag_next != NULL; i++) {
-//      fprintf(stderr, "i=%d: tag_next=%s\n", i, tag_next);
-    if (i==1) p->psel.mux = strdup(tag_next);
-    if (i==2) p->psel.sec = strdup(tag_next);
-    if (i==3) p->psel.typ = strdup(tag_next);
-    if (i>HALJSON_MAX_TAGS) {
-      fprintf(stderr, "Error, too many tag field (> %d) on device %s\n", HALJSON_MAX_TAGS, dev_id);
-      exit (1);
-    }
-    tag_next = strtok(NULL, HALJSON_DELIM_TAGS);
-  }
-  if (i<HALJSON_MAX_TAGS) {
-    fprintf(stderr, "Error, too few tag field (< %d) on device %s\n", HALJSON_MAX_TAGS, dev_id);
-    exit (1);
-  }
-  p->payload = data;              //XXX:  copy buf to allow multiple reads in parallel?
-  p->len = strlen(data);
-}
+/* Put internal PDU into closure packet (in buf) */
+int closure_parse_from_PDU (cpkt *out, pdu *in, gaps_tag *otag, char *delim) {
+  size_t        packet_len;
 
-/* Put data from internal PDU into buf (using haljson model) */
-/* XXX: QUick fix for phase 1 (move to using haljson structure once defined) */
-int haljson_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
-  if(verbose) {fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);}
-  strcpy(buf, "tag");
-  strcat(buf, HALJSON_DELIM_TAGS);
-  strcat(buf, p->psel.mux);
-  strcat(buf, HALJSON_DELIM_TAGS);
-  strcat(buf, p->psel.sec);
-  strcat(buf, HALJSON_DELIM_TAGS);
-  strcat(buf, p->psel.typ);
-  strcat(buf, HALJSON_DELIM_DATA);
-  strcat(buf, p->payload);
-//  haljson_print(buf);
-  return (strlen(buf));
+  if(hal_verbose) {fprintf(stderr, "%s: ", __func__); pdu_print(in);}
+//  tag_encode(&(out->tag), &(in->psel.tag));
+  tag_encode(&(out->tag), otag);
+  len_encode(&(out->data_len), in->data_len);
+  memcpy(out->data, in->data, in->data_len);
+  packet_len = in->data_len + sizeof(out->tag) + sizeof(out->data_len);
+//  fprintf(stderr, "HAL created ");  data_print("Packet", (uint8_t *) out, packet_len);
+  return (packet_len);
 }
 
 /* Print bkend (assuming data is a string) */
@@ -373,48 +462,35 @@ void bkend_print(bkend *b) {
 }
 
 /* Default Convert from haljson string to bkend integer (in network order) */
-int haljson_to_bkend(char *s) {
-  int d;
-  
-  /* XXX: may need diferent mappings for some sessions */
-  d = s[(strlen(s)-1)] - '0';     /* get last digit of string */
-//  fprintf(stderr, "Convert haljson string (%s) into bkend int (%d)\n", s, d);
-  return (htonl(d));
+uint32_t haljson_to_bkend(uint32_t tag_field) {
+    return (htonl(tag_field));
 }
 
 /* Default Convert to haljson string from bkend integer (in network order) */
-char *haljson_from_bkend(int d, char *prefix) {
-  char r[12];
-  char temp[12] = "";
-
-  strcpy(temp, prefix);
-  sprintf(r, "%d", ntohl(d));
-  strcat(temp, r);
-//  fprintf(stderr, "Convert into haljson string (%s) from bkend int (%d)\n", temp, ntohl(d));
-  /* XXX Free memory when done */
-  return (strdup(temp));
+uint32_t haljson_from_bkend(uint32_t tag_field) {
+  return (ntohl(tag_field));
 }
 
 
 /* Put data into buf (using bkend model) from internal HAL PDU */
 /* Returns length of buffer */
-int bkend_parse_from_PDU (char *buf, const char *dev_id, pdu *p) {
+int bkend_parse_from_PDU (uint8_t *buf, pdu *p, gaps_tag *otag, const char *dev_id) {
   bkend     *b;
   bkend_tlv *tlv;
   
-  if(verbose) {fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);}
+  if(hal_verbose) {fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);}
   b = (bkend *) buf;
-  b->session_tag = haljson_to_bkend(p->psel.mux);
-  b->message_tag = haljson_to_bkend(p->psel.sec);
+  b->session_tag = haljson_to_bkend(p->psel.tag.mux);
+  b->message_tag = haljson_to_bkend(p->psel.tag.sec);
   b->message_tlv_count = htonl(1);
   for (int i=0; i < 1; i++) {
     tlv = &(b->tlv[i]);
-    tlv->data_tag = haljson_to_bkend(p->psel.typ);
-    tlv->data_len = htonl(p->len);
-    strcpy((char *) tlv->data, (char *) p->payload);
+    tlv->data_tag = haljson_to_bkend(p->psel.tag.typ);
+    tlv->data_len = htonl(p->data_len);
+    memcpy((char *) tlv->data, (char *) p->data, p->data_len);
   }
   /* XXX: Fix length to depend on message_tlv_count */
-  return ((p->len) + BKEND_MIN_HEADER_BYTES);
+  return ((p->data_len) + BKEND_MIN_HEADER_BYTES);
 }
 
 /* Put data from buf (using bkend model) into internal HAL PDU */
@@ -422,7 +498,7 @@ void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p, int len) {
   bkend     *b;
   bkend_tlv *tlv;
     
-  if(verbose) fprintf(stderr, "Put bkend model data from dev=%s into internal HAL PDU\n", dev_id);
+  if(hal_verbose) fprintf(stderr, "Put bkend model data from dev=%s into internal HAL PDU\n", dev_id);
   
   /* XXX: Handle case where BKEND message is split - using framing? */
   if (len < BKEND_MIN_HEADER_BYTES) {
@@ -433,84 +509,86 @@ void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p, int len) {
   p->psel.dev = strdup(dev_id);
   b = (bkend *) buf;
 // fprintf(stderr, "HAL get input on %s: ", dev_id); bkend_print((bkend *) buf);
-  p->psel.mux = haljson_from_bkend(b->session_tag, "app");
-  p->psel.sec = haljson_from_bkend(b->message_tag, "m");
+  p->psel.tag.mux = haljson_from_bkend(b->session_tag);
+  p->psel.tag.sec = haljson_from_bkend(b->message_tag);
 //  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
   for (int i=0; i < ntohl(b->message_tlv_count); i++) {
     tlv = &(b->tlv[0]);
-    p->psel.typ = haljson_from_bkend(tlv->data_tag, "d");
-    p->len = ntohl(tlv->data_len);
-    p->payload = tlv->data;
+    p->psel.tag.typ = haljson_from_bkend(tlv->data_tag);
+    p->data_len = haljson_from_bkend(tlv->data_len);
+    memcpy (p->data, tlv->data, p->data_len);
   }
 }
 
+/**********************************************************************/
+/* HAL Read and Write Functions */
+/*********t************************************************************/
 /* Read device and return pdu */
-/* XXX: Use idev to determines how to parse, then extract selector info and fill psel */
+/* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
   pdu         *ret = NULL;
-  static char  buf[MAXPDU];
+  static char  buf[PACKET_MAX];
   int          len;
   int          fd;
   const char  *dev_id;
 
+  /* a) read input into buf and get its length (with input dev_id and fd) */
   dev_id = idev->id;
   fd = idev->readfd;
-  len = read(fd, buf, MAXPDU - 1);
-  buf[len] = '\0';
-  if(verbose) fprintf(stderr, "HAL read input on %s (fd=%d rv=%d len=%ld):\n%s\n", dev_id, fd, len, strlen(buf), buf);
-  ret = malloc(sizeof(pdu));
 
-//  fprintf(stderr, "extract mux, sec, typ and payload (using model %s) from data: %s", idev->model, buf);
+  len = read(fd, buf, PACKET_MAX);
+  if(hal_verbose) {
+    fprintf(stderr, "HAL read input on %s (model=%s) fd=%d", dev_id, idev->model, fd);
+    data_print("", (uint8_t *) buf, len);
+  }
+  /* b) Write input into internal PDU */
+  ret = malloc(sizeof(pdu));
+  ret->psel.dev = strdup(dev_id);
+ 
   if (strcmp(idev->model, "haljson") == 0) {
-    fprintf(stderr, "HAL reading from %s: ", dev_id); haljson_print(buf);
-    haljson_parse_into_PDU (buf, dev_id, ret);
+//    fprintf(stderr, "HAL reading from %s: ", dev_id);
+    closure_parse_into_PDU (ret, (cpkt *) buf);
   } else if (strcmp(idev->model, "bkend") == 0) {
     bkend_parse_into_PDU   (buf, dev_id, ret, len);
     fprintf(stderr, "HAL reading from %s: ", dev_id); bkend_print((bkend *) buf);
-  } else if (strcmp(idev->model, "notag") == 0) {
-    ret->psel.mux = strdup("app1");  //XXX: fix
-    ret->psel.sec = strdup("m1");    //XXX: fix
-    ret->psel.typ = strdup("d1");    //XXX: fix
-    ret->payload = buf;              //XXX: create copy of buf to allow multiple reads in parallel?
-    ret->len = strlen(buf);
   } else {
     fprintf(stderr, "Error, unkwown device model: %s\n", idev->model);
     exit (22);
   }
-  ret->psel.dev = strdup(dev_id);
-  if(verbose) pdu_print(ret);
+  if(hal_verbose) pdu_print(ret);
   return ret;
 }
 
 /* Write pdu to specified fd */
-void write_pdu(device *odev, pdu *p, char *delim) {
-  int          rv;
-  int          fd;
-  int          len=0;
-  const char  *dev_id;
-  const char  *dev_model;
-  static char  buf[MAXPDU]={0};
+void write_pdu(device *odev, gaps_tag *otag, pdu *p, char *delim) {
+  int             rv;
+  int             fd;
+  int             packet_len=0;
+  const char     *dev_id;
+  const char     *dev_model;
+  static uint8_t  buf[PACKET_MAX];
 
-
+  tag_print(otag);
   dev_id = odev->id;
   dev_model = odev->model;
   if (strcmp(dev_model, "haljson") == 0) {
-    len = haljson_parse_from_PDU (buf, dev_id, p);
-    fprintf(stderr, "HAL writing to %s: ", odev->id); haljson_print(buf);
+    packet_len = closure_parse_from_PDU ((cpkt *) buf, p, otag, delim);
   } else if (strcmp(dev_model, "bkend") == 0) {
-    if(verbose) fprintf(stderr, "Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
-    len = bkend_parse_from_PDU (buf, dev_id, p);
+    if(hal_verbose) fprintf(stderr, "Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
+    packet_len = bkend_parse_from_PDU (buf, p, otag, dev_id);
     fprintf(stderr, "HAL writing to %s: ", odev->id); bkend_print((bkend *) buf);
-//    fprintf(stderr, "XXX: for now just copy data\n");
-//    strcpy(buf, p->payload);
   }
   fd = odev->writefd;
-  rv = write(fd, buf, len);
-  if(verbose) fprintf(stderr, "HAL wrote data on %s (fd=%d rv=%d len=%d): %s\n", dev_id, fd, rv, len, (char *) p->payload);
-  if (strcmp(dev_id, "zc") == 0) {
-    rv = write(fd, delim, strlen(delim));
-    if(verbose) fprintf(stderr, "HAL wrote delimiter to %s (fd=%d rv=%d len=%ld): %s\n", dev_id, fd, rv, strlen(delim), delim);
+  if(hal_verbose) {
+    fprintf(stderr, "HAL writing on %s (fd=%d): ", dev_id, fd);
+    data_print("Packet", buf, packet_len);
   }
+  rv = write(fd, buf, packet_len);
+//  rv = write(fd, "hello", 5);
+//  exit (1);
+
+  if(hal_verbose) fprintf(stderr, "HAL wrote on %s: rv=%d)\n", dev_id, rv);
+
 }
 
 /* Process input from device (with 'input_fd') and send to output */
@@ -537,18 +615,6 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
     pdu_delete(ipdu);
     return; 
   }
-  // halmap_print_one(h);
-
-  /*
-  opdu = codec(h, ipdu);
-  if(opdu == NULL) { 
-    fprintf(stderr, "Output PDU is NULL"); 
-    pdu_delete(ipdu);
-    return;
-  }
-   */
-  // pdu_delete(ipdu);
-  // pdu_print(opdu);
   
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
@@ -556,7 +622,7 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
     return; 
   }
 
-  write_pdu(odev, ipdu, delim);
+  write_pdu(odev, &(h->to.tag), ipdu, delim);
   pdu_delete(ipdu);
 }
 
@@ -576,17 +642,19 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 
-
+/**********************************************************************/
+/* HAL MAIN */
+/*********t************************************************************/
 #define PARENT_READ  read_pipe[0]
 #define PARENT_WRITE write_pipe[1]
 #define CHILD_WRITE  read_pipe[1]
 #define CHILD_READ   write_pipe[0]
 
-
 int main(int argc, char **argv) {
   config_t  cfg;           /* Configuration */
   int       maxrfd;        /* Maximum file descriptor number for select */
   fd_set    readfds;       /* File descriptor set for select */
+  char     *file_name;     /* Path to zc executable */
   char     *zcpath;        /* Path to zc executable */
   char     *zcmodel;       /* model of APP tag and data */
   char     *zcpub;         /* Publisher URL */
@@ -601,7 +669,8 @@ int main(int argc, char **argv) {
   int       zcsubpid;      /* Subscriber PID */
   int       zcpubpid;      /* Publisher PID */
   
-  read_config(argc, argv, &cfg);
+  file_name = opts_get(argc, argv);
+  cfg_read(&cfg, file_name);
   devs    = get_devices(&cfg);
   zcpath  = get_cfgstr(&cfg, "zcpath");
   zcmodel = get_cfgstr(&cfg, "zcmodel");
@@ -615,8 +684,8 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Pipe creation failed\n");
     exit(EXIT_FAILURE);
   }
-  if(verbose) fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
-    
+  if(hal_verbose) fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
+  
   if ((pid = fork()) < 0) {
     fprintf(stderr, "Fork failed\n");
     exit(EXIT_FAILURE);
@@ -641,6 +710,7 @@ int main(int argc, char **argv) {
     dup2(CHILD_READ, STDIN_FILENO);
     close(CHILD_WRITE);
     char *argv2[] = {zcpath, "-b", "-d", delim, "pub", zcpub, NULL};
+//    char *argv2[] = {zcpath, "-b", "-v", "-d", delim, "pub", zcpub, NULL};
     if(execvp(argv2[0], argv2) < 0) perror("execvp()");
     exit(EXIT_FAILURE);
   } else { /* save publisher child pid in parent */
@@ -665,14 +735,14 @@ int main(int argc, char **argv) {
 //  fprintf(stderr, "zcpub=%s\n",  zcpub);
 //  fprintf(stderr, "zcsub=%s\n",  zcsub);
 //  fprintf(stderr, "delim=%s\n",  delim);
-  if(verbose) fprintf(stderr, "Spawned %s subscriber %d and publisher %d\n", zcpath, zcsubpid, zcpubpid);
+  if(hal_verbose) fprintf(stderr, "Spawned %s subscriber %d and publisher %d\n", zcpath, zcsubpid, zcpubpid);
   devices_print_all(&zcroot);
   halmap_print_all(map);
 
   /* Select across readfds */
   while (1) {
     int nready; 
-          
+      
     maxrfd = select_init(&zcroot,  &readfds);
     // fprintf(stderr, "HAL Waiting for input on fds (max+1=%d)\n", maxrfd);
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
