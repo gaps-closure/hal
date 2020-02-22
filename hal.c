@@ -12,6 +12,11 @@
 #include <libconfig.h>
 #include <arpa/inet.h>
 
+#define PARENT_READ  read_pipe[0]
+#define PARENT_WRITE write_pipe[1]
+#define CHILD_WRITE  read_pipe[1]
+#define CHILD_READ   write_pipe[0]
+
 #define BKEND_MAX_TLVS 4
 #define BKEND_MIN_HEADER_BYTES 20
 #define HALJSON_MAX_TAGS 3
@@ -34,7 +39,9 @@ typedef struct _dev {
   const char *id;
   const char *path;
   const char *model;
-  const char *host;
+  const char *addr_bi;
+  const char *addr_in;
+  const char *addr_out;
   int         port;
   struct _dev *next;
 } device;
@@ -93,10 +100,13 @@ void pdu_print(pdu *pdu) {
 void devices_print_all(device *root)  {
   fprintf(stderr, "HAL device list (%p):\n", (void *) root);
   for(device *d = root; d != NULL; d = d->next) {
-    fprintf(stderr, "  [%s: v=%d m=%s p=%s r=%d w=%d", d->id, d->enabled, d->model, d->path, d->readfd, d->writefd);
-    if ( (strncmp(d->path, "/dev/", 5)) && (strncmp(d->path, "zcpat", 5)) ) {
-      fprintf(stderr, " h=%s p=%d", d->host, d->port);
-    }
+    fprintf(stderr, "  [%s: v=%d m=%s p=%s", d->id, d->enabled, d->model, d->path);
+    if (strlen(d->addr_bi)  > 0) fprintf(stderr, " ab=%s", d->addr_bi);
+    if (strlen(d->addr_in)  > 0) fprintf(stderr, " ai=%s", d->addr_in);
+    if (strlen(d->addr_out) > 0) fprintf(stderr, " ao=%s", d->addr_out);
+    if (d->port             > 0) fprintf(stderr, " p=%d",  d->port);
+    if (d->readfd          >= 0) fprintf(stderr, " r=%d",  d->readfd);
+    if (d->writefd         >= 0) fprintf(stderr, " w=%d",  d->writefd);
     fprintf(stderr, "]\n");
   }
 //  fprintf(stderr, "\n");
@@ -180,15 +190,17 @@ device *get_devices(config_t *cfg) {
     }
     for(int i = 0; i < count; i++) {
       config_setting_t *dev = config_setting_get_elem(devs, i);
-      ret[i].id      = get_param_str(dev, "id",      0, i);
-      ret[i].path    = get_param_str(dev, "path",    0, i);
-      ret[i].model   = get_param_str(dev, "model",   0, i);
-      ret[i].host    = get_param_str(dev, "host",    1, i);
-      ret[i].enabled = get_param_int(dev, "enabled", 0, i);
-      ret[i].port    = get_param_int(dev, "port",    1, i);
-      ret[i].readfd  = -1; /* to be set when opened */
-      ret[i].writefd = -1; /* to be set when opened */
-      ret[i].next    = i < count - 1 ? &ret[i+1] : (device *) NULL;
+      ret[i].id       = get_param_str(dev, "id",       0, i);
+      ret[i].path     = get_param_str(dev, "path",     0, i);
+      ret[i].model    = get_param_str(dev, "model",    0, i);
+      ret[i].addr_bi  = get_param_str(dev, "addr_bi",  1, i);
+      ret[i].addr_in  = get_param_str(dev, "addr_in",  1, i);
+      ret[i].addr_out = get_param_str(dev, "addr_out", 1, i);
+      ret[i].enabled  = get_param_int(dev, "enabled",  0, i);
+      ret[i].port     = get_param_int(dev, "port",     1, i);
+      ret[i].readfd   = -1; /* to be set when opened */
+      ret[i].writefd  = -1; /* to be set when opened */
+      ret[i].next     = i < count - 1 ? &ret[i+1] : (device *) NULL;
     }
   }
   if(hal_verbose) {fprintf(stderr, "Config file "); devices_print_all(ret);}
@@ -337,43 +349,105 @@ device *find_device_by_id(device *root, char *id) {
   return ((device *) NULL);
 }
 
+/* Open an IPC interface for read and for write and return their fds */
+void interface_open_ipc(device *d) {
+  int  pid;
+  int  read_pipe[2];   /* Read pipes for parent-child communication */
+  int  write_pipe[2];  /* Write pipes for parent-child communication */
+
+  fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
+  if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
+    fprintf(stderr, "Pipe creation failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(hal_verbose) fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
+  
+  if ((pid = fork()) < 0) {
+    fprintf(stderr, "Fork failed\n");
+    exit(EXIT_FAILURE);
+  } else if (pid == 0) { /* subscriber child */
+    close(PARENT_READ);
+    close(PARENT_WRITE);
+    close(CHILD_READ);
+    dup2(CHILD_WRITE, STDOUT_FILENO);   /* zc sub output goes to pipe (CHILD_WRITE) */
+    char *argv2[] = {(char *) d->path, "-b", "sub", (char *) d->addr_in, NULL};
+    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
+    exit(EXIT_FAILURE);
+  } else { /* save subscriber child pid in parent */
+    if(hal_verbose) fprintf(stderr, "Spawned %s subscriber pid=%d\n", d->path, pid);
+  }
+
+  if ((pid = fork()) < 0) {
+    fprintf(stderr, "Fork failed\n");
+    exit(EXIT_FAILURE);
+  } else if (pid == 0) { /* publisher child */
+    close(PARENT_READ);
+    close(PARENT_WRITE);
+    dup2(CHILD_READ, STDIN_FILENO);
+    close(CHILD_WRITE);
+    char *argv2[] = {(char *) d->path, "-b", "pub", (char *) d->addr_out, NULL};
+//    char *argv2[] = {zcpath, "-b", "-v", "-d", delim, "pub", zcpub, NULL};
+    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
+    exit(EXIT_FAILURE);
+  } else { /* save publisher child pid in parent */
+    if(hal_verbose) fprintf(stderr, "Spawned %s publisher pid=%d\n", d->path, pid);
+  }
+
+  close(CHILD_READ);
+  close(CHILD_WRITE);
+  d->readfd  = PARENT_READ;
+  d->writefd = PARENT_WRITE;
+}
+
+/* Open a network socket for read-write and return its fd */
+void interface_open_socket(device *d) {
+  int fd;
+  struct sockaddr_in serv_addr;
+
+  if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  {
+    printf("\n Socket creation error for %s\n", d->id);
+    exit(EXIT_FAILURE);
+  }
+  
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(d->port);
+  if(inet_pton(AF_INET, d->addr_bi, &serv_addr.sin_addr)<=0)
+  {
+    printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path);
+    exit(EXIT_FAILURE);
+  }
+  
+  if (connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  {
+    printf("\nConnection Failed for %s %s\n", d->id, d->path);
+    exit(EXIT_FAILURE);
+  }
+  d->readfd = fd;
+  d->writefd = fd;
+}
+
+/* Open a serial interface for read-write and return its fd */
+void interface_open_serial(device *d) {
+  int fd;
+  if ((fd = open(d->path, O_RDWR)) < 0) {
+    fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
+    exit(EXIT_FAILURE);
+  }
+  d->readfd = fd;
+  d->writefd = fd;
+}
+
 /* Open enabled devices (from linked-list of devices) and get their in/out handles */
 void devices_open(device *dev_linked_list_root) {
-  int fd;
-
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled == 0) continue;
     if(hal_verbose) fprintf(stderr, "About to open device: %s %s test=%d\n", d->id, d->path, strncmp(d->path, "/dev/", 5));
-    if (!strncmp(d->path, "/dev/", 5))  {
-      /* Open device for read-write, get fd and update device entry */
-      if ((fd = open(d->path, O_RDWR)) < 0) {
-        fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
-        exit(EXIT_FAILURE);
-      }
-    }
-    else {
-      if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-      {
-        printf("\n Socket creation error for %s\n", d->id);
-        exit(EXIT_FAILURE);
-      }
-      struct sockaddr_in serv_addr;
-      serv_addr.sin_family = AF_INET;
-      serv_addr.sin_port = htons(d->port);
-      if(inet_pton(AF_INET, d->host, &serv_addr.sin_addr)<=0)
-      {
-        printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path);
-        exit(EXIT_FAILURE);
-      }
-      if (connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-      {
-        printf("\nConnection Failed for %s %s\n", d->id, d->path);
-        exit(EXIT_FAILURE);
-      }
-    }
-    d->readfd = fd;
-    d->writefd = fd;
-    if(hal_verbose) fprintf(stderr, "File open succeeded for %s (with fdr=%d fdw=%d)\n", d->id, fd, fd);
+    if (!strncmp(d->path, "/dev/", 5))  interface_open_serial(d);
+    else if (strlen(d->addr_bi)  > 0)   interface_open_socket(d);
+    else if (strlen(d->addr_in)  > 0)   interface_open_ipc(d);
+    else { fprintf(stderr, "Device %s unknown\n", d->id); exit(EXIT_FAILURE);}
+    if(hal_verbose) fprintf(stderr, "File open succeeded for %s (with fdr=%d fdw=%d)\n", d->id, d->readfd, d->writefd);
   }
 }
 
@@ -383,7 +457,9 @@ void devices_open(device *dev_linked_list_root) {
 
 /* Return halmap with from selector matching PDU selector from the halmap list */
 halmap *halmap_find(pdu *p, halmap *map_root) {
+//  fprintf(stderr, "%s", __func__); pdu_print(p);
   for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
+//    halmap_print_one(hm);
     if ( strcmp(hm->from.dev, p->psel.dev) == 0 
          && (hm->from.tag.mux == p->psel.tag.mux)
          && (hm->from.tag.sec == p->psel.tag.sec)
@@ -432,7 +508,7 @@ void closure_parse_into_PDU (pdu *out, cpkt *in) {
 }
 
 /* Put internal PDU into closure packet (in buf) */
-int closure_parse_from_PDU (cpkt *out, pdu *in, gaps_tag *otag, char *delim) {
+int closure_parse_from_PDU (cpkt *out, pdu *in, gaps_tag *otag) {
   size_t        packet_len;
 
   if(hal_verbose) {fprintf(stderr, "%s: ", __func__); pdu_print(in);}
@@ -560,7 +636,7 @@ pdu *read_pdu(device *idev) {
 }
 
 /* Write pdu to specified fd */
-void write_pdu(device *odev, gaps_tag *otag, pdu *p, char *delim) {
+void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
   int             rv;
   int             fd;
   int             packet_len=0;
@@ -572,7 +648,7 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p, char *delim) {
   dev_id = odev->id;
   dev_model = odev->model;
   if (strcmp(dev_model, "haljson") == 0) {
-    packet_len = closure_parse_from_PDU ((cpkt *) buf, p, otag, delim);
+    packet_len = closure_parse_from_PDU ((cpkt *) buf, p, otag);
   } else if (strcmp(dev_model, "bkend") == 0) {
     if(hal_verbose) fprintf(stderr, "Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
     packet_len = bkend_parse_from_PDU (buf, p, otag, dev_id);
@@ -592,7 +668,7 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p, char *delim) {
 }
 
 /* Process input from device (with 'input_fd') and send to output */
-void process_input(int ifd, halmap *map, device *devs, char *delim) {
+void process_input(int ifd, halmap *map, device *devs) {
   pdu    *ipdu; //, *opdu;
   device *idev, *odev;
   halmap *h;
@@ -622,10 +698,13 @@ void process_input(int ifd, halmap *map, device *devs, char *delim) {
     return; 
   }
 
-  write_pdu(odev, &(h->to.tag), ipdu, delim);
+  write_pdu(odev, &(h->to.tag), ipdu);
   pdu_delete(ipdu);
 }
 
+/**********************************************************************/
+/* HAL Top level                                                      */
+/*********t************************************************************/
 /* Iniitialize file descriptor set for select (from linked-list of devices) */
 int select_init(device *dev_linked_list_root, fd_set *readfds) {
   device   *d;             /* Temporary device pointer */
@@ -633,127 +712,54 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
 
   FD_ZERO(readfds);
   maxrfd = -1;
+  fprintf(stderr, "HAL Waiting for input on fds");
+
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       if (d->readfd >= maxrfd) maxrfd = d->readfd + 1;
       FD_SET(d->readfd, readfds);
+      if(hal_verbose) fprintf(stderr, ", %d", d->readfd);
     }
   }
+  fprintf(stderr, "\n");
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 
-/**********************************************************************/
-/* HAL MAIN */
-/*********t************************************************************/
-#define PARENT_READ  read_pipe[0]
-#define PARENT_WRITE write_pipe[1]
-#define CHILD_WRITE  read_pipe[1]
-#define CHILD_READ   write_pipe[0]
-
-int main(int argc, char **argv) {
-  config_t  cfg;           /* Configuration */
+/* Wait for input from any read interface */
+void read_wait_loop(device *devs, halmap *map) {
+  int       nready;
   int       maxrfd;        /* Maximum file descriptor number for select */
   fd_set    readfds;       /* File descriptor set for select */
-  char     *file_name;     /* Path to zc executable */
-  char     *zcpath;        /* Path to zc executable */
-  char     *zcmodel;       /* model of APP tag and data */
-  char     *zcpub;         /* Publisher URL */
-  char     *zcsub;         /* Subscriber URL */
-  char     *delim;         /* Data end delimiter */
-  device    zcroot;        /* Fake device for zc */
-  device   *devs;          /* Linked list of enabled devices */
-  halmap   *map;           /* Linked list of selector mappings */
-  int       pid;           /* Process ID of child or parent from fork call */
-  int       read_pipe[2];  /* Read pipes for parent-child communication */
-  int       write_pipe[2]; /* Write pipes for parent-child communication */
-  int       zcsubpid;      /* Subscriber PID */
-  int       zcpubpid;      /* Publisher PID */
-  
-  file_name = opts_get(argc, argv);
-  cfg_read(&cfg, file_name);
-  devs    = get_devices(&cfg);
-  zcpath  = get_cfgstr(&cfg, "zcpath");
-  zcmodel = get_cfgstr(&cfg, "zcmodel");
-  zcpub   = get_cfgstr(&cfg, "zcpub");
-  zcsub   = get_cfgstr(&cfg, "zcsub");
-  delim   = get_cfgstr(&cfg, "delim");
-  map     = get_mappings(&cfg);
-  config_destroy(&cfg);
 
-  if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
-    fprintf(stderr, "Pipe creation failed\n");
-    exit(EXIT_FAILURE);
-  }
-  if(hal_verbose) fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
-  
-  if ((pid = fork()) < 0) {
-    fprintf(stderr, "Fork failed\n");
-    exit(EXIT_FAILURE);
-  } else if (pid == 0) { /* subscriber child */
-    close(PARENT_READ);
-    close(PARENT_WRITE);
-    close(CHILD_READ);
-    dup2(CHILD_WRITE, STDOUT_FILENO);   /* zc sub output goes to pipe (CHILD_WRITE) */
-    char *argv2[] = {zcpath, "-b", "sub", zcsub, NULL};
-    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
-    exit(EXIT_FAILURE);
-  } else { /* save subscriber child pid in parent */
-    zcsubpid = pid;
-  }
-
-  if ((pid = fork()) < 0) {
-    fprintf(stderr, "Fork failed\n");
-    exit(EXIT_FAILURE);
-  } else if (pid == 0) { /* publisher child */
-    close(PARENT_READ);
-    close(PARENT_WRITE);
-    dup2(CHILD_READ, STDIN_FILENO);
-    close(CHILD_WRITE);
-    char *argv2[] = {zcpath, "-b", "-d", delim, "pub", zcpub, NULL};
-//    char *argv2[] = {zcpath, "-b", "-v", "-d", delim, "pub", zcpub, NULL};
-    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
-    exit(EXIT_FAILURE);
-  } else { /* save publisher child pid in parent */
-    zcpubpid = pid;
-  }
-
-  close(CHILD_READ);
-  close(CHILD_WRITE);
-
-  /* Set up fake device for zc for uniform handling in halmap */
-  zcroot.enabled = 1;
-  zcroot.id      = "zc";
-  zcroot.path    = "zcpath";
-  zcroot.model   = zcmodel;
-  zcroot.next    = devs;
-  zcroot.readfd  = PARENT_READ;
-  zcroot.writefd = PARENT_WRITE;
-
-  devices_open(devs);
-
-//  fprintf(stderr, "zcpath=%s\n", zcpath);
-//  fprintf(stderr, "zcpub=%s\n",  zcpub);
-//  fprintf(stderr, "zcsub=%s\n",  zcsub);
-//  fprintf(stderr, "delim=%s\n",  delim);
-  if(hal_verbose) fprintf(stderr, "Spawned %s subscriber %d and publisher %d\n", zcpath, zcsubpid, zcpubpid);
-  devices_print_all(&zcroot);
-  halmap_print_all(map);
-
-  /* Select across readfds */
   while (1) {
-    int nready; 
-      
-    maxrfd = select_init(&zcroot,  &readfds);
-    // fprintf(stderr, "HAL Waiting for input on fds (max+1=%d)\n", maxrfd);
+    maxrfd = select_init(devs,  &readfds);
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
     // fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
-        process_input(i, map, &zcroot, delim);
+        process_input(i, map, devs);
         nready--;
       }
     }
   }
+}
+
+/* Get coniguration, then call read_wait_loop */
+int main(int argc, char **argv) {
+  config_t  cfg;           /* Configuration */
+  char     *file_name;     /* Path to conifg file */
+  device   *devs;          /* Linked list of enabled devices */
+  halmap   *map;           /* Linked list of selector mappings */
+  
+  file_name = opts_get(argc, argv);
+  cfg_read(&cfg, file_name);
+  devs    = get_devices(&cfg);
+  map     = get_mappings(&cfg);
+  config_destroy(&cfg);
+  devices_open(devs);
+  devices_print_all(devs);
+  halmap_print_all(map);
+  read_wait_loop(devs, map);
 
   /* XXX: Log to specified logfile, not stderr */
   /* XXX: Properly daemonize, close standard fds, trap signals etc. */
