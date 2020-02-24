@@ -1,8 +1,18 @@
+/* XXX: udp interface */
+/* XXX: Rename devices to interfaces (with names APP and NET) */
+/* XXX: Rename interfface models hal2hal,... */
+/* XXX: Log to specified logfile, not stderr */
+/* XXX: Properly daemonize, close standard fds, trap signals etc. */
+/* XXX: Deal with frag/defrag and other functionality etc. */
+/* XXX: Codec ADU transformation (using halmap entry) */
+/* XXX: Create HAL.h */
+/* XXX: Organize code with device, HAL, and codec/parser in separate files */
+
 /**********************************************************************/
 /* HAL Library Includes and Deinitions */
 /**********************************************************************/
 
-#include "closure.h"
+#include "api/closure.h"
 
 #include <unistd.h>	
 #include <sys/time.h>
@@ -17,32 +27,28 @@
 #define CHILD_WRITE  read_pipe[1]
 #define CHILD_READ   write_pipe[0]
 
-#define BKEND_MAX_TLVS 4
-#define BKEND_MIN_HEADER_BYTES 20
-#define HALJSON_MAX_TAGS 3
-#define HALJSON_DELIM_DATA " "
-#define HALJSON_DELIM_TAGS "-"
-
-#define ADU_SIZE_MAX   100
-#define PACKET_MAX     (ADU_SIZE_MAX + 30)
+#define PKT_M1_MAX_TLVS         4
+#define PKT_M1_ADU_SIZE_MAX   236
+#define PKT_G1_ADU_SIZE_MAX  1000
 
 int hal_verbose=0;
 
 /**********************************************************************/
 /* HAL Structures */
 /*********t************************************************************/
-/* HAL Device */
+/* HAL Interface parameters */
 typedef struct _dev {
   int         enabled;
-  int         readfd;
-  int         writefd;
   const char *id;
   const char *path;
   const char *model;
+  const char *comms;
   const char *addr_bi;
   const char *addr_in;
   const char *addr_out;
   int         port;
+  int         readfd;
+  int         writefd;
   struct _dev *next;
 } device;
 
@@ -60,28 +66,35 @@ typedef struct _hal {
   struct _hal *next;
 } halmap;
 
-/* Internal PDU (NB: PDU data is opaque - serialized for network transer) */
+/* HAL PDU */
 typedef struct _pdu {
-  selector  psel;                 /* Input device and tag info */
+  selector  psel;                   /* Input device and tag info */
   size_t    data_len;
-  uint8_t   data[ADU_SIZE_MAX];
+  uint8_t   data[ADU_SIZE_MAX_C];   /* opaque to HAL - serialized by APP */
 } pdu;
 
-/* BKEND TLV */
-typedef struct _btlv {
+/* Mercury TLV */
+typedef struct _tlv_m1 {
   uint32_t  data_tag;     /* Type (e.g., DATA_PAYLOAD_1) */
   uint32_t  data_len;     /* Length (in bytes) */
-  uint8_t   data[236];    /* Value (up to 236 (256 - 5*4) bytes of payload) */
-} bkend_tlv;
+  uint8_t   data[PKT_M1_ADU_SIZE_MAX];    /* Value (up to 236 (256 - 5*4) bytes of payload) */
+} tlv_m1;
 
-/* BKEND packet */
-typedef struct _bkd {
+/* Mercury packet */
+typedef struct _pkt_m1 {
   uint32_t  session_tag;           /* App Mux */
   uint32_t  message_tag;           /* Security */
   uint32_t  message_tlv_count;     /* TLV count (1 for demo) */
-  bkend_tlv tlv[BKEND_MAX_TLVS];   /* TLV */
-} bkend;
+  tlv_m1    tlv[PKT_M1_MAX_TLVS];   /* TLV */
+} pkt_m1;
 
+/* GE Compressed Mode packet */
+typedef struct _pkt_g1 {
+  uint32_t  message_tag_ID;        /* App Mux */
+  uint16_t  data_len;              /* Length (in bytes) */
+  uint16_t  crc16;                 /* XXX: what is the generator polynomial? */
+  uint8_t   data[PKT_G1_ADU_SIZE_MAX];
+} pkt_g1;
 
 /**********************************************************************/
 /* HAL Print (structures) */
@@ -96,27 +109,28 @@ void pdu_print(pdu *pdu) {
   }
 }
 
+void devices_print_one(device *d)  {
+  fprintf(stderr, " %s [v=%d p=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
+  if (strlen(d->addr_bi)  > 0) fprintf(stderr, " ab=%s", d->addr_bi);
+  if (strlen(d->addr_in)  > 0) fprintf(stderr, " ai=%s", d->addr_in);
+  if (strlen(d->addr_out) > 0) fprintf(stderr, " ao=%s", d->addr_out);
+  if (d->port             > 0) fprintf(stderr, " p=%d",  d->port);
+  if (d->readfd          >= 0) fprintf(stderr, " r=%d",  d->readfd);
+  if (d->writefd         >= 0) fprintf(stderr, " w=%d",  d->writefd);
+  fprintf(stderr, "]\n");
+}
+  
 /* Print list of devices for debugging */
 void devices_print_all(device *root)  {
   fprintf(stderr, "HAL device list (%p):\n", (void *) root);
-  for(device *d = root; d != NULL; d = d->next) {
-    fprintf(stderr, "  [%s: v=%d m=%s p=%s", d->id, d->enabled, d->model, d->path);
-    if (strlen(d->addr_bi)  > 0) fprintf(stderr, " ab=%s", d->addr_bi);
-    if (strlen(d->addr_in)  > 0) fprintf(stderr, " ai=%s", d->addr_in);
-    if (strlen(d->addr_out) > 0) fprintf(stderr, " ao=%s", d->addr_out);
-    if (d->port             > 0) fprintf(stderr, " p=%d",  d->port);
-    if (d->readfd          >= 0) fprintf(stderr, " r=%d",  d->readfd);
-    if (d->writefd         >= 0) fprintf(stderr, " w=%d",  d->writefd);
-    fprintf(stderr, "]\n");
-  }
-//  fprintf(stderr, "\n");
+  for(device *d = root; d != NULL; d = d->next) devices_print_one(root);
 }
 
 /* Print a single HAL map entry for debugging */
 void halmap_print_one(halmap *hm) {
-  fprintf(stderr, "  [%s ", hm->from.dev); tag_print(&(hm->from.tag));
+  fprintf(stderr, " %s ", hm->from.dev); tag_print(&(hm->from.tag));
   fprintf(stderr, "-> %s ", hm->to.dev); tag_print(&(hm->to.tag));
-  fprintf(stderr, ", codec=%s]\n", hm->codec);
+  fprintf(stderr, ", codec=%s\n", hm->codec);
 }
 
 /* Print list of HAL map entries for debugging */
@@ -126,6 +140,31 @@ void halmap_print_all(halmap *map_root) {
       halmap_print_one(hm);
     }
     fprintf(stderr, "\n");
+}
+
+/* Print M1 Packet */
+void m1_print(pkt_m1 *p) {
+  tlv_m1 *tlv;
+  
+  fprintf(stderr, "%s: ", __func__);
+  fprintf(stderr, "mux=%u ",  ntohl(p->session_tag));
+  fprintf(stderr, "sec=%u ",  ntohl(p->message_tag));
+  for (int i=0; i < ntohl(p->message_tlv_count); i++) {
+    tlv = &(p->tlv[i]);
+    fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
+    data_print("Data", tlv->data, ntohl(tlv->data_len));
+    fprintf(stderr, "]");
+  }
+  fprintf(stderr, "\n");
+}
+
+/* Print G1 Packet */
+void g1_print(pkt_g1 *p) {
+  fprintf(stderr, "%s: ", __func__);
+  fprintf(stderr, "mux=%u ", ntohl(p->message_tag_ID));
+  fprintf(stderr, "crc=%02x ", ntohs(p->crc16));
+  data_print("Data", p->data, ntohs(p->data_len));
+  fprintf(stderr, "\n");
 }
 
 /**********************************************************************/
@@ -190,13 +229,16 @@ device *get_devices(config_t *cfg) {
     }
     for(int i = 0; i < count; i++) {
       config_setting_t *dev = config_setting_get_elem(devs, i);
+      /* required parameters */
+      ret[i].enabled  = get_param_int(dev, "enabled",  0, i);
       ret[i].id       = get_param_str(dev, "id",       0, i);
       ret[i].path     = get_param_str(dev, "path",     0, i);
       ret[i].model    = get_param_str(dev, "model",    0, i);
+      ret[i].comms    = get_param_str(dev, "comms",    0, i);
+      /* optional parameters */
       ret[i].addr_bi  = get_param_str(dev, "addr_bi",  1, i);
       ret[i].addr_in  = get_param_str(dev, "addr_in",  1, i);
       ret[i].addr_out = get_param_str(dev, "addr_out", 1, i);
-      ret[i].enabled  = get_param_int(dev, "enabled",  0, i);
       ret[i].port     = get_param_int(dev, "port",     1, i);
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */
@@ -443,6 +485,7 @@ void devices_open(device *dev_linked_list_root) {
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled == 0) continue;
     if(hal_verbose) fprintf(stderr, "About to open device: %s %s test=%d\n", d->id, d->path, strncmp(d->path, "/dev/", 5));
+    /**/
     if (!strncmp(d->path, "/dev/", 5))  interface_open_serial(d);
     else if (strlen(d->addr_bi)  > 0)   interface_open_socket(d);
     else if (strlen(d->addr_in)  > 0)   interface_open_ipc(d);
@@ -500,100 +543,98 @@ void pdu_delete(pdu *pdu) {
 }
 
 /* Put closure packet (in buf) into internal HAL PDU structure (*p) */
-void closure_parse_into_PDU (pdu *out, cpkt *in) {
-  tag_decode(&(out->psel.tag), &(in->tag));
-  len_decode(&(out->data_len), in->data_len);
-  memcpy(out->data, in->data, out->data_len);
+void pdu_from_closure (pdu *out, uint8_t *in) {
+  pkt_c  *pkt = (pkt_c *) in;
+  
+  tag_decode(&(out->psel.tag), &(pkt->tag));
+  len_decode(&(out->data_len), pkt->data_len);
+  memcpy(out->data, pkt->data, out->data_len);
 //  pdu_print(p);
 }
 
 /* Put internal PDU into closure packet (in buf) */
-int closure_parse_from_PDU (cpkt *out, pdu *in, gaps_tag *otag) {
-  size_t        packet_len;
+int pdu_into_closure (uint8_t *out, pdu *in, gaps_tag *otag) {
+  size_t    pkt_len;
+  pkt_c    *pkt = (pkt_c *) out;
 
   if(hal_verbose) {fprintf(stderr, "%s: ", __func__); pdu_print(in);}
-//  tag_encode(&(out->tag), &(in->psel.tag));
-  tag_encode(&(out->tag), otag);
-  len_encode(&(out->data_len), in->data_len);
-  memcpy(out->data, in->data, in->data_len);
-  packet_len = in->data_len + sizeof(out->tag) + sizeof(out->data_len);
-//  fprintf(stderr, "HAL created ");  data_print("Packet", (uint8_t *) out, packet_len);
-  return (packet_len);
-}
-
-/* Print bkend (assuming data is a string) */
-void bkend_print(bkend *b) {
-  bkend_tlv *tlv;
-  
-  fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ",  ntohl(b->session_tag));
-  fprintf(stderr, "sec=%u ",  ntohl(b->message_tag));
-  for (int i=0; i < ntohl(b->message_tlv_count); i++) {
-    tlv = &(b->tlv[i]);
-    fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
-    fprintf(stderr, "l=%d ",   ntohl(tlv->data_len));
-    fprintf(stderr, "%s] ",          tlv->data);
-  }
-  fprintf(stderr, "\n");
+  tag_encode(&(pkt->tag), otag);
+  len_encode(&(pkt->data_len), in->data_len);
+  memcpy(pkt->data, in->data, in->data_len);
+  pkt_len = in->data_len + sizeof(pkt->tag) + sizeof(pkt->data_len);
+  return (pkt_len);
 }
 
 /* Default Convert from haljson string to bkend integer (in network order) */
-uint32_t haljson_to_bkend(uint32_t tag_field) {
+uint32_t pdu_field_into_m1(uint32_t tag_field) {
     return (htonl(tag_field));
 }
 
 /* Default Convert to haljson string from bkend integer (in network order) */
-uint32_t haljson_from_bkend(uint32_t tag_field) {
+uint32_t pdu_field_from_m1(uint32_t tag_field) {
   return (ntohl(tag_field));
 }
 
-
-/* Put data into buf (using bkend model) from internal HAL PDU */
-/* Returns length of buffer */
-int bkend_parse_from_PDU (uint8_t *buf, pdu *p, gaps_tag *otag, const char *dev_id) {
-  bkend     *b;
-  bkend_tlv *tlv;
-  
-  if(hal_verbose) {fprintf(stderr, "%s for device %s: ", __func__, dev_id); pdu_print(p);}
-  b = (bkend *) buf;
-  b->session_tag = haljson_to_bkend(p->psel.tag.mux);
-  b->message_tag = haljson_to_bkend(p->psel.tag.sec);
-  b->message_tlv_count = htonl(1);
-  for (int i=0; i < 1; i++) {
-    tlv = &(b->tlv[i]);
-    tlv->data_tag = haljson_to_bkend(p->psel.tag.typ);
-    tlv->data_len = htonl(p->data_len);
-    memcpy((char *) tlv->data, (char *) p->data, p->data_len);
-  }
-  /* XXX: Fix length to depend on message_tlv_count */
-  return ((p->data_len) + BKEND_MIN_HEADER_BYTES);
-}
-
-/* Put data from buf (using bkend model) into internal HAL PDU */
-void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p, int len) {
-  bkend     *b;
-  bkend_tlv *tlv;
+/* Put data from buf (using M1 model) into internal HAL PDU */
+void pdu_from_m1 (uint8_t *buf, const char *dev_id, pdu *p, int len) {
+  pkt_m1  *b = (pkt_m1 *) buf;
+  tlv_m1  *tlv;
     
-  if(hal_verbose) fprintf(stderr, "Put bkend model data from dev=%s into internal HAL PDU\n", dev_id);
-  
-  /* XXX: Handle case where BKEND message is split - using framing? */
-  if (len < BKEND_MIN_HEADER_BYTES) {
-    fprintf(stderr, "XXX: BKEND Message split?: len=%d\n", len);
-    exit (22);
-  }
-  
+  if(hal_verbose) fprintf(stderr, "Put M1 packet data from dev=%s into internal HAL PDU\n", dev_id);
   p->psel.dev = strdup(dev_id);
-  b = (bkend *) buf;
-// fprintf(stderr, "HAL get input on %s: ", dev_id); bkend_print((bkend *) buf);
-  p->psel.tag.mux = haljson_from_bkend(b->session_tag);
-  p->psel.tag.sec = haljson_from_bkend(b->message_tag);
+// fprintf(stderr, "HAL get input on %s: ", dev_id); m1_print((bkend *) buf);
+  p->psel.tag.mux = pdu_field_from_m1(b->session_tag);
+  p->psel.tag.sec = pdu_field_from_m1(b->message_tag);
 //  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
   for (int i=0; i < ntohl(b->message_tlv_count); i++) {
     tlv = &(b->tlv[0]);
-    p->psel.tag.typ = haljson_from_bkend(tlv->data_tag);
-    p->data_len = haljson_from_bkend(tlv->data_len);
+    p->psel.tag.typ = pdu_field_from_m1(tlv->data_tag);
+    p->data_len = pdu_field_from_m1(tlv->data_len);
     memcpy (p->data, tlv->data, p->data_len);
   }
+}
+
+/* Put data into buf (using M1 model) from internal HAL PDU */
+/* Returns length of buffer */
+int pdu_into_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
+  pkt_m1  *pkt = (pkt_m1 *) out;
+  tlv_m1  *tlv;
+
+//  if(hal_verbose) {fprintf(stderr, "%s\n", __func__); pdu_print(in);}
+  pkt->session_tag = pdu_field_into_m1(otag->mux);
+  pkt->message_tag = pdu_field_into_m1(otag->sec);
+  pkt->message_tlv_count = htonl(1);
+  for (int i=0; i < 1; i++) {
+    tlv = &(pkt->tlv[i]);
+    tlv->data_tag = pdu_field_into_m1(otag->typ);
+    tlv->data_len = htonl(in->data_len);
+    memcpy((char *) tlv->data, (char *) in->data, in->data_len);
+  }
+  /* XXX: Fix packet length to depend on message_tlv_count */
+  return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) + sizeof(tlv->data_len) + in->data_len);
+}
+
+/* Put data from buf (using G1 model) into internal HAL PDU */
+void pdu_from_g1 (uint8_t *buf, const char *dev_id, pdu *p, int len) {
+  pkt_g1    *pkt = (pkt_g1 *) buf;
+
+  if(hal_verbose) fprintf(stderr, "Put G1 packet data from dev=%s into internal HAL PDU\n", dev_id);
+  g1_print(pkt);
+  exit (22);
+}
+
+/* Put data into buf (using bkend model) from internal HAL PDU */
+/* Returns length of buffer */
+int pdu_into_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
+  pkt_g1    *pkt = (pkt_g1 *) out;
+  uint16_t  len = (uint16_t) in->data_len;
+
+  if(hal_verbose) {fprintf(stderr, "%s\n", __func__); pdu_print(in);}
+  pkt->message_tag_ID = htonl(otag->mux);
+  pkt->data_len = htons(len);
+  pkt->crc16 = 0;   /* XXX what polynomial? */
+  memcpy((char *) pkt->data, (char *) in->data, in->data_len);
+  return (sizeof(pkt->message_tag_ID) + sizeof(pkt->data_len) + sizeof(pkt->crc16) + in->data_len);
 }
 
 /**********************************************************************/
@@ -602,11 +643,11 @@ void bkend_parse_into_PDU (char *buf, const char *dev_id, pdu *p, int len) {
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
-  pdu         *ret = NULL;
-  static char  buf[PACKET_MAX];
-  int          len;
-  int          fd;
-  const char  *dev_id;
+  pdu            *ret = NULL;
+  static uint8_t  buf[PACKET_MAX];
+  int             len;
+  int             fd;
+  const char     *dev_id;
 
   /* a) read input into buf and get its length (with input dev_id and fd) */
   dev_id = idev->id;
@@ -623,12 +664,14 @@ pdu *read_pdu(device *idev) {
  
   if (strcmp(idev->model, "haljson") == 0) {
 //    fprintf(stderr, "HAL reading from %s: ", dev_id);
-    closure_parse_into_PDU (ret, (cpkt *) buf);
-  } else if (strcmp(idev->model, "bkend") == 0) {
-    bkend_parse_into_PDU   (buf, dev_id, ret, len);
-    fprintf(stderr, "HAL reading from %s: ", dev_id); bkend_print((bkend *) buf);
+    pdu_from_closure (ret, buf);
+  } else if (strcmp(idev->model, "pkt_m1") == 0) {
+    pdu_from_m1 (buf, dev_id, ret, len);
+    fprintf(stderr, "HAL reading from %s: ", dev_id); m1_print((pkt_m1 *) buf);
+  } else if (strcmp(idev->model, "pkt_g1") == 0) {
+      pdu_from_g1 (buf, dev_id, ret, len);
   } else {
-    fprintf(stderr, "Error, unkwown device model: %s\n", idev->model);
+    fprintf(stderr, "Error, unknown interface model: %s\n", idev->model);
     exit (22);
   }
   if(hal_verbose) pdu_print(ret);
@@ -637,34 +680,44 @@ pdu *read_pdu(device *idev) {
 
 /* Write pdu to specified fd */
 void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
-  int             rv;
+  int             rv=-1;
   int             fd;
-  int             packet_len=0;
-  const char     *dev_id;
+  int             pkt_len=0;
   const char     *dev_model;
+  const char     *com_type;
   static uint8_t  buf[PACKET_MAX];
 
-  tag_print(otag);
-  dev_id = odev->id;
+  if (hal_verbose) {
+    fprintf(stderr, "HAL write to "); tag_print(otag);
+    fprintf(stderr, "on"); devices_print_one(odev);
+  }
+  /* a) Convert into packet based on interface packet model  */
   dev_model = odev->model;
-  if (strcmp(dev_model, "haljson") == 0) {
-    packet_len = closure_parse_from_PDU ((cpkt *) buf, p, otag);
-  } else if (strcmp(dev_model, "bkend") == 0) {
-    if(hal_verbose) fprintf(stderr, "Convert internal PDU into %s model for device %s\n", dev_model, dev_id);
-    packet_len = bkend_parse_from_PDU (buf, p, otag, dev_id);
-    fprintf(stderr, "HAL writing to %s: ", odev->id); bkend_print((bkend *) buf);
-  }
+  if (strcmp(dev_model, "haljson") == 0)     pkt_len = pdu_into_closure (buf, p, otag);
+  else if (strcmp(dev_model, "pkt_m1") == 0) pkt_len = pdu_into_m1 (buf, p, otag);
+  else if (strcmp(dev_model, "pkt_g1") == 0) pkt_len = pdu_into_g1 (buf, p, otag);
+  else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}
+  if(hal_verbose) {fprintf(stderr, "HAL writing: "); data_print("Packet", buf, pkt_len);}
+
+  /* b) Write to interace based on interface comms type */
   fd = odev->writefd;
-  if(hal_verbose) {
-    fprintf(stderr, "HAL writing on %s (fd=%d): ", dev_id, fd);
-    data_print("Packet", buf, packet_len);
+  com_type = odev->comms;
+  if(hal_verbose) fprintf(stderr, "HAL writing using comms type %s\n", com_type);
+  if (   (strcmp(com_type, "ipc") == 0)
+      || (strcmp(com_type, "serial") == 0)
+      || (strcmp(com_type, "tcp") == 0)
+     ) {
+    rv = write(fd, buf, pkt_len);     /* write = send for tcp with no flags */
   }
-  rv = write(fd, buf, packet_len);
-//  rv = write(fd, "hello", 5);
-//  exit (1);
-
-  if(hal_verbose) fprintf(stderr, "HAL wrote on %s: rv=%d)\n", dev_id, rv);
-
+  else if (strcmp(com_type, "udp") == 0) {
+    fprintf(stderr, "XXX: Write udp mode to %s interface\n", com_type);
+//    len = sizeof(cliaddr);  //len is value/resuslt
+//    rv = sendto(fd, buf, pkt_len), MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
+//    rv = recvfrom(fd, buf, pkt_len, MAXLINE, ( struct sockaddr *) &cliaddr, &len);
+  }
+  else {fprintf(stderr, "%s unknown comms type %s", __func__, com_type); exit(EXIT_FAILURE);}
+  
+  if(hal_verbose) fprintf(stderr, "HAL wrote on %s (fd=%d) and got rv=%d\n", odev->id, fd, rv);
 }
 
 /* Process input from device (with 'input_fd') and send to output */
@@ -675,26 +728,26 @@ void process_input(int ifd, halmap *map, device *devs) {
   
   idev = find_device_by_readfd(devs, ifd);
   if(idev == NULL) { 
-    fprintf(stderr, "Device not found for input fd");
+    fprintf(stderr, "Device not found for input fd\n");
     return; 
   } 
 
   ipdu = read_pdu(idev);
   if(ipdu == NULL) { 
-    fprintf(stderr, "Input PDU is NULL"); 
+    fprintf(stderr, "Input PDU is NULL\n");
     return; 
   }
 
   h = halmap_find(ipdu, map);
   if(h == NULL) { 
-    fprintf(stderr, "No matching HAL map entry"); 
+    fprintf(stderr, "No matching HAL map entry\n");
     pdu_delete(ipdu);
     return; 
   }
   
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
-    fprintf(stderr, "Device not found for output");
+    fprintf(stderr, "Device not found for output\n");
     return; 
   }
 
@@ -760,11 +813,5 @@ int main(int argc, char **argv) {
   devices_print_all(devs);
   halmap_print_all(map);
   read_wait_loop(devs, map);
-
-  /* XXX: Log to specified logfile, not stderr */
-  /* XXX: Properly daemonize, close standard fds, trap signals etc. */
-  /* XXX: Deal with frag/defrag and other functionality etc. */
-  /* XXX: Organize code with device, HAL, and codec/parser in separate files */
-
   return 0;
 }

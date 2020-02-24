@@ -5,7 +5,7 @@
  * February 2020, Perspecta Labs
  */
 
-#include "closure.h"
+#include "api/closure.h"
 
 void pnt_set (pnt_datatype *pnt) {
     pnt->message_id  = 130;
@@ -19,7 +19,7 @@ void pnt_set (pnt_datatype *pnt) {
 }
 
 int main(int argc, char **argv) {
-  uint8_t       adu[ADU_SIZE_MAX];
+  uint8_t       adu[ADU_SIZE_MAX_C];
   size_t        adu_len, pnt1_len;
   pnt_datatype  pnt1;
   gaps_tag      tag;

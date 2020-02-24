@@ -7,11 +7,11 @@
 #include <arpa/inet.h>
 #include <assert.h>
 
-#define ADU_SIZE_MAX   100
-#define PACKET_MAX     (ADU_SIZE_MAX + 30)
-#define DATA_TYP_PNT   1
-#define DATA_TYP_XYZ   2
-#define RX_FILTER_LEN  4
+#define ADU_SIZE_MAX_C  200
+#define PACKET_MAX      2048
+#define DATA_TYP_PNT    1
+#define DATA_TYP_XYZ    2
+#define RX_FILTER_LEN   4
 #define HAL_IPC_SUB "ipc://halsub_am"
 #define HAL_IPC_PUB "ipc://halpub_am"
 
@@ -27,11 +27,11 @@ typedef struct _tag {
 } gaps_tag;
 
 /* CLOSURE packet */
-typedef struct _cpkt {
+typedef struct _pkt_c {
   gaps_tag  tag;
   uint32_t  data_len;
-  uint8_t   data[ADU_SIZE_MAX];
-} cpkt;
+  uint8_t   data[ADU_SIZE_MAX_C];
+} pkt_c;
 
 /* Data structure: PNT */
 typedef struct _pnt_datatype {

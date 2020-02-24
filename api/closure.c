@@ -189,8 +189,8 @@ void * z_connect(int type, const char *dest) {
 void gaps_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
   static int   do_once = 1;
   static void *socket;
-  cpkt         packet;
-  cpkt         *p=&packet;
+  pkt_c         packet;
+  pkt_c         *p=&packet;
   size_t        packet_len;
   
   /* a) Open connection with HAL ZMQ subscriber */
@@ -222,8 +222,8 @@ void gaps_asyn_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
   static int   do_once = 1;
   static void *socket;
   int          err;
-  cpkt         packet;
-  cpkt        *p=&packet;
+  pkt_c         packet;
+  pkt_c        *p=&packet;
   int          size;
   gaps_tag     tag4filter;
   
