@@ -1,12 +1,15 @@
-/* XXX: udp interface */
-/* XXX: Rename devices to interfaces (with names APP and NET) */
-/* XXX: Rename interfface models hal2hal,... */
-/* XXX: Log to specified logfile, not stderr */
-/* XXX: Properly daemonize, close standard fds, trap signals etc. */
-/* XXX: Deal with frag/defrag and other functionality etc. */
-/* XXX: Codec ADU transformation (using halmap entry) */
-/* XXX: Create HAL.h */
-/* XXX: Organize code with device, HAL, and codec/parser in separate files */
+/* TODO list (200224)
+XXX: udp interface
+XXX: Rename models hal2hal to pkt_c
+XXX: Create HAL.h
+XXX: Fix README.md and fig (show APP1, NET1,...)
+XXX: Log to specified logfile, not stderr
+XXX: Properly daemonize: put into hal/daemon, close standard fds, trap signals, Exit only when needed (not to debug), etc.
+XXX: Dynamically change HAL daemon conifg file
+XXX: frag/defrag and other functionality etc.
+XXX: Codec ADU transformation (using halmap entry)
+XXX: Organize code with device, HAL, and codec/parser in separate files
+*/
 
 /**********************************************************************/
 /* HAL Library Includes and Deinitions */
@@ -662,7 +665,7 @@ pdu *read_pdu(device *idev) {
   ret = malloc(sizeof(pdu));
   ret->psel.dev = strdup(dev_id);
  
-  if (strcmp(idev->model, "haljson") == 0) {
+  if (strcmp(idev->model, "pkt_c") == 0) {
 //    fprintf(stderr, "HAL reading from %s: ", dev_id);
     pdu_from_closure (ret, buf);
   } else if (strcmp(idev->model, "pkt_m1") == 0) {
@@ -693,7 +696,7 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
   }
   /* a) Convert into packet based on interface packet model  */
   dev_model = odev->model;
-  if (strcmp(dev_model, "haljson") == 0)     pkt_len = pdu_into_closure (buf, p, otag);
+  if      (strcmp(dev_model, "pkt_c") == 0)  pkt_len = pdu_into_closure (buf, p, otag);
   else if (strcmp(dev_model, "pkt_m1") == 0) pkt_len = pdu_into_m1 (buf, p, otag);
   else if (strcmp(dev_model, "pkt_g1") == 0) pkt_len = pdu_into_g1 (buf, p, otag);
   else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}

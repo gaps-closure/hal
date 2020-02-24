@@ -2,14 +2,14 @@ CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
 LDFLAGS     = -lconfig
-LDLIBS      = -L. -lclosure -lzmq 
+LDLIBS      = -L./api -lclosure -lzmq 
 
 all: zcbin libapi hal app_test
 
-app_test: app_test.o libclosure.a
+app_test: app_test.o
 	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
 
-hal: hal.o libclosure.a
+hal: hal.o
 	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS) $(LDFLAGS)
 
 app_test.o: app_test.c 
@@ -27,7 +27,7 @@ libapi:
 
 clean:
 	rm -f *.o zc/*.o
-	rm -f app_test hal zc/zc  api/*.o api/*.o fifo* *_log.txt halsub* halpub*
+	rm -f app_test hal zc/zc  api/*.o api/*.a fifo* *_log.txt halsub* halpub*
 
 install: 
 	mkdir -p $(INSTALLPATH)
