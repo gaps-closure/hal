@@ -59,3 +59,5 @@ extern void gaps_data_encode(uint8_t *, size_t *, uint8_t *, size_t *, int);
 extern void gaps_data_decode(uint8_t *, size_t *, uint8_t *, size_t *, int);
 extern void gaps_asyn_send(uint8_t *, size_t,   gaps_tag);
 extern void gaps_asyn_recv(uint8_t *, size_t *, gaps_tag *);
+
+// Guard Provisioning calls to be added here

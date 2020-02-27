@@ -1,6 +1,5 @@
 /* TODO list (200224)
 XXX: udp interface
-XXX: Rename models hal2hal to pkt_c
 XXX: Create HAL.h
 XXX: Fix README.md and fig (show APP1, NET1,...)
 XXX: Log to specified logfile, not stderr
@@ -24,6 +23,7 @@ XXX: Organize code with device, HAL, and codec/parser in separate files
 #include <fcntl.h>
 #include <libconfig.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #define PARENT_READ  read_pipe[0]
 #define PARENT_WRITE write_pipe[1]
@@ -39,17 +39,21 @@ int hal_verbose=0;
 /**********************************************************************/
 /* HAL Structures */
 /*********t************************************************************/
-/* HAL Interface parameters */
+/* HAL Interface parameters (linked list) */
 typedef struct _dev {
   int         enabled;
   const char *id;
   const char *path;
   const char *model;
   const char *comms;
-  const char *addr_bi;
   const char *addr_in;
   const char *addr_out;
-  int         port;
+  const char *mode_in;
+  const char *mode_out;
+  int         port_in;
+  int         port_out;
+  struct sockaddr_in socaddr_in;
+  struct sockaddr_in socaddr_out;
   int         readfd;
   int         writefd;
   struct _dev *next;
@@ -57,15 +61,15 @@ typedef struct _dev {
 
 /* HAL Selector (used in HAL map entries and PDUs) */
 typedef struct _sel {
-  char     *dev;
-  gaps_tag  tag;
+  const char *dev;
+  gaps_tag    tag;
 } selector;
 
-/* HAL map entry */
+/* HAL map entry (linked list) */
 typedef struct _hal {
   selector    from;
   selector    to;
-  char        *codec;
+  const char  *codec;
   struct _hal *next;
 } halmap;
 
@@ -100,7 +104,7 @@ typedef struct _pkt_g1 {
 } pkt_g1;
 
 /**********************************************************************/
-/* HAL Print (structures) */
+/* HAL Print (structure information) */
 /*********t************************************************************/
 /* Print a information from an internal PDU */
 void pdu_print(pdu *pdu) {
@@ -114,10 +118,12 @@ void pdu_print(pdu *pdu) {
 
 void devices_print_one(device *d)  {
   fprintf(stderr, " %s [v=%d p=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
-  if (strlen(d->addr_bi)  > 0) fprintf(stderr, " ab=%s", d->addr_bi);
   if (strlen(d->addr_in)  > 0) fprintf(stderr, " ai=%s", d->addr_in);
   if (strlen(d->addr_out) > 0) fprintf(stderr, " ao=%s", d->addr_out);
-  if (d->port             > 0) fprintf(stderr, " p=%d",  d->port);
+  if (strlen(d->mode_in)  > 0) fprintf(stderr, " mi=%s", d->mode_in);
+  if (strlen(d->mode_out) > 0) fprintf(stderr, " mo=%s", d->mode_out);
+  if (d->port_in          > 0) fprintf(stderr, " pi=%d", d->port_in);
+  if (d->port_out         > 0) fprintf(stderr, " po=%d", d->port_out);
   if (d->readfd          >= 0) fprintf(stderr, " r=%d",  d->readfd);
   if (d->writefd         >= 0) fprintf(stderr, " w=%d",  d->writefd);
   fprintf(stderr, "]\n");
@@ -126,7 +132,7 @@ void devices_print_one(device *d)  {
 /* Print list of devices for debugging */
 void devices_print_all(device *root)  {
   fprintf(stderr, "HAL device list (%p):\n", (void *) root);
-  for(device *d = root; d != NULL; d = d->next) devices_print_one(root);
+  for(device *d = root; d != NULL; d = d->next) devices_print_one(d);
 }
 
 /* Print a single HAL map entry for debugging */
@@ -186,7 +192,7 @@ void cfg_read (config_t *cfg, char  *file_name) {
 }
 
 /* Get a top-level string item from config */
-char *get_cfgstr(config_t *cfg, char *fld) {
+char *cfg_get_top_str(config_t *cfg, char *fld) {
   const char *ret;
   if(!config_lookup_string(cfg, fld, &ret)) {
     fprintf(stderr, "No '%s' setting in configuration file.\n", fld);
@@ -239,13 +245,16 @@ device *get_devices(config_t *cfg) {
       ret[i].model    = get_param_str(dev, "model",    0, i);
       ret[i].comms    = get_param_str(dev, "comms",    0, i);
       /* optional parameters */
-      ret[i].addr_bi  = get_param_str(dev, "addr_bi",  1, i);
       ret[i].addr_in  = get_param_str(dev, "addr_in",  1, i);
       ret[i].addr_out = get_param_str(dev, "addr_out", 1, i);
-      ret[i].port     = get_param_int(dev, "port",     1, i);
+      ret[i].mode_in  = get_param_str(dev, "mode_in",  1, i);
+      ret[i].mode_out = get_param_str(dev, "mode_out", 1, i);
+      ret[i].port_in  = get_param_int(dev, "port_in",  1, i);
+      ret[i].port_out = get_param_int(dev, "port_out", 1, i);
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */
       ret[i].next     = i < count - 1 ? &ret[i+1] : (device *) NULL;
+//      if(hal_verbose) fprintf(stderr, "i=%d Read Config file %s %p\n", i, ret[i].id, ret[i].next);
     }
   }
   if(hal_verbose) {fprintf(stderr, "Config file "); devices_print_all(ret);}
@@ -265,66 +274,16 @@ halmap *get_mappings(config_t *cfg) {
       exit(EXIT_FAILURE);
     }
     for(int i = 0; i < count; i++) {
-      const char *from_dev, *to_dev, *codec;
-      int   from_mux, from_sec, from_typ, to_mux, to_sec, to_typ;
-      
-      config_setting_t *entry = config_setting_get_elem(hmaps, i);
-      if(!(  config_setting_lookup_string(entry, "from_dev", &from_dev)
-          && config_setting_lookup_string(entry, "to_dev",   &to_dev)
-          && config_setting_lookup_string(entry, "codec",    &codec)
-          && config_setting_lookup_int(   entry, "from_mux", &from_mux)
-          && config_setting_lookup_int(   entry, "from_sec", &from_sec)
-          && config_setting_lookup_int(   entry, "from_typ", &from_typ)
-        && config_setting_lookup_int(   entry, "to_mux", &to_mux)
-        && config_setting_lookup_int(   entry, "to_sec", &to_sec)
-        && config_setting_lookup_int(   entry, "to_typ", &to_typ)
-        )) {
-             fprintf(stderr, "Incorrect fields for device %d\n", i);
-             exit(EXIT_FAILURE);
-      }
-      ret[i].from.dev = strdup(from_dev);
-      ret[i].to.dev   = strdup(to_dev);
-      ret[i].codec    = strdup(codec);
-      ret[i].from.tag.mux = from_mux;
-      ret[i].from.tag.sec = from_sec;
-      ret[i].from.tag.typ = from_typ;
-      ret[i].to.tag.mux = to_mux;
-      ret[i].to.tag.sec = to_sec;
-      ret[i].to.tag.typ = from_typ;
-
-      /*
-      config_setting_t *tag = config_lookup(cfg, maps.[i].from_tag);
-  fprintf(stderr, "tag=%p\n", tag);
-
- && config_setting_lookup_int(entry, "from_tag", from_list)
-
-      fprintf(stderr, "from_list=%d\n", from_list[0]);
-
-       int tag_count = config_setting_length(entry->from_tag);
-      fprintf(stderr, "tag_count=%d\n", tag_count);
-
-
-      const config_setting_t *tag;
-      tag = config_lookup(cfg, "maps.from_tag");
-if(tag != NULL) {
-      int tag_count = config_setting_length(tag);
-}
-           printf("I have %d retries:\n", count);
-           for (n = 0; n < count; n++) {
-             printf("\t#%d. %d\n", n + 1,
-               config_setting_get_int_elem(retries, n));
-           }
-      if config_setting_is_array(entry) {
-             = strdup(config_setting_get_string_elem(entry,0));
-        ret[i].from.tag.mux = config_setting_get_int_elem(entry,1);
-        ret[i].from.tag.sec = config_setting_get_int_elem(entry,2);
-        ret[i].from.tag.typ = config_setting_get_int_elem(entry,3);
-        ret[i].to.dev       = strdup(config_setting_get_string_elem(entry,4));
-        ret[i].to.tag.mux   = config_setting_get_int_elem(entry,5);
-        ret[i].to.tag.sec   = config_setting_get_int_elem(entry,6);
-        ret[i].to.tag.typ   = config_setting_get_int_elem(entry,7);
-        ret[i].codec        = strdup(config_setting_get_string_elem(entry,8));
- */
+      config_setting_t *map = config_setting_get_elem(hmaps, i);
+      ret[i].from.dev     = get_param_str(map, "from_dev", 0, i);
+      ret[i].to.dev       = get_param_str(map, "to_dev",   0, i);
+      ret[i].from.tag.mux = get_param_int(map, "from_mux", 0, i);
+      ret[i].from.tag.sec = get_param_int(map, "from_sec", 0, i);
+      ret[i].from.tag.typ = get_param_int(map, "from_typ", 0, i);
+      ret[i].to.tag.mux   = get_param_int(map, "to_mux",   0, i);
+      ret[i].to.tag.sec   = get_param_int(map, "to_sec",   0, i);
+      ret[i].to.tag.typ   = get_param_int(map, "to_typ",   0, i);
+      ret[i].codec        = get_param_str(map, "codec",    1, i);
       ret[i].next         = i < count - 1 ? &ret[i+1] : (halmap *) NULL;
     }
   }
@@ -386,7 +345,7 @@ device *find_device_by_readfd(device *root, int fd) {
 }
 
 /* Loop through devs linked list, find and return entry matching "id" */
-device *find_device_by_id(device *root, char *id) {
+device *find_device_by_id(device *root, const char *id) {
   for(device *d = root; d != NULL; d = d->next) {
     // fprintf(stderr, "%s: list=%s find=%s\n", __func__, d->id, id);
     if ( (d->enabled != 0) && (strcmp(d->id, id) == 0) )  return d;
@@ -394,12 +353,32 @@ device *find_device_by_id(device *root, char *id) {
   return ((device *) NULL);
 }
 
-/* Open an IPC interface for read and for write and return their fds */
-void interface_open_ipc(device *d) {
+/* Open HAL child process to read or write using the Application API (using zcat) */
+void start_api_process(device *d, int *read_pipe, int *write_pipe, int pipe_open, int pipe_close, int fd_open, const char *mode, const char *addr) {
   int  pid;
-  int  read_pipe[2];   /* Read pipes for parent-child communication */
-  int  write_pipe[2];  /* Write pipes for parent-child communication */
 
+  if ((pid = fork()) < 0) {
+    fprintf(stderr, "Fork failed\n");
+    exit(EXIT_FAILURE);
+  } else if (pid == 0) {  /* child (API) process starts here */
+    close(PARENT_READ);
+    close(PARENT_WRITE);
+    close(pipe_close);
+    dup2(pipe_open, fd_open);        /* copy fd_open file descriptor into pipe_open file descriptor */
+    char *argv2[] = {(char *) d->path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
+    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
+    exit(EXIT_FAILURE);                                      /* child process should not reach here */
+  } else {                /* parent (HAL) process */
+    if(hal_verbose) fprintf(stderr, "Spawned %s subscriber pid=%d\n", d->path, pid);
+  }
+}
+
+/* Open IPC interfaces (specified in d) */
+void interface_open_ipc(device *d) {
+  int  read_pipe[2];    /* Read  pipes for parent-child (HAL-API) communication */
+  int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
+
+  /* a) Open communication pipes for IPC reading and writing */
   fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
   if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
     fprintf(stderr, "Pipe creation failed\n");
@@ -407,73 +386,78 @@ void interface_open_ipc(device *d) {
   }
   if(hal_verbose) fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
   
-  if ((pid = fork()) < 0) {
-    fprintf(stderr, "Fork failed\n");
-    exit(EXIT_FAILURE);
-  } else if (pid == 0) { /* subscriber child */
-    close(PARENT_READ);
-    close(PARENT_WRITE);
-    close(CHILD_READ);
-    dup2(CHILD_WRITE, STDOUT_FILENO);   /* zc sub output goes to pipe (CHILD_WRITE) */
-    char *argv2[] = {(char *) d->path, "-b", "sub", (char *) d->addr_in, NULL};
-    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
-    exit(EXIT_FAILURE);
-  } else { /* save subscriber child pid in parent */
-    if(hal_verbose) fprintf(stderr, "Spawned %s subscriber pid=%d\n", d->path, pid);
-  }
+  /* b) Fork HAL child processes (to read and write on ipc channels) */
+  start_api_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in,  d->addr_in);
+  start_api_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, d->addr_out);
 
-  if ((pid = fork()) < 0) {
-    fprintf(stderr, "Fork failed\n");
-    exit(EXIT_FAILURE);
-  } else if (pid == 0) { /* publisher child */
-    close(PARENT_READ);
-    close(PARENT_WRITE);
-    dup2(CHILD_READ, STDIN_FILENO);
-    close(CHILD_WRITE);
-    char *argv2[] = {(char *) d->path, "-b", "pub", (char *) d->addr_out, NULL};
-//    char *argv2[] = {zcpath, "-b", "-v", "-d", delim, "pub", zcpub, NULL};
-    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
-    exit(EXIT_FAILURE);
-  } else { /* save publisher child pid in parent */
-    if(hal_verbose) fprintf(stderr, "Spawned %s publisher pid=%d\n", d->path, pid);
-  }
-
+  /* c) Parent (HAL) process finishes up */
   close(CHILD_READ);
   close(CHILD_WRITE);
   d->readfd  = PARENT_READ;
   d->writefd = PARENT_WRITE;
 }
 
-/* Open a network socket for read-write and return its fd */
-void interface_open_socket(device *d) {
-  int fd;
-  struct sockaddr_in serv_addr;
-
-  if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-  {
-    printf("\n Socket creation error for %s\n", d->id);
-    exit(EXIT_FAILURE);
-  }
+/* Open a network socket and return its fd. Optionally bind (bind_flag=1) and connect (bind_flag=0 & tcp) socket */
+int interface_open_inet_one(device *d, const char *addr, int port, struct sockaddr_in *serv_addr, int bind_flag) {
+  int fd, comm_type;
   
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(d->port);
-  if(inet_pton(AF_INET, d->addr_bi, &serv_addr.sin_addr)<=0)
+  /* a) Copy IP destination information into sockaddr_in struture */
+  serv_addr->sin_family = AF_INET;
+  serv_addr->sin_port = htons(port);
+  if(inet_pton(AF_INET, addr, &(serv_addr->sin_addr))<=0)
   {
     printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path);
     exit(EXIT_FAILURE);
   }
   
-  if (connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  /* b) Create socket */
+  if ( strcmp(d->comms, "udp") == 0) comm_type = SOCK_DGRAM;
+  else                               comm_type = SOCK_STREAM;
+  if ((fd = socket(AF_INET, comm_type, 0)) < 0)
   {
-    printf("\nConnection Failed for %s %s\n", d->id, d->path);
+    printf("\nSocket creation error for %s\n", d->id);
     exit(EXIT_FAILURE);
   }
-  d->readfd = fd;
-  d->writefd = fd;
+  if(hal_verbose) fprintf(stderr, "Created new TCP socket (fd=%d ty=%d).......", fd, comm_type);
+
+  if (bind_flag == 1) {
+    // c1) Bind the socket with the HAL server address
+    if ( bind(fd, (const struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0 )
+    {
+      perror("\nbind failed");
+      exit(EXIT_FAILURE);
+    }
+  }
+  else {
+    /* c2) Connect the socket (if not UDP) */
+    if ( strcmp(d->comms, "udp") != 0) {
+      if (connect(fd, (struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0)
+      {
+        printf("\nConnection Failed for %s %s\n", d->id, d->path);
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+  return(fd);
+}
+    
+/* Open a network socket for read-write and store the fds (in the device structure) */
+void interface_open_inet(device *d) {
+  int fd_out = -1, fd_in = -1;
+  
+  /* Create socket and connect if required */
+  if (strlen(d->addr_out) > 0) fd_out = interface_open_inet_one(d, d->addr_out, d->port_out, &(d->socaddr_out), 0);
+  if (strlen(d->addr_in)  > 0) fd_in  = interface_open_inet_one(d, d->addr_in,  d->port_in,  &(d->socaddr_in),  1);
+
+  /* Save file descriptors */
+  if ( (fd_out == -1) && (fd_in == -1) ) {fprintf(stderr, "\n%s: No address speciffied for interface %s\n", __func__, d->id); exit(EXIT_FAILURE);}
+  if ( (fd_out == -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_in;}
+  if ( (fd_out != -1) && (fd_in == -1) ) {d->readfd = fd_out; d->writefd = fd_out;}
+  if ( (fd_out != -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_out;}
 }
 
-/* Open a serial interface for read-write and return its fd */
-void interface_open_serial(device *d) {
+/* Open a serial (tty) interface for read-write and return its fd */
+void interface_open_tty(device *d) {
   int fd;
   if ((fd = open(d->path, O_RDWR)) < 0) {
     fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
@@ -488,10 +472,9 @@ void devices_open(device *dev_linked_list_root) {
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled == 0) continue;
     if(hal_verbose) fprintf(stderr, "About to open device: %s %s test=%d\n", d->id, d->path, strncmp(d->path, "/dev/", 5));
-    /**/
-    if (!strncmp(d->path, "/dev/", 5))  interface_open_serial(d);
-    else if (strlen(d->addr_bi)  > 0)   interface_open_socket(d);
-    else if (strlen(d->addr_in)  > 0)   interface_open_ipc(d);
+    if        (!strncmp(d->comms, "tty", 3))                                      interface_open_tty(d);
+    else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
+    else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else { fprintf(stderr, "Device %s unknown\n", d->id); exit(EXIT_FAILURE);}
     if(hal_verbose) fprintf(stderr, "File open succeeded for %s (with fdr=%d fdw=%d)\n", d->id, d->readfd, d->writefd);
   }
@@ -538,25 +521,65 @@ pdu *codec(halmap *h, pdu *ipdu) {
 }
 
 /**********************************************************************/
-/* PDU functions (including coding and decoding) */
+/* PDU Decoding from packet arriving at HAL */
 /*********t************************************************************/
-/* Free memory allocated for PDU */
-void pdu_delete(pdu *pdu) {
-  free(pdu->psel.dev);
-}
-
 /* Put closure packet (in buf) into internal HAL PDU structure (*p) */
-void pdu_from_closure (pdu *out, uint8_t *in) {
+void pdu_from_pkt_c (pdu *out, uint8_t *in) {
   pkt_c  *pkt = (pkt_c *) in;
   
+  if(hal_verbose) fprintf(stderr, "HAL put packet into internal PDU\n");
   tag_decode(&(out->psel.tag), &(pkt->tag));
   len_decode(&(out->data_len), pkt->data_len);
   memcpy(out->data, pkt->data, out->data_len);
 //  pdu_print(p);
 }
 
+/* Put data from buf (using M1 model) into internal HAL PDU */
+void pdu_from_pkt_m1 (pdu *out, uint8_t *in, int len) {
+  pkt_m1  *pkt = (pkt_m1 *) in;
+  tlv_m1  *tlv;
+    
+  if(hal_verbose) {fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); m1_print(pkt);}
+  out->psel.tag.mux = ntohl(pkt->session_tag);
+  out->psel.tag.sec = ntohl(pkt->message_tag);
+//  fprintf(stderr, "YYYY: count=%d\n", ntohl(pkt->message_tlv_count));
+  for (int i=0; i < ntohl(pkt->message_tlv_count); i++) {
+    tlv = &(pkt->tlv[0]);
+    out->psel.tag.typ = ntohl(tlv->data_tag);
+    out->data_len = ntohl(tlv->data_len);
+    memcpy (out->data, tlv->data, out->data_len);
+  }
+}
+
+/* Put data from buf (using G1 model) into internal HAL PDU */
+void pdu_from_pkt_g1 (pdu *out, uint8_t *in , int len) {
+  pkt_g1    *pkt = (pkt_g1 *) in;
+  
+  if(hal_verbose) { fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); g1_print(pkt);}
+  out->psel.tag.mux = ntohl(pkt->message_tag_ID);
+  out->psel.tag.sec = 0;         /* 0 is a don't care */
+  out->psel.tag.typ = 0;         /* 0 is a don't care */
+  out->data_len     = ntohs(pkt->data_len);
+  memcpy (out->data, pkt->data, out->data_len);
+}
+
+/* Write packet into internal PDU */
+pdu *pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
+  out = malloc(sizeof(pdu));
+  out->psel.dev = strdup(idev->id);
+  if      (strcmp(idev->model, "pkt_c")  == 0)  pdu_from_pkt_c  (out, in);
+  else if (strcmp(idev->model, "pkt_m1") == 0)  pdu_from_pkt_m1 (out, in, len_in);
+  else if (strcmp(idev->model, "pkt_g1") == 0)  pdu_from_pkt_g1 (out, in, len_in);
+  else {fprintf(stderr, "%s: unknown interface model: %s\n", __func__, idev->model); exit(EXIT_FAILURE);}
+  if(hal_verbose) {fprintf(stderr, "HAL created new PDU: "); pdu_print(out);}
+  return (out);
+}
+
+/**********************************************************************/
+/* PDU Encoding into packet sent by HAL */
+/*********t************************************************************/
 /* Put internal PDU into closure packet (in buf) */
-int pdu_into_closure (uint8_t *out, pdu *in, gaps_tag *otag) {
+int pdu_into_pkt_c (uint8_t *out, pdu *in, gaps_tag *otag) {
   size_t    pkt_len;
   pkt_c    *pkt = (pkt_c *) out;
 
@@ -568,48 +591,19 @@ int pdu_into_closure (uint8_t *out, pdu *in, gaps_tag *otag) {
   return (pkt_len);
 }
 
-/* Default Convert from haljson string to bkend integer (in network order) */
-uint32_t pdu_field_into_m1(uint32_t tag_field) {
-    return (htonl(tag_field));
-}
-
-/* Default Convert to haljson string from bkend integer (in network order) */
-uint32_t pdu_field_from_m1(uint32_t tag_field) {
-  return (ntohl(tag_field));
-}
-
-/* Put data from buf (using M1 model) into internal HAL PDU */
-void pdu_from_m1 (uint8_t *buf, const char *dev_id, pdu *p, int len) {
-  pkt_m1  *b = (pkt_m1 *) buf;
-  tlv_m1  *tlv;
-    
-  if(hal_verbose) fprintf(stderr, "Put M1 packet data from dev=%s into internal HAL PDU\n", dev_id);
-  p->psel.dev = strdup(dev_id);
-// fprintf(stderr, "HAL get input on %s: ", dev_id); m1_print((bkend *) buf);
-  p->psel.tag.mux = pdu_field_from_m1(b->session_tag);
-  p->psel.tag.sec = pdu_field_from_m1(b->message_tag);
-//  fprintf(stderr, "YYYY: count=%d\n", ntohl(b->message_tlv_count));
-  for (int i=0; i < ntohl(b->message_tlv_count); i++) {
-    tlv = &(b->tlv[0]);
-    p->psel.tag.typ = pdu_field_from_m1(tlv->data_tag);
-    p->data_len = pdu_field_from_m1(tlv->data_len);
-    memcpy (p->data, tlv->data, p->data_len);
-  }
-}
-
 /* Put data into buf (using M1 model) from internal HAL PDU */
 /* Returns length of buffer */
-int pdu_into_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
+int pdu_into_pkt_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   pkt_m1  *pkt = (pkt_m1 *) out;
   tlv_m1  *tlv;
 
 //  if(hal_verbose) {fprintf(stderr, "%s\n", __func__); pdu_print(in);}
-  pkt->session_tag = pdu_field_into_m1(otag->mux);
-  pkt->message_tag = pdu_field_into_m1(otag->sec);
+  pkt->session_tag = htonl(otag->mux);
+  pkt->message_tag = htonl(otag->sec);
   pkt->message_tlv_count = htonl(1);
   for (int i=0; i < 1; i++) {
     tlv = &(pkt->tlv[i]);
-    tlv->data_tag = pdu_field_into_m1(otag->typ);
+    tlv->data_tag = htonl(otag->typ);
     tlv->data_len = htonl(in->data_len);
     memcpy((char *) tlv->data, (char *) in->data, in->data_len);
   }
@@ -617,18 +611,9 @@ int pdu_into_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) + sizeof(tlv->data_len) + in->data_len);
 }
 
-/* Put data from buf (using G1 model) into internal HAL PDU */
-void pdu_from_g1 (uint8_t *buf, const char *dev_id, pdu *p, int len) {
-  pkt_g1    *pkt = (pkt_g1 *) buf;
-
-  if(hal_verbose) fprintf(stderr, "Put G1 packet data from dev=%s into internal HAL PDU\n", dev_id);
-  g1_print(pkt);
-  exit (22);
-}
-
 /* Put data into buf (using bkend model) from internal HAL PDU */
 /* Returns length of buffer */
-int pdu_into_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
+int pdu_into_pkt_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   pkt_g1    *pkt = (pkt_g1 *) out;
   uint16_t  len = (uint16_t) in->data_len;
 
@@ -640,45 +625,57 @@ int pdu_into_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   return (sizeof(pkt->message_tag_ID) + sizeof(pkt->data_len) + sizeof(pkt->crc16) + in->data_len);
 }
 
+/* Write packet from internal PDU into packet */
+void pdu_into_packet(uint8_t *out, pdu *in, int *pkt_len, gaps_tag *otag, const char *dev_model) {
+  if      (strcmp(dev_model, "pkt_c")  == 0)  *pkt_len = pdu_into_pkt_c  (out, in, otag);
+  else if (strcmp(dev_model, "pkt_m1") == 0)  *pkt_len = pdu_into_pkt_m1 (out, in, otag);
+  else if (strcmp(dev_model, "pkt_g1") == 0)  *pkt_len = pdu_into_pkt_g1 (out, in, otag);
+  else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}
+  if(hal_verbose) {fprintf(stderr, "HAL writing: "); data_print("Packet", out, *pkt_len);}
+}
+
 /**********************************************************************/
-/* HAL Read and Write Functions */
+/* HAL Device Read and Write Functions */
 /*********t************************************************************/
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
+  int             rv=-1;
+  int             pkt_len=0;
   pdu            *ret = NULL;
   static uint8_t  buf[PACKET_MAX];
-  int             len;
   int             fd;
   const char     *dev_id;
+  const char     *com_type;
 
   /* a) read input into buf and get its length (with input dev_id and fd) */
   dev_id = idev->id;
   fd = idev->readfd;
-
-  len = read(fd, buf, PACKET_MAX);
+  com_type = idev->comms;
+//exit (21);
+  if(hal_verbose) fprintf(stderr, "HAL reading using comms type %s\n", com_type);
+  if (   (strcmp(com_type, "ipc") == 0)
+      || (strcmp(com_type, "tty") == 0)
+      || (strcmp(com_type, "tcp") == 0)
+      ) {
+    rv = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
+  }
+  else if (strcmp(com_type, "udp") == 0) {
+    rv = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &(idev->socaddr_out), (socklen_t *) &pkt_len);
+    if (rv < 0) {
+      printf("%s recvfrom errno code: %d\n", __func__, errno);
+      exit(EXIT_FAILURE);
+    }
+      
+  }
+  else {fprintf(stderr, "%s unknown comms type %s", __func__, com_type); exit(EXIT_FAILURE);}
   if(hal_verbose) {
-    fprintf(stderr, "HAL read input on %s (model=%s) fd=%d", dev_id, idev->model, fd);
-    data_print("", (uint8_t *) buf, len);
+    fprintf(stderr, "HAL read input (len=%d rv=%d) on %s (model=%s) fd=%d", pkt_len, rv, dev_id, idev->model, fd);
+    data_print("", (uint8_t *) buf, pkt_len);
   }
+  
   /* b) Write input into internal PDU */
-  ret = malloc(sizeof(pdu));
-  ret->psel.dev = strdup(dev_id);
- 
-  if (strcmp(idev->model, "pkt_c") == 0) {
-//    fprintf(stderr, "HAL reading from %s: ", dev_id);
-    pdu_from_closure (ret, buf);
-  } else if (strcmp(idev->model, "pkt_m1") == 0) {
-    pdu_from_m1 (buf, dev_id, ret, len);
-    fprintf(stderr, "HAL reading from %s: ", dev_id); m1_print((pkt_m1 *) buf);
-  } else if (strcmp(idev->model, "pkt_g1") == 0) {
-      pdu_from_g1 (buf, dev_id, ret, len);
-  } else {
-    fprintf(stderr, "Error, unknown interface model: %s\n", idev->model);
-    exit (22);
-  }
-  if(hal_verbose) pdu_print(ret);
-  return ret;
+  return(pdu_from_packet(ret, buf, pkt_len, idev));
 }
 
 /* Write pdu to specified fd */
@@ -686,7 +683,6 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
   int             rv=-1;
   int             fd;
   int             pkt_len=0;
-  const char     *dev_model;
   const char     *com_type;
   static uint8_t  buf[PACKET_MAX];
 
@@ -695,19 +691,14 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
     fprintf(stderr, "on"); devices_print_one(odev);
   }
   /* a) Convert into packet based on interface packet model  */
-  dev_model = odev->model;
-  if      (strcmp(dev_model, "pkt_c") == 0)  pkt_len = pdu_into_closure (buf, p, otag);
-  else if (strcmp(dev_model, "pkt_m1") == 0) pkt_len = pdu_into_m1 (buf, p, otag);
-  else if (strcmp(dev_model, "pkt_g1") == 0) pkt_len = pdu_into_g1 (buf, p, otag);
-  else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}
-  if(hal_verbose) {fprintf(stderr, "HAL writing: "); data_print("Packet", buf, pkt_len);}
+  pdu_into_packet(buf, p, &pkt_len, otag, odev->model);
 
-  /* b) Write to interace based on interface comms type */
+  /* b) Write to interface based on interface comms type */
   fd = odev->writefd;
   com_type = odev->comms;
   if(hal_verbose) fprintf(stderr, "HAL writing using comms type %s\n", com_type);
   if (   (strcmp(com_type, "ipc") == 0)
-      || (strcmp(com_type, "serial") == 0)
+      || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "tcp") == 0)
      ) {
     rv = write(fd, buf, pkt_len);     /* write = send for tcp with no flags */
@@ -715,12 +706,18 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
   else if (strcmp(com_type, "udp") == 0) {
     fprintf(stderr, "XXX: Write udp mode to %s interface\n", com_type);
 //    len = sizeof(cliaddr);  //len is value/resuslt
-//    rv = sendto(fd, buf, pkt_len), MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
+    /* (const struct sockaddr *) &cliaddr */
+    rv = sendto(fd, buf, pkt_len, MSG_CONFIRM, (const struct sockaddr *) &(odev->socaddr_out), sizeof(odev->socaddr_out));
 //    rv = recvfrom(fd, buf, pkt_len, MAXLINE, ( struct sockaddr *) &cliaddr, &len);
   }
   else {fprintf(stderr, "%s unknown comms type %s", __func__, com_type); exit(EXIT_FAILURE);}
   
   if(hal_verbose) fprintf(stderr, "HAL wrote on %s (fd=%d) and got rv=%d\n", odev->id, fd, rv);
+}
+
+/* Free memory allocated for PDU */
+void pdu_delete(pdu *pdu) {
+  free(pdu);
 }
 
 /* Process input from device (with 'input_fd') and send to output */
@@ -731,26 +728,27 @@ void process_input(int ifd, halmap *map, device *devs) {
   
   idev = find_device_by_readfd(devs, ifd);
   if(idev == NULL) { 
-    fprintf(stderr, "Device not found for input fd\n");
+    fprintf(stderr, "%s: Device not found for input fd\n", __func__);
     return; 
   } 
 
   ipdu = read_pdu(idev);
   if(ipdu == NULL) { 
-    fprintf(stderr, "Input PDU is NULL\n");
+    fprintf(stderr, "%s: Input PDU is NULL\n", __func__);
     return; 
   }
 
   h = halmap_find(ipdu, map);
   if(h == NULL) { 
-    fprintf(stderr, "No matching HAL map entry\n");
+    fprintf(stderr, "%s: No matching HAL map entry for: ", __func__);
+    pdu_print(ipdu);
     pdu_delete(ipdu);
     return; 
   }
   
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
-    fprintf(stderr, "Device not found for output\n");
+    fprintf(stderr, "%s: Device %s not found for output\n", __func__,  h->to.dev);
     return; 
   }
 

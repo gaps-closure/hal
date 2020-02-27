@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
   if (argc >= 2)  mux = atoi(argv[1]);
   tag_write(&tag, mux, sec, typ);
   /* b) Encode data and send to CLOSURE */
+//  gaps_init_app_data_codec(char *spec_filename);
   gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   gaps_asyn_send(adu,  adu_len,  tag);
   /* c) Receive data from CLOSURE and decode */
