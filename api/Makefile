@@ -1,17 +1,17 @@
 CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
-LDLIBS      = -L. -lclosure -lzmq 
+LDLIBS      = -L./codecs -lpnt
 
-all: libclosure.a
+all: libxdcomms.a
 
-closure.o:  closure.c
-	$(CC) $(CFLAGS) -c $< 
+libxdcomms.a: xdcomms.o 
+	ar rcs $@ $< 
 
-libclosure.a: closure.o   # link library files into a static library
-	ar rcs libclosure.a closure.o
+xdcomms.o:  xdcomms.c
+	$(CC) $(CFLAGS) -c $< $(LDLIBS)
 
-libs: libclosure.a
+libs: libxdcomms.a
 
 clean:
 	rm -f *.o *.a

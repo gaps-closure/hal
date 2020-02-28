@@ -5,7 +5,8 @@
  * February 2020, Perspecta Labs
  */
 
-#include "api/closure.h"
+#include "api/xdcomms.h"
+#include "codecs/pnt.h"
 
 void pnt_set (pnt_datatype *pnt) {
     pnt->message_id  = 130;
@@ -32,11 +33,14 @@ int main(int argc, char **argv) {
   tag_write(&tag, mux, sec, typ);
   /* b) Encode data and send to CLOSURE */
 //  gaps_init_app_data_codec(char *spec_filename);
+//  void (*fun_ptr)(int) = gaps_data_encode;
   gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   gaps_asyn_send(adu,  adu_len,  tag);
   /* c) Receive data from CLOSURE and decode */
+  /*
   gaps_asyn_recv(adu, &adu_len, &tag);
   gaps_data_decode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   fprintf(stderr, "app received "); tag_print(&tag); pnt_print(&pnt1);
   return (0);
+   */
 }

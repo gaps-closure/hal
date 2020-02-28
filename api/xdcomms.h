@@ -1,3 +1,6 @@
+#ifndef XDC_HEADER_FILE
+#define XDC_HEADER_FILE
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -7,10 +10,10 @@
 #include <arpa/inet.h>
 #include <assert.h>
 
+#include "../codecs/pnt.h"
+
 #define ADU_SIZE_MAX_C  200
 #define PACKET_MAX      2048
-#define DATA_TYP_PNT    1
-#define DATA_TYP_XYZ    2
 #define RX_FILTER_LEN   4
 #define HAL_IPC_SUB "ipc://halsub_am"
 #define HAL_IPC_PUB "ipc://halpub_am"
@@ -33,22 +36,8 @@ typedef struct _pkt_c {
   uint8_t   data[ADU_SIZE_MAX_C];
 } pkt_c;
 
-/* Data structure: PNT */
-typedef struct _pnt_datatype {
-    uint16_t    message_id;
-    uint16_t    track_index;
-    int16_t     lon;
-    uint16_t    lon_frac;
-    int16_t     lat;
-    uint16_t    latfrac;
-    int16_t     alt;
-    uint16_t    altfrac;
-} pnt_datatype;
-
-
 extern void tag_print (gaps_tag *);
 extern void data_print(const char *, uint8_t *, size_t);
-extern void pnt_print (pnt_datatype *);
 extern void tag_write (gaps_tag *, uint32_t,   uint32_t,   uint32_t);
 extern void tag_read  (gaps_tag *, uint32_t *, uint32_t *, uint32_t *);
 extern void tag_encode (gaps_tag *, gaps_tag *);
@@ -61,3 +50,5 @@ extern void gaps_asyn_send(uint8_t *, size_t,   gaps_tag);
 extern void gaps_asyn_recv(uint8_t *, size_t *, gaps_tag *);
 
 // Guard Provisioning calls to be added here
+
+#endif

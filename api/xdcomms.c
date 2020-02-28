@@ -1,5 +1,5 @@
 /*
- * CLOSUREE.C
+ * XDCOMMS.C
  *   CLOSURE API functions
  *
  * February 2020
@@ -8,7 +8,7 @@
  * For description and revision history see README.txt
  */
 
-#include "closure.h"
+#include "xdcomms.h"
 
 int clo_verbose=1;
 
@@ -28,18 +28,6 @@ void data_print(const char *str, uint8_t *data, size_t data_len) {
     fprintf(stderr, "%02X", data[i]);
   }
   fprintf(stderr, "\n");
-}
-
-void pnt_print (pnt_datatype *pnt) {
-  fprintf(stderr, "PNT id=%d, tr=%d, lo=(%d.%d), lat=(%d.%d), alt=(%d.%d)\n",
-  pnt->message_id,
-  pnt->track_index,
-  pnt->lon,
-  pnt->lon_frac,
-  pnt->lat,
-  pnt->latfrac,
-  pnt->alt,
-  pnt->altfrac);
 }
 
 /**********************************************************************/
@@ -86,49 +74,13 @@ void len_decode (size_t *out, uint32_t in) {
 /* LIB Coding Functions for Data (TODO, Use DFDL schema) */
 /**********************************************************************/
 /*
- * Convert Data (TODO, Use DFDL schema)
- */
-void data_encode_pnt (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
-  pnt_datatype *p1 = (pnt_datatype *) buff_in;
-  pnt_datatype *p2 = (pnt_datatype *) buff_out;
-    
-  p2->message_id  = htons(p1->message_id);
-  p2->track_index = htons(p1->track_index);
-  p2->lon         = htons(p1->lon);
-  p2->lon_frac    = htons(p1->lon_frac);
-  p2->lat         = htons(p1->lat);
-  p2->latfrac     = htons(p1->latfrac);
-  p2->alt         = htons(p1->alt);
-  p2->altfrac     = htons(p1->altfrac);
-  *len_out = *len_in;
-}
-  
-/*
- * Convert Data (TODO, Use DFDL schema)
- */
-void data_decode_pnt (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
-  pnt_datatype *p1 = (pnt_datatype *) buff_out;
-  pnt_datatype *p2 = (pnt_datatype *) buff_in;
-    
-  p2->message_id  = ntohs(p1->message_id);
-  p2->track_index = ntohs(p1->track_index);
-  p2->lon         = ntohs(p1->lon);
-  p2->lon_frac    = ntohs(p1->lon_frac);
-  p2->lat         = ntohs(p1->lat);
-  p2->latfrac     = ntohs(p1->latfrac);
-  p2->alt         = ntohs(p1->alt);
-  p2->altfrac     = ntohs(p1->altfrac);
-  *len_in = *len_out;
-}
-
-/*
  * Encode data of type dtype using DFDL schema
  */
 void gaps_data_encode(uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in, int dtype) {
     
   switch (dtype) {
     case DATA_TYP_PNT:
-      data_encode_pnt (buff_out, len_out, buff_in, len_in);
+      pnt_data_encode (buff_out, len_out, buff_in, len_in);
       break;
     default:
       fprintf(stderr, "Do not yet support data type = %d\n", dtype);
@@ -145,7 +97,7 @@ void gaps_data_decode(uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
     
   switch (dtype) {
     case DATA_TYP_PNT:
-      data_decode_pnt (buff_out, len_out, buff_in, len_in);
+      pnt_data_decode (buff_out, len_out, buff_in, len_in);
       break;
     default:
       fprintf(stderr, "Do not yet support data type = %d\n", dtype);

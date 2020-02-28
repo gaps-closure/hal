@@ -1,33 +1,31 @@
 CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
-LDFLAGS     = -lconfig
-LDLIBS      = -L./api -lclosure -lzmq 
+LDLIBS      = -L./api -lxdcomms -lzmq -L./codecs -lpnt 
 
-all: zcbin libapi hal app_test
+all: sub_zc sub_api sub_codecs sub_daemon app_test
 
 app_test: app_test.o
 	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
 
-hal: hal.o
-	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS) $(LDFLAGS)
-
 app_test.o: app_test.c 
 	$(CC) $(CFLAGS) -c $<
 
-hal.o: hal.c 
-	$(CC) $(CFLAGS) -c $<
-
-zcbin: 
+sub_zc: 
 	make CC=$(CC) -C ./zc
 
-libapi:
+sub_api:
 	make CC=$(CC) -C ./api
 
+sub_daemon:
+	make CC=$(CC) -C ./daemon
+
+sub_codecs:
+	make CC=$(CC) -C ./codecs
 
 clean:
-	rm -f *.o zc/*.o
-	rm -f app_test hal zc/zc  api/*.o api/*.a fifo* *_log.txt halsub* halpub*
+	rm -f app_test *.o fifo* *_log.txt halsub* halpub*
+	rm -f zc/zc zc/*.o api/*.a api/*.o codecs/*.a codecs/*.o daemon/hal daemon/*.o 
 
 install: 
 	mkdir -p $(INSTALLPATH)
