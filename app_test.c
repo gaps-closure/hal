@@ -37,10 +37,8 @@ int main(int argc, char **argv) {
   gaps_data_encode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   gaps_asyn_send(adu,  adu_len,  tag);
   /* c) Receive data from CLOSURE and decode */
-  /*
   gaps_asyn_recv(adu, &adu_len, &tag);
   gaps_data_decode(adu, &adu_len, (uint8_t *) &pnt1, &pnt1_len, typ);
   fprintf(stderr, "app received "); tag_print(&tag); pnt_print(&pnt1);
   return (0);
-   */
 }
