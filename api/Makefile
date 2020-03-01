@@ -1,7 +1,7 @@
 CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
-LDLIBS      = -L./codecs -lpnt
+#LDLIBS      = -L./codecs -lpnt
 
 all: libxdcomms.a
 
@@ -9,7 +9,7 @@ libxdcomms.a: xdcomms.o
 	ar rcs $@ $< 
 
 xdcomms.o:  xdcomms.c
-	$(CC) $(CFLAGS) -c $< $(LDLIBS)
+	$(CC) $(CFLAGS) -c $<
 
 libs: libxdcomms.a
 
