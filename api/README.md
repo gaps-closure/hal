@@ -1,31 +1,6 @@
-# Hardware Abstraction Layer (HAL)
-This repository hosts the open source components of HAL. The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
-
-This repository is maintained by Perspecta Labs.
-
-## Contents
-- [API](#api)
-- [HAL](#hal-daemon)
-- [Codecs](#codecs)
-- [Build](#build)
-- [Run HAL with a Simple Network Emulator](#run-hal)
-- [Run the Application](#run-application)
-
-## HAL Daemon
-This daemon directory contains the Hardware Abstraction Layer (HAL) Service.
-The HAL Service runs as a daemon (typically started by a systemd script at boot 
-time).  Based on its conifguration file (e.g., sample.cfg) HAL opens, conigures 
-and manages cross domain guard devices (real or emualted). It also mediates 
-the  exchange between the application and the guard devices, handling the 
-encoding/decoding, multiplexing/demultiplexing, segmentation/reassembly and 
-rate control, as applicable.
-
-
-## API
-The figure below show the data and control-plane APIs between HAL and the 
+## HAL API
+The defines the data and control-plane APIs between HAL and the 
 partitioned application programs.
-
-![HAL API](hal_api.png)
 
 ### HAL Data-Plane API
 
@@ -126,42 +101,3 @@ HAL Control-Plane API provisions using a libconfig File, which contains:
   * CDG hardware configuration (including pipeline setup?)
 
 * Cross Domain Guard (CDG) provisioning:
-
-## CODECS
-Describes the Application Data Unit (ADU).
-
-## Build
-
-Make sure to install HAL pre-requisites.
-```
-sudo apt install -y libzmq3-dev
-sudo apt install -y libconfig-dev
-```
-
-Compile HAL, together with the closure libarary (libclosure.a), HAL utilities, and application (e.g., app_test.c)
-```
-cd ~/gaps/top-level/hal/
-make clean; make
-```
-
-## Run HAL with a Simple Network Emulator 
-
-Runs the test applicaiton (send and receiving encoded data) using the CLOSURE API, with HAL and a socat device
-(to emulate the network).
-
-```
-sudo tshark -nli lo 'port 5678 or port 6789'
-netstat -aut4 | grep local | grep -e 5678 -e 6789
-
-cd ~/gaps/top-level/hal/
-# 1) Start the network device 
-./net.sh
-
-# 2a) Start HAL as a loopback device
-./hal sample_loopback.cfg
-# 2b) Start HAL sending to device
-./hal sample.cfg
-
-# 3) Start the test APP
-./app_test
-```

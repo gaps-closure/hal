@@ -2,7 +2,7 @@
 #define HAL_HEADER_FILE
 
 #include "../api/xdcomms.h"
-#include "../codecs/pnt.h"
+//#include "../codecs/pnt.h"
 
 #include <unistd.h>	
 #include <sys/time.h>

@@ -2,7 +2,7 @@ CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
 LDFLAGS     = -lconfig
-LDLIBS      = -L../api -lxdcomms -lzmq -L../codecs -lpnt
+LDLIBS      = -L../api -lxdcomms -lzmq   # -L../codecs -lpnt
 
 all: hal
 
