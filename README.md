@@ -6,8 +6,8 @@ This repository is maintained by Perspecta Labs.
 ## Contents
 
 - [HAL](daemon/README.md)
-- [API](#api/README.md)
-- [Codecs](#codecs/README.md)
+- [API](api/)
+- [Codecs](codecs)
 - [Build](#build)
 - [Run HAL with a Simple Network Emulator](#run-hal)
 - [Run the Application](#run-application)
