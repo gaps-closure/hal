@@ -1,13 +1,17 @@
 # Hardware Abstraction Layer (HAL)
-This repository hosts the open source components of HAL: a) the daemon communicating between applicaitons and network interfaces, b) HAL's API to applicaitons, and c) the codecs that define how application data is serialized for transmission. The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
+This repository hosts the open source components of HAL: a) the daemon communicating between applicaitons and network interfaces, b) HAL's API to applicaitons, and c) the codecs that define how application data is serialized for transmission. 
+
+![HAL interfacing between applications (via its API) and Network Interfaces.](hal_api.png)
+
+The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
 
 This repository is maintained by Perspecta Labs.
 
 ## Contents
 
-- [HAL](daemon/README.md)
-- [API](api/)
-- [Codecs](codecs)
+- [HAL daemon](daemon/)
+- [HAL API](api/)
+- [Application Codecs](codecs/)
 - [Build](#build)
 - [Run HAL with a Simple Network Emulator](#run-hal)
 - [Run the Application](#run-application)
