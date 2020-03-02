@@ -14,6 +14,9 @@ XXX: Organize code with device, HAL, and codec/parser in separate files
 /**********************************************************************/
 
 #include "hal.h"
+#include "config.h"
+#include "devices.h"
+#include "packetize.h"
 
 int hal_verbose=0;
 

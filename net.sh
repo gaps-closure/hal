@@ -52,7 +52,10 @@ sudo chmod 777 $IF_NET1
 trap 'kill $(jobs -p)' EXIT
 
 while true; do
-  echo "Type APP id to send data to APP: 1 & 2 go via '$IF_NET1'; 3 & 4 go via '$IF_NET3'"
+  echo "Type APP id to send data to APP"
+  echo "  1 & 2 go via '$IF_NET1' (connects to $IP_ADDR:tcp:$IP_PORT1)"
+  echo "  3 goes   via '$IF_NET3' ($IP_ADDR:udp:$IP_PORT3b) (type 30 to use HAL client port $IP_PORT3)"
+  echo "  4 goes   via '$IF_NET4' ($IP_ADDR:tcp:$IP_PORT4)"
   read APP_INDEX
   case $APP_INDEX in
     1)

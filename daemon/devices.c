@@ -1,4 +1,5 @@
 #include "hal.h"
+#include "devices.h"
 
 void devices_print_one(device *d)  {
   fprintf(stderr, " %s [v=%d p=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);

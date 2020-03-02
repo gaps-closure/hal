@@ -1,5 +1,5 @@
 #include "hal.h"
-
+#include "packetize.h"
 
 /* Print M1 Packet */
 void c_print(pkt_c *p) {
@@ -28,6 +28,26 @@ void m1_print(pkt_m1 *p) {
   }
   fprintf(stderr, "\n");
 }
+
+/* Print M1 Packet */
+void m2_print(pkt_m2 *p) {
+  tlv_m2 *tlv;
+  
+  fprintf(stderr, "%s: ", __func__);
+  fprintf(stderr, "mux=%u ",  ntohl(p->session_tag));
+  fprintf(stderr, "sec=%u ",  ntohl(p->message_tag));
+  for (int i=0; i < ntohl(p->message_tlv_count); i++) {
+    tlv = &(p->tlv[i]);
+    fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
+    /* XXX: FIX for 64 bit types */
+    fprintf(stderr, "tg=%lu ", tlv->gaps_time);
+    fprintf(stderr, "tl=%lu ", tlv->linux_time);
+    data_print("Data", tlv->data, ntohl(tlv->data_len));
+    fprintf(stderr, "]");
+  }
+  fprintf(stderr, "\n");
+}
+
 
 /* Print G1 Packet */
 void g1_print(pkt_g1 *p) {
@@ -69,6 +89,24 @@ void pdu_from_pkt_m1 (pdu *out, uint8_t *in, int len) {
   }
 }
 
+/* Put data from buf (using M1 model) into internal HAL PDU */
+void pdu_from_pkt_m2 (pdu *out, uint8_t *in, int len) {
+  pkt_m2  *pkt = (pkt_m2 *) in;
+  tlv_m2  *tlv;
+    
+  // fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); m1_print(pkt);
+  out->psel.tag.mux = ntohl(pkt->session_tag);
+  out->psel.tag.sec = ntohl(pkt->message_tag);
+//  fprintf(stderr, "YYYY: count=%d\n", ntohl(pkt->message_tlv_count));
+  for (int i=0; i < ntohl(pkt->message_tlv_count); i++) {
+    tlv = &(pkt->tlv[0]);
+    out->psel.tag.typ = ntohl(tlv->data_tag);
+    out->data_len = ntohl(tlv->data_len);
+    memcpy (out->data, tlv->data, out->data_len);
+  }
+}
+
+
 /* Put data from buf (using G1 model) into internal HAL PDU */
 void pdu_from_pkt_g1 (pdu *out, uint8_t *in , int len) {
   pkt_g1    *pkt = (pkt_g1 *) in;
@@ -85,6 +123,7 @@ void pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
   out->psel.dev = strdup(idev->id);
   if      (strcmp(idev->model, "pkt_c")  == 0)  pdu_from_pkt_c  (out, in);
   else if (strcmp(idev->model, "pkt_m1") == 0)  pdu_from_pkt_m1 (out, in, len_in);
+  else if (strcmp(idev->model, "pkt_m2") == 0)  pdu_from_pkt_m1 (out, in, len_in);
   else if (strcmp(idev->model, "pkt_g1") == 0)  pdu_from_pkt_g1 (out, in, len_in);
   else {fprintf(stderr, "%s: unknown interface model: %s\n", __func__, idev->model); exit(EXIT_FAILURE);}
 //  return (out);
@@ -105,6 +144,7 @@ int pdu_into_pkt_c (uint8_t *out, pdu *in, gaps_tag *otag) {
   return (pkt_len);
 }
 
+
 /* Put data into buf (using M1 model) from internal HAL PDU */
 /* Returns length of buffer */
 int pdu_into_pkt_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
@@ -124,6 +164,35 @@ int pdu_into_pkt_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) + sizeof(tlv->data_len) + in->data_len);
 }
 
+uint64_t GetLinuxTime(void) {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+}
+
+/* Put data into buf (using M1 model) from internal HAL PDU */
+/* Returns length of buffer */
+int pdu_into_pkt_m2 (uint8_t *out, pdu *in, gaps_tag *otag) {
+  pkt_m2  *pkt = (pkt_m2 *) out;
+  tlv_m2  *tlv;
+  
+  pkt->session_tag = htonl(otag->mux);
+  pkt->message_tag = htonl(otag->sec);
+  pkt->message_tlv_count = htonl(1);
+  for (int i=0; i < 1; i++) {
+    tlv = &(pkt->tlv[i]);
+    tlv->data_tag = htonl(otag->typ);
+    tlv->gaps_time = 0;
+    tlv->linux_time = GetLinuxTime();
+    fprintf(stderr, "tl=%lu ", tlv->linux_time);
+    
+    tlv->data_len = htonl(in->data_len);
+    memcpy((char *) tlv->data, (char *) in->data, in->data_len);
+  }
+  /* XXX: Fix packet length to depend on message_tlv_count */
+  return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) +  sizeof(tlv->gaps_time) +  sizeof(tlv->linux_time) + sizeof(tlv->data_len) + in->data_len);
+}
+
 /* Put data into buf (using bkend model) from internal HAL PDU */
 /* Returns length of buffer */
 int pdu_into_pkt_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
@@ -141,6 +210,7 @@ int pdu_into_pkt_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
 void pdu_into_packet(uint8_t *out, pdu *in, int *pkt_len, gaps_tag *otag, const char *dev_model) {
   if      (strcmp(dev_model, "pkt_c")  == 0)  *pkt_len = pdu_into_pkt_c  (out, in, otag);
   else if (strcmp(dev_model, "pkt_m1") == 0)  *pkt_len = pdu_into_pkt_m1 (out, in, otag);
+  else if (strcmp(dev_model, "pkt_m2") == 0)  *pkt_len = pdu_into_pkt_m2 (out, in, otag);
   else if (strcmp(dev_model, "pkt_g1") == 0)  *pkt_len = pdu_into_pkt_g1 (out, in, otag);
   else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}
 }
