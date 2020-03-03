@@ -30,10 +30,13 @@ typedef struct _pkt_m1 {
 /* Mercury TLV */
 typedef struct _tlv_m2 {
   uint32_t  data_tag;         /* Type (e.g., DATA_PAYLOAD_1) */
-  uint64_t  gaps_time;        /* ILIP GAPSS Time (set by ILIP) */
-  uint64_t  linux_time;       /* Used/Set by Application */
+  /* Avoid uint64_t for time fields in order to align struct */
+  uint32_t  gaps_time;        /* ILIP GAPS Time (set by ILIP) */
+  uint32_t  gaps_time_us;     /* ILIP GAPS Time (set by ILIP) */
+  uint32_t  linux_time;       /* Secs since 1970 - Used/Set by Application */
+  uint32_t  linux_time_us;    /* micro-seconds  */
   uint32_t  data_len;         /* Length (in bytes) */
-  uint8_t   data[PKT_M2_ADU_SIZE_MAX];    /* Value (up to 236 (256 - 5*4) bytes of payload) */
+  uint8_t   data[PKT_M2_ADU_SIZE_MAX];    /* Value (up to 220) */
 } tlv_m2;
 
 /* Mercury packet */

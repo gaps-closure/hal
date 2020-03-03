@@ -13,8 +13,8 @@
 #define ADU_SIZE_MAX_C  200
 #define PACKET_MAX      2048
 #define RX_FILTER_LEN   4
-#define HAL_IPC_SUB "ipc://halsub_am"
-#define HAL_IPC_PUB "ipc://halpub_am"
+#define HAL_IPC_SUB     "ipc://halsub1"
+#define HAL_IPC_PUB     "ipc://halpub1"
 #define DATA_TYP_MAX    8
 /**********************************************************************/
 /* LIB Structures */
@@ -54,7 +54,7 @@ extern void len_encode (uint32_t *, size_t);
 extern void len_decode (size_t *, uint32_t);
 
 // Main HAL API functions
-extern void xdc_codec_define(codec_func_ptr, codec_func_ptr, int);
+extern void xdc_register(codec_func_ptr, codec_func_ptr, int);
 extern void xdc_asyn_send(uint8_t *, size_t,   gaps_tag);
 extern void xdc_asyn_recv(uint8_t *, size_t *, gaps_tag *);
 

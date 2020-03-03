@@ -19,7 +19,8 @@ IF_NET1="/dev/vcom1"
 IF_NET2="/dev/vcom1"
 IF_NET3="lo"
 IF_NET4="lo"
-
+ 
+DATA1b="00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 01 23 45 67 89 ab cd ef 00 11 22 33 44 55 66 77 00 00 00 0c 61 62 63 64 65 66 67 68 69 6a 6b 0a"
 DATA1="00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 0c 61 62 63 64 65 66 67 68 69 6a 6b 0a"
 DATA2="00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 00 00 00 0a 6c 6d 6e 6f 70 71 72 73 74 0a"
 DATA3="00 00 00 03 00 0a bb bb 6c 6d 6e 6f 70 71 72 73 03 0a"
@@ -62,17 +63,21 @@ while true; do
       echo "Sending to $IF_NET1 IP=$IP_ADDR port=$IP_PORT1 prot=TCP: $DATA1"
       echo "$DATA1" | stdbuf -oL xxd -r -p  > $FIF0_NET1
       ;;
+    10)
+      echo "Sending to $IF_NET1 IP=$IP_ADDR port=$IP_PORT1 prot=TCP: $DATA1b"
+      echo "$DATA1b" | stdbuf -oL xxd -r -p  > $FIF0_NET1
+      ;;
     2)
       echo "Sending to $IF_NET2 IP=$IP_ADDR port=$IP_PORT2 prot=TCP: $DATA2"
       echo "$DATA2" | stdbuf -oL xxd -r -p  > $FIF0_NET1
       ;;
-    30)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR port=$IP_PORT3 prot=UDP: $DATA3"
-      echo "$DATA3" | stdbuf -oL xxd -r -p  > $FIF0_NET3
-      ;;
     3)
       echo "Sending to $IF_NET3b IP=$IP_ADDR port=$IP_PORT3b prot=UDP: $DATA3"
       echo "$DATA3" | stdbuf -oL xxd -r -p  > $FIF0_NET3b
+      ;;
+    30)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR port=$IP_PORT3 prot=UDP: $DATA3"
+      echo "$DATA3" | stdbuf -oL xxd -r -p  > $FIF0_NET3
       ;;
     4)
       echo "Sending to $IF_NET4 IP=$IP_ADDR port=$IP_PORT4 prot=TCP: $DATA4"

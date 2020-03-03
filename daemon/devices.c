@@ -74,10 +74,11 @@ void interface_open_ipc(device *d) {
     exit(EXIT_FAILURE);
   }
 //  fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
-  
+
+//  fprintf(stderr, "UUUUUUUUUUU %s %s %s %s\n", d->addr_in, HAL_IPC_SUB, d->addr_out, HAL_IPC_PUB);
   /* b) Fork HAL child processes (to read and write on ipc channels) */
-  start_api_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in,  d->addr_in);
-  start_api_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, d->addr_out);
+  start_api_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in,  HAL_IPC_SUB);
+  start_api_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, HAL_IPC_PUB);
 
   /* c) Parent (HAL) process finishes up */
   close(CHILD_READ);

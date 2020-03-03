@@ -29,6 +29,12 @@ void m1_print(pkt_m1 *p) {
   fprintf(stderr, "\n");
 }
 
+void linux_time_print(uint32_t *t) {
+  uint32_t sec  = ntohl(*t);
+  uint32_t usec = ntohl(*(t+1));
+  fprintf(stderr, "tl=%u.%u ", sec, usec);
+}
+
 /* Print M1 Packet */
 void m2_print(pkt_m2 *p) {
   tlv_m2 *tlv;
@@ -40,8 +46,8 @@ void m2_print(pkt_m2 *p) {
     tlv = &(p->tlv[i]);
     fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
     /* XXX: FIX for 64 bit types */
-    fprintf(stderr, "tg=%lu ", tlv->gaps_time);
-    fprintf(stderr, "tl=%lu ", tlv->linux_time);
+    fprintf(stderr, "tg=%x %x ", tlv->gaps_time, tlv->gaps_time_us);
+    linux_time_print(&(tlv->linux_time));
     data_print("Data", tlv->data, ntohl(tlv->data_len));
     fprintf(stderr, "]");
   }
@@ -164,10 +170,11 @@ int pdu_into_pkt_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) + sizeof(tlv->data_len) + in->data_len);
 }
 
-uint64_t GetLinuxTime(void) {
+void linux_time_set(uint32_t *t){
     struct timeval tv;
     gettimeofday(&tv,NULL);
-    return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+    *t     = htonl((uint32_t) tv.tv_sec);
+    *(t+1) = htonl((uint32_t) tv.tv_usec);
 }
 
 /* Put data into buf (using M1 model) from internal HAL PDU */
@@ -182,15 +189,14 @@ int pdu_into_pkt_m2 (uint8_t *out, pdu *in, gaps_tag *otag) {
   for (int i=0; i < 1; i++) {
     tlv = &(pkt->tlv[i]);
     tlv->data_tag = htonl(otag->typ);
-    tlv->gaps_time = 0;
-    tlv->linux_time = GetLinuxTime();
-    fprintf(stderr, "tl=%lu ", tlv->linux_time);
-    
+    tlv->gaps_time = htonl(0x01234567);
+    tlv->gaps_time_us = htonl(0x89abcdef);
+    linux_time_set(&(tlv->linux_time));
     tlv->data_len = htonl(in->data_len);
     memcpy((char *) tlv->data, (char *) in->data, in->data_len);
   }
   /* XXX: Fix packet length to depend on message_tlv_count */
-  return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) +  sizeof(tlv->gaps_time) +  sizeof(tlv->linux_time) + sizeof(tlv->data_len) + in->data_len);
+  return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(*tlv) -  PKT_M2_ADU_SIZE_MAX + in->data_len);
 }
 
 /* Put data into buf (using bkend model) from internal HAL PDU */

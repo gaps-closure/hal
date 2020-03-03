@@ -229,7 +229,7 @@ void codec_maps_print(void) {
 /*
  * Load Codec Table with ADU encode and decode functions
  */
-void xdc_codec_define(codec_func_ptr encode, codec_func_ptr decode, int typ) {
+void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
   static int   do_once = 1;
   
   if (do_once == 1) {
@@ -241,3 +241,7 @@ void xdc_codec_define(codec_func_ptr encode, codec_func_ptr decode, int typ) {
   cmap[typ].decode=decode;
   if(xdc_verbose) codec_maps_print();
 }
+
+// XXX: Additional Functions TBD
+//  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then uses register to load them into the table */
+// Also xdc_provision function(s)

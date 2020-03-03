@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
   pnt_set(adu, &adu_len);
   if (argc >= 2)  mux = atoi(argv[1]);
   tag_write(&tag, mux, sec, typ);
-  /* define encode and decode function (for each data type) */
-  xdc_codec_define(pnt_data_encode, pnt_data_decode, typ);
+  /* Low level function uses manually created encode and decode functions (per data type). This will be replaced by xdc_generate) */
+  xdc_register(pnt_data_encode, pnt_data_decode, typ);
   xdc_asyn_send(adu,  adu_len,  tag);
   xdc_asyn_recv(adu, &adu_len, &tag);
   fprintf(stderr, "app rx "); tag_print(&tag); pnt_print((pnt_datatype *)adu);
