@@ -1,3 +1,5 @@
+/* Read (libconfig) config file information into HAL */
+
 #include "hal.h"
 
 /**********************************************************************/

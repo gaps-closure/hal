@@ -15,7 +15,7 @@
 #include <errno.h>
 
 /**********************************************************************/
-/* HAL Structures */
+/* HAL Daemon Linked List Device and Halmap Databases */
 /*********t************************************************************/
 /* HAL Interface parameters (linked list) */
 typedef struct _dev {
@@ -50,5 +50,15 @@ typedef struct _hal {
   const char  *codec;
   struct _hal *next;
 } halmap;
+
+/**********************************************************************/
+/* HAL Packet Storage (in PDU) */
+/*********t************************************************************/
+/* HAL PDU */
+typedef struct _pdu {
+  selector  psel;                   /* Input device and tag info */
+  size_t    data_len;
+  uint8_t   data[ADU_SIZE_MAX_C];   /* opaque to HAL - serialized by APP */
+} pdu;
 
 #endif

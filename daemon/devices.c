@@ -1,5 +1,16 @@
+/* Open, Find and Print Devices (based on config file info) */
+/*   Currently, it can open three types of devices:
+ *     a) Serial Device (tty)
+ *     b) INET device (tcp or udp)
+ *     c) IPC device (ZMQ pub/sub)
+ */
+
 #include "hal.h"
-#include "devices.h"
+
+#define PARENT_READ  read_pipe[0]
+#define PARENT_WRITE write_pipe[1]
+#define CHILD_WRITE  read_pipe[1]
+#define CHILD_READ   write_pipe[0]
 
 void devices_print_one(device *d)  {
   fprintf(stderr, " %s [v=%d p=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);

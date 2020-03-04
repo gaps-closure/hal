@@ -1,7 +1,4 @@
-#define PARENT_READ  read_pipe[0]
-#define PARENT_WRITE write_pipe[1]
-#define CHILD_WRITE  read_pipe[1]
-#define CHILD_READ   write_pipe[0]
+/* Open, Find and Print Devices (based on config file info) */
 
 extern void devices_print_one(device *);
 extern void devices_print_all(device *);

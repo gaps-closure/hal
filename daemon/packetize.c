@@ -1,3 +1,5 @@
+/* Convert between Internal HAL PDU and any external packet */
+
 #include "hal.h"
 #include "packetize.h"
 
@@ -13,60 +15,6 @@ void c_print(pkt_c *p) {
   fprintf(stderr, "\n");
 }
 
-/* Print M1 Packet */
-void m1_print(pkt_m1 *p) {
-  tlv_m1 *tlv;
-  
-  fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ",  ntohl(p->session_tag));
-  fprintf(stderr, "sec=%u ",  ntohl(p->message_tag));
-  for (int i=0; i < ntohl(p->message_tlv_count); i++) {
-    tlv = &(p->tlv[i]);
-    fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
-    data_print("Data", tlv->data, ntohl(tlv->data_len));
-    fprintf(stderr, "]");
-  }
-  fprintf(stderr, "\n");
-}
-
-void linux_time_print(uint32_t *t) {
-  uint32_t sec  = ntohl(*t);
-  uint32_t usec = ntohl(*(t+1));
-  fprintf(stderr, "tl=%u.%u ", sec, usec);
-}
-
-/* Print M1 Packet */
-void m2_print(pkt_m2 *p) {
-  tlv_m2 *tlv;
-  
-  fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ",  ntohl(p->session_tag));
-  fprintf(stderr, "sec=%u ",  ntohl(p->message_tag));
-  for (int i=0; i < ntohl(p->message_tlv_count); i++) {
-    tlv = &(p->tlv[i]);
-    fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
-    /* XXX: FIX for 64 bit types */
-    fprintf(stderr, "tg=%x %x ", tlv->gaps_time, tlv->gaps_time_us);
-    linux_time_print(&(tlv->linux_time));
-    data_print("Data", tlv->data, ntohl(tlv->data_len));
-    fprintf(stderr, "]");
-  }
-  fprintf(stderr, "\n");
-}
-
-
-/* Print G1 Packet */
-void g1_print(pkt_g1 *p) {
-  fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ", ntohl(p->message_tag_ID));
-  fprintf(stderr, "crc=%02x ", ntohs(p->crc16));
-  data_print("Data", p->data, ntohs(p->data_len));
-  fprintf(stderr, "\n");
-}
-
-/**********************************************************************/
-/* PDU Decoding from packet arriving at HAL */
-/*********t************************************************************/
 /* Put closure packet (in buf) into internal HAL PDU structure (*p) */
 void pdu_from_pkt_c (pdu *out, uint8_t *in) {
   pkt_c  *pkt = (pkt_c *) in;
@@ -76,52 +24,6 @@ void pdu_from_pkt_c (pdu *out, uint8_t *in) {
   len_decode(&(out->data_len), pkt->data_len);
 //  fprintf(stderr, "LEN=%ld\n", out->data_len);
   memcpy(out->data, pkt->data, out->data_len);
-}
-
-/* Put data from buf (using M1 model) into internal HAL PDU */
-void pdu_from_pkt_m1 (pdu *out, uint8_t *in, int len) {
-  pkt_m1  *pkt = (pkt_m1 *) in;
-  tlv_m1  *tlv;
-    
-  // fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); m1_print(pkt);
-  out->psel.tag.mux = ntohl(pkt->session_tag);
-  out->psel.tag.sec = ntohl(pkt->message_tag);
-//  fprintf(stderr, "YYYY: count=%d\n", ntohl(pkt->message_tlv_count));
-  for (int i=0; i < ntohl(pkt->message_tlv_count); i++) {
-    tlv = &(pkt->tlv[0]);
-    out->psel.tag.typ = ntohl(tlv->data_tag);
-    out->data_len = ntohl(tlv->data_len);
-    memcpy (out->data, tlv->data, out->data_len);
-  }
-}
-
-/* Put data from buf (using M1 model) into internal HAL PDU */
-void pdu_from_pkt_m2 (pdu *out, uint8_t *in, int len) {
-  pkt_m2  *pkt = (pkt_m2 *) in;
-  tlv_m2  *tlv;
-    
-  // fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); m1_print(pkt);
-  out->psel.tag.mux = ntohl(pkt->session_tag);
-  out->psel.tag.sec = ntohl(pkt->message_tag);
-//  fprintf(stderr, "YYYY: count=%d\n", ntohl(pkt->message_tlv_count));
-  for (int i=0; i < ntohl(pkt->message_tlv_count); i++) {
-    tlv = &(pkt->tlv[0]);
-    out->psel.tag.typ = ntohl(tlv->data_tag);
-    out->data_len = ntohl(tlv->data_len);
-    memcpy (out->data, tlv->data, out->data_len);
-  }
-}
-
-
-/* Put data from buf (using G1 model) into internal HAL PDU */
-void pdu_from_pkt_g1 (pdu *out, uint8_t *in , int len) {
-  pkt_g1    *pkt = (pkt_g1 *) in;
-  // if(hal_verbose) { fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); g1_print(pkt);
-  out->psel.tag.mux = ntohl(pkt->message_tag_ID);
-  out->psel.tag.sec = 0;         /* 0 is a don't care */
-  out->psel.tag.typ = 0;         /* 0 is a don't care */
-  out->data_len     = ntohs(pkt->data_len);
-  memcpy (out->data, pkt->data, out->data_len);
 }
 
 /* Write packet into internal PDU */
@@ -135,9 +37,6 @@ void pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
 //  return (out);
 }
 
-/**********************************************************************/
-/* PDU Encoding into packet sent by HAL */
-/*********t************************************************************/
 /* Put internal PDU into closure packet (in buf) */
 int pdu_into_pkt_c (uint8_t *out, pdu *in, gaps_tag *otag) {
   size_t    pkt_len;
@@ -148,68 +47,6 @@ int pdu_into_pkt_c (uint8_t *out, pdu *in, gaps_tag *otag) {
   memcpy(pkt->data, in->data, in->data_len);
   pkt_len = in->data_len + sizeof(pkt->tag) + sizeof(pkt->data_len);
   return (pkt_len);
-}
-
-
-/* Put data into buf (using M1 model) from internal HAL PDU */
-/* Returns length of buffer */
-int pdu_into_pkt_m1 (uint8_t *out, pdu *in, gaps_tag *otag) {
-  pkt_m1  *pkt = (pkt_m1 *) out;
-  tlv_m1  *tlv;
-
-  pkt->session_tag = htonl(otag->mux);
-  pkt->message_tag = htonl(otag->sec);
-  pkt->message_tlv_count = htonl(1);
-  for (int i=0; i < 1; i++) {
-    tlv = &(pkt->tlv[i]);
-    tlv->data_tag = htonl(otag->typ);
-    tlv->data_len = htonl(in->data_len);
-    memcpy((char *) tlv->data, (char *) in->data, in->data_len);
-  }
-  /* XXX: Fix packet length to depend on message_tlv_count */
-  return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(tlv->data_tag) + sizeof(tlv->data_len) + in->data_len);
-}
-
-void linux_time_set(uint32_t *t){
-    struct timeval tv;
-    gettimeofday(&tv,NULL);
-    *t     = htonl((uint32_t) tv.tv_sec);
-    *(t+1) = htonl((uint32_t) tv.tv_usec);
-}
-
-/* Put data into buf (using M1 model) from internal HAL PDU */
-/* Returns length of buffer */
-int pdu_into_pkt_m2 (uint8_t *out, pdu *in, gaps_tag *otag) {
-  pkt_m2  *pkt = (pkt_m2 *) out;
-  tlv_m2  *tlv;
-  
-  pkt->session_tag = htonl(otag->mux);
-  pkt->message_tag = htonl(otag->sec);
-  pkt->message_tlv_count = htonl(1);
-  for (int i=0; i < 1; i++) {
-    tlv = &(pkt->tlv[i]);
-    tlv->data_tag = htonl(otag->typ);
-    tlv->gaps_time = htonl(0x01234567);
-    tlv->gaps_time_us = htonl(0x89abcdef);
-    linux_time_set(&(tlv->linux_time));
-    tlv->data_len = htonl(in->data_len);
-    memcpy((char *) tlv->data, (char *) in->data, in->data_len);
-  }
-  /* XXX: Fix packet length to depend on message_tlv_count */
-  return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(*tlv) -  PKT_M2_ADU_SIZE_MAX + in->data_len);
-}
-
-/* Put data into buf (using bkend model) from internal HAL PDU */
-/* Returns length of buffer */
-int pdu_into_pkt_g1 (uint8_t *out, pdu *in, gaps_tag *otag) {
-  pkt_g1    *pkt = (pkt_g1 *) out;
-  uint16_t  len = (uint16_t) in->data_len;
-
-  pkt->message_tag_ID = htonl(otag->mux);
-  pkt->data_len = htons(len);
-  pkt->crc16 = 0;   /* XXX what polynomial? */
-  memcpy((char *) pkt->data, (char *) in->data, in->data_len);
-  return (sizeof(pkt->message_tag_ID) + sizeof(pkt->data_len) + sizeof(pkt->crc16) + in->data_len);
 }
 
 /* Write packet from internal PDU into packet */
