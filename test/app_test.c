@@ -5,8 +5,8 @@
  * March 2020, Perspecta Labs
  */
 
-#include "api/xdcomms.h"
-#include "appgen/pnt.h"
+#include "../api/xdcomms.h"
+#include "../appgen/pnt.h"
 
 void pnt_set (uint8_t *adu, size_t *len) {
   pnt_datatype  *pnt = (pnt_datatype *) adu;
