@@ -1,7 +1,7 @@
 /* Convert between Internal HAL PDU and SDH BE packet */
 
 #include "hal.h"
-#include "packetize_ms.h"
+#include "packetize_sdh-be-v1.h"
 
 void linux_time_print(uint32_t *t) {
   uint32_t sec  = ntohl(*t);

@@ -1,7 +1,7 @@
 /* Convert between Internal HAL PDU and SDH BW packets */
 
 #include "hal.h"
-#include "packetize_ge.h"
+#include "packetize_sdh-bw-v1.h"
 
 /* Print G1 Packet */
 void g1_print(pkt_g1 *p) {

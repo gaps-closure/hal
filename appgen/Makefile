@@ -6,8 +6,8 @@ all: libpnt.a
 libpnt.a: pnt.o
 	ar rcs $@ $<
 
-pnt.o:  pnt.c
-	$(CC) $(CFLAGS) -c $< 
+%.o:	%.c
+	$(CC) $(CFLAGS) -c $<
 
 libs: libpnt.a
 

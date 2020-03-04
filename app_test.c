@@ -6,7 +6,7 @@
  */
 
 #include "api/xdcomms.h"
-#include "codecs/pnt.h"
+#include "appgen/pnt.h"
 
 void pnt_set (uint8_t *adu, size_t *len) {
   pnt_datatype  *pnt = (pnt_datatype *) adu;
