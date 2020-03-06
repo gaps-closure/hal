@@ -11,4 +11,4 @@ typedef struct _pkt_g1 {
 } pkt_g1;
 
 void pdu_from_pkt_g1 (pdu *, uint8_t * , int);
-int  pdu_into_pkt_g1 (uint8_t *, pdu *, gaps_tag *);
+int  pdu_into_pkt_g1 (uint8_t *, pdu *, uint32_t);

@@ -23,20 +23,28 @@ int hal_verbose=0;
 /**********************************************************************/
 /* HAL Print (structure information) */
 /*********t************************************************************/
+/* print halmap selector */
+void selector_print(selector *s) {
+  fprintf(stderr, " %s ", s->dev);
+  if (s->ctag < 0) tag_print(&(s->tag));
+  else             fprintf(stderr, "[ctag=%u] ", s->ctag);
+}
+
 /* Print a information from an internal PDU */
 void pdu_print(pdu *pdu) {
   if (pdu == NULL)  fprintf(stderr, "Cannot print NULL PDU\n");
   else {
     fprintf(stderr, "PDU dev=%s ", pdu->psel.dev);
-    tag_print(&(pdu->psel.tag));
+    selector_print(&(pdu->psel));
     data_print("Encoded-Data", pdu->data, pdu->data_len);
   }
 }
 
 /* Print a single HAL map entry for debugging */
 void halmap_print_one(halmap *hm) {
-  fprintf(stderr, " %s ", hm->from.dev); tag_print(&(hm->from.tag));
-  fprintf(stderr, "-> %s ", hm->to.dev); tag_print(&(hm->to.tag));
+  selector_print(&(hm->from));
+  fprintf(stderr, "-> ");
+  selector_print(&(hm->to));
   fprintf(stderr, ", codec=%s\n", hm->codec);
 }
 
@@ -95,14 +103,31 @@ char *opts_get (int argc, char **argv) {
 
 /* Return halmap with from selector matching PDU selector from the halmap list */
 halmap *halmap_find(pdu *p, halmap *map_root) {
+  selector *hsel;
+  selector *psel = &(p->psel);
+  gaps_tag *tag  = &(psel->tag);
+  int       ctag = psel->ctag;
+
 //  fprintf(stderr, "%s", __func__); pdu_print(p);
   for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
 //    halmap_print_one(hm);
-    if ( strcmp(hm->from.dev, p->psel.dev) == 0 
-         && (hm->from.tag.mux == p->psel.tag.mux)
-         && (hm->from.tag.sec == p->psel.tag.sec)
-         && (hm->from.tag.typ == p->psel.tag.typ))
-      return (hm);
+    if (strcmp(hm->from.dev, p->psel.dev) == 0) {
+      hsel = &(hm->from);
+      if (ctag < 0) {
+         if ( (hsel->tag.mux == tag->mux)
+           && (hsel->tag.sec == tag->sec)
+           && (hsel->tag.typ == tag->typ)
+             ) {
+           return (hm);
+         }
+      }
+      else
+      {
+        if (hsel->ctag == ctag) {
+          return (hm);
+        }
+      }
+    }
   }
   return (halmap *) NULL;
 }
@@ -172,12 +197,14 @@ pdu *read_pdu(device *idev) {
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));
   pdu_from_packet(ret, buf, pkt_len, idev);
-  if(hal_verbose) {fprintf(stderr, "HAL created new PDU: "); pdu_print(ret);}
+  if(hal_verbose) {fprintf(stderr, "HAL created new "); pdu_print(ret);}
   return(ret);
 }
 
 /* Write pdu to specified fd */
-void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
+void write_pdu(device *odev, selector *selector_to, pdu *p) {
+  
+  // old gaps_tag *otag
   int             rv=-1;
   int             fd;
   int             pkt_len=0;
@@ -185,12 +212,12 @@ void write_pdu(device *odev, gaps_tag *otag, pdu *p) {
   static uint8_t  buf[PACKET_MAX];
 
   if (hal_verbose) {
-    fprintf(stderr, "HAL write to "); tag_print(otag);
+    fprintf(stderr, "HAL write to "); selector_print(selector_to);
     fprintf(stderr, "on"); devices_print_one(odev);
   }
   /* a) Convert into packet based on interface packet model  */
   if(hal_verbose) {fprintf(stderr, "%s: ", __func__); pdu_print(p);}
-  pdu_into_packet(buf, p, &pkt_len, otag, odev->model);
+  pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if(hal_verbose) {fprintf(stderr, "%s: ", __func__); data_print("Packet", buf, pkt_len);}
 
   /* b) Write to interface based on interface comms type */
@@ -252,7 +279,7 @@ void process_input(int ifd, halmap *map, device *devs) {
     return; 
   }
 
-  write_pdu(odev, &(h->to.tag), ipdu);
+  write_pdu(odev, &(h->to), ipdu);
   pdu_delete(ipdu);
 }
 

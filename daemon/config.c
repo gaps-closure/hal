@@ -97,16 +97,19 @@ halmap *get_mappings(config_t *cfg) {
     }
     for(int i = 0; i < count; i++) {
       config_setting_t *map = config_setting_get_elem(hmaps, i);
-      ret[i].from.dev     = get_param_str(map, "from_dev", 0, i);
-      ret[i].to.dev       = get_param_str(map, "to_dev",   0, i);
-      ret[i].from.tag.mux = get_param_int(map, "from_mux", 0, i);
-      ret[i].from.tag.sec = get_param_int(map, "from_sec", 0, i);
-      ret[i].from.tag.typ = get_param_int(map, "from_typ", 0, i);
-      ret[i].to.tag.mux   = get_param_int(map, "to_mux",   0, i);
-      ret[i].to.tag.sec   = get_param_int(map, "to_sec",   0, i);
-      ret[i].to.tag.typ   = get_param_int(map, "to_typ",   0, i);
-      ret[i].codec        = get_param_str(map, "codec",    1, i);
+      ret[i].from.dev     = get_param_str(map, "from_dev",  0, i);
+      ret[i].from.ctag    = get_param_int(map, "from_ctag", 1, i);
+      ret[i].from.tag.mux = get_param_int(map, "from_mux",  1, i);
+      ret[i].from.tag.sec = get_param_int(map, "from_sec",  1, i);
+      ret[i].from.tag.typ = get_param_int(map, "from_typ",  1, i);
+      ret[i].to.dev       = get_param_str(map, "to_dev",    0, i);
+      ret[i].to.ctag      = get_param_int(map, "to_ctag",   1, i);
+      ret[i].to.tag.mux   = get_param_int(map, "to_mux",    1, i);
+      ret[i].to.tag.sec   = get_param_int(map, "to_sec",    1, i);
+      ret[i].to.tag.typ   = get_param_int(map, "to_typ",    1, i);
+      ret[i].codec        = get_param_str(map, "codec",     1, i);
       ret[i].next         = i < count - 1 ? &ret[i+1] : (halmap *) NULL;
+      fprintf(stderr, "ctags = %d %d\n", ret[i].from.ctag, ret[i].to.ctag);
     }
   }
   return ret;

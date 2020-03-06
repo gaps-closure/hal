@@ -40,6 +40,7 @@ typedef struct _dev {
 /* HAL Selector (used in HAL map entries and PDUs) */
 typedef struct _sel {
   const char *dev;
+  int         ctag;     /* Compressed (combined) message tag (0 = use daps_tag ) */
   gaps_tag    tag;
 } selector;
 

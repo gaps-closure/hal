@@ -29,6 +29,7 @@ void pdu_from_pkt_c (pdu *out, uint8_t *in) {
 /* Write packet into internal PDU */
 void pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
   out->psel.dev = strdup(idev->id);
+  out->psel.ctag = -1;
   if      (strcmp(idev->model, "pkt_c")  == 0)  pdu_from_pkt_c  (out, in);
   else if (strcmp(idev->model, "pkt_m1") == 0)  pdu_from_pkt_m1 (out, in, len_in);
   else if (strcmp(idev->model, "pkt_m2") == 0)  pdu_from_pkt_m1 (out, in, len_in);
@@ -50,10 +51,10 @@ int pdu_into_pkt_c (uint8_t *out, pdu *in, gaps_tag *otag) {
 }
 
 /* Write packet from internal PDU into packet */
-void pdu_into_packet(uint8_t *out, pdu *in, int *pkt_len, gaps_tag *otag, const char *dev_model) {
-  if      (strcmp(dev_model, "pkt_c")  == 0)  *pkt_len = pdu_into_pkt_c  (out, in, otag);
-  else if (strcmp(dev_model, "pkt_m1") == 0)  *pkt_len = pdu_into_pkt_m1 (out, in, otag);
-  else if (strcmp(dev_model, "pkt_m2") == 0)  *pkt_len = pdu_into_pkt_m2 (out, in, otag);
-  else if (strcmp(dev_model, "pkt_g1") == 0)  *pkt_len = pdu_into_pkt_g1 (out, in, otag);
+void pdu_into_packet(uint8_t *out, pdu *in, int *pkt_len, selector *osel, const char *dev_model) {
+  if      (strcmp(dev_model, "pkt_c")  == 0)  *pkt_len = pdu_into_pkt_c  (out, in, &(osel->tag));
+  else if (strcmp(dev_model, "pkt_m1") == 0)  *pkt_len = pdu_into_pkt_m1 (out, in, &(osel->tag));
+  else if (strcmp(dev_model, "pkt_m2") == 0)  *pkt_len = pdu_into_pkt_m2 (out, in, &(osel->tag));
+  else if (strcmp(dev_model, "pkt_g1") == 0)  *pkt_len = pdu_into_pkt_g1 (out, in, osel->ctag);
   else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}
 }
