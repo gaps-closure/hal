@@ -40,16 +40,18 @@ make clean; make
 sudo tshark -nli lo 'port 5678 or port 6789'
 netstat -aut4 | grep local | grep -e 5678 -e 6789
 
-cd ~/gaps/top-level/hal/
 # 1) Start the network device 
-./net.sh
+cd ~/gaps/top-level/hal/test/
+/kill_my_hal.sh ; ./net.sh
 
-# 2a) Start HAL as a loopback device
+# 2) Start HAL as a loopback device
 ./hal sample_loopback.cfg
 # 2b) Start HAL sending to device
-./hal sample.cfg
+cd ~/gaps/top-level/hal/
+daemon/hal -v test/sample.cfg
 
 # 3) Start the test APP
+cd ~/gaps/top-level/hal/test/
 ./app_test
 ```
 
