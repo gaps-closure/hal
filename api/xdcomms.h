@@ -13,8 +13,8 @@
 #define ADU_SIZE_MAX_C  200
 #define PACKET_MAX      2048
 #define RX_FILTER_LEN   4
-#define HAL_IPC_SUB     "ipc://halsub1"
-#define HAL_IPC_PUB     "ipc://halpub1"
+#define HAL_IPC_SUB     "ipc:///tmp/halsub1"
+#define HAL_IPC_PUB     "ipc:///tmp/halpub1"
 #define DATA_TYP_MAX    8
 /**********************************************************************/
 /* LIB Structures */
