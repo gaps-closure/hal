@@ -21,12 +21,12 @@ sub_zc:
 	make CC=$(CC) -C ./zc
 
 clean:
-	rm -f *_log.txt /tmp/halsub* /tmp/halpub*
+	rm -f /tmp/halsub* /tmp/halpub*
 	rm -f zc/zc zc/*.o 
 	rm -f api/*.a api/*.o 
 	rm -f appgen/*.a appgen/*.o 
 	rm -f daemon/hal daemon/*.o 
-	rm -f test/app_test test/*.o test/fifo*
+	rm -f test/app_test test/*.o test/fifo* test/*_log.txt 
 
 install: 
 	mkdir -p $(INSTALLPATH)
