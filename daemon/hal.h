@@ -22,6 +22,10 @@ typedef struct _dev {
   int         enabled;
   const char *id;
   const char *path;
+  const char *path_r1;
+  const char *path_r2;
+  const char *path_w1;
+  const char *path_w2;
   const char *model;
   const char *comms;
   const char *addr_in;
@@ -34,6 +38,8 @@ typedef struct _dev {
   struct sockaddr_in socaddr_out;
   int         readfd;
   int         writefd;
+  int         read2fd;
+  int         write2fd;
   struct _dev *next;
 } device;
 

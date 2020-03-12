@@ -287,6 +287,14 @@ void process_input(int ifd, halmap *map, device *devs) {
 /**********************************************************************/
 /* HAL Top level                                                      */
 /*********t************************************************************/
+void select_add(int fd, int *maxrfd, fd_set *readfds){
+  if (fd > 0) {
+    if (fd >= *maxrfd) *maxrfd = fd + 1;
+    FD_SET(fd, readfds);
+    fprintf(stderr, ", %d", fd);
+  }
+}
+
 /* Iniitialize file descriptor set for select (from linked-list of devices) */
 int select_init(device *dev_linked_list_root, fd_set *readfds) {
   device   *d;             /* Temporary device pointer */
@@ -298,9 +306,8 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
 
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
-      if (d->readfd >= maxrfd) maxrfd = d->readfd + 1;
-      FD_SET(d->readfd, readfds);
-      fprintf(stderr, ", %d", d->readfd);
+      select_add(d->readfd, &maxrfd, readfds);
+      select_add(d->read2fd, &maxrfd, readfds);
     }
   }
   fprintf(stderr, "\n");

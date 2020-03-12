@@ -1,4 +1,3 @@
 *.o
 *.a
-app_test
 *_log*

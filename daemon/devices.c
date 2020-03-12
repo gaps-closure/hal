@@ -22,6 +22,12 @@ void devices_print_one(device *d)  {
   if (d->port_out         > 0) fprintf(stderr, " po=%d", d->port_out);
   if (d->readfd          >= 0) fprintf(stderr, " r=%d",  d->readfd);
   if (d->writefd         >= 0) fprintf(stderr, " w=%d",  d->writefd);
+  if (d->read2fd         >= 0) fprintf(stderr, " r2=%d", d->read2fd);
+  if (d->write2fd        >= 0) fprintf(stderr, " w2=%d", d->write2fd);
+  if (strlen(d->path_r1)  > 0) fprintf(stderr, " r1=%s", d->path_r1);
+  if (strlen(d->path_r2)  > 0) fprintf(stderr, " r2=%s", d->path_r2);
+  if (strlen(d->path_w1)  > 0) fprintf(stderr, " w1=%s", d->path_w1);
+  if (strlen(d->path_w2)  > 0) fprintf(stderr, " w2=%s", d->path_w2);
   fprintf(stderr, "]\n");
 }
   
@@ -156,7 +162,7 @@ void interface_open_inet(device *d) {
   if ( (fd_out != -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_out;}
 }
 
-/* Open a serial (tty) interface for read-write and return its fd */
+/* Open a serial (tty) interface for read-write and save the fds */
 void interface_open_tty(device *d) {
   int fd;
   if ((fd = open(d->path, O_RDWR)) < 0) {
@@ -167,6 +173,72 @@ void interface_open_tty(device *d) {
   d->writefd = fd;
 }
 
+void ilp_root_check(int fd_root) {
+  int      i;
+  ssize_t  write_bytes, read_bytes;
+  uint32_t application_id[2] = { 1, 2 };
+  uint32_t session_id[2] = {0xffffffff, 0xffffffff};
+
+  /* For this test and this set of devices application ID is equal to session ID */
+  for ( i=0; i<2; i++ ) {
+    write_bytes = write(fd_root, (const void *)&application_id[i], sizeof(application_id[i]));
+    if ( write_bytes != sizeof(session_id[i])) {
+      perror( "Error in the write of the application ID");
+      exit(EXIT_FAILURE);
+    }
+    read_bytes = read( fd_root, (void*)&session_id[i], sizeof(session_id[i]) );
+    if ( read_bytes != sizeof(session_id[i])) {
+      perror( "Error in the read of the session ID");
+      exit(EXIT_FAILURE);
+    }
+    if (session_id[i] != application_id[i]) {
+      fprintf( stderr, "Invalid session ID returned Application: %u, Session ID: %u\n", application_id[i], session_id[i] );
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+void ilp_open_read_writes(device *d) {
+  int fd_read[2] = {-1};
+  int fd_write[2] = {-1};
+
+  if ((fd_read[0]  = open(d->path_r1, O_RDONLY, S_IRUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r1);
+    exit(EXIT_FAILURE);
+  }
+  if ((fd_write[0] = open(d->path_w1, O_RDONLY, S_IRUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w1);
+    exit(EXIT_FAILURE);
+  }
+  if ((fd_read[1]  = open(d->path_r2, O_RDONLY, S_IRUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r2);
+    exit(EXIT_FAILURE);
+  }
+  if ((fd_write[1] = open(d->path_w2, O_RDONLY, S_IRUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w2);
+    exit(EXIT_FAILURE);
+  }
+  
+  d->readfd  = fd_read[0];
+  d->writefd = fd_write[0];
+  d->read2fd  = fd_read[1];
+  d->write2fd = fd_write[1];
+}
+
+/* Open a ILIP interfaces for reads and writes */
+void interface_open_ilp(device *d) {
+  int fd_root = -1;
+
+  if ((fd_root = open(d->path, O_RDWR, S_IRUSR | S_IWUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path);
+    exit(EXIT_FAILURE);
+  }
+  fprintf(stderr, "%s: Opened root device %s (%s) with fd_root=%d\n", __func__, d->id, d->path, fd_root);
+  ilp_root_check(fd_root);
+  close(fd_root);
+//  ilp_open_read_writes(d);
+}
+
 /* Open enabled devices (from linked-list of devices) and get their in/out handles */
 void devices_open(device *dev_linked_list_root) {
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
@@ -174,6 +246,7 @@ void devices_open(device *dev_linked_list_root) {
     if        (!strncmp(d->comms, "tty", 3))                                      interface_open_tty(d);
     else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
+    else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
     else { fprintf(stderr, "Device %s [%s] unknown\n", d->id, d->path); exit(EXIT_FAILURE);}
     // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
   }
