@@ -27,11 +27,11 @@ typedef struct _tag {
 } gaps_tag;
 
 /* CLOSURE packet */
-typedef struct _pkt_c {
+typedef struct _sdh_ha_v1 {
   gaps_tag  tag;
   uint32_t  data_len;
   uint8_t   data[ADU_SIZE_MAX_C];
-} pkt_c;
+} sdh_ha_v1;
 
 /* Map of (encode and decode) function pointers for each data type */
 /* (Data type is the index into the codec_map) */

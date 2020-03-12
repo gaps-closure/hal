@@ -27,7 +27,7 @@ void devices_print_one(device *d)  {
   
 /* Print list of devices for debugging */
 void devices_print_all(device *root)  {
-  fprintf(stderr, "HAL device list (%p):\n", (void *) root);
+  fprintf(stderr, "HAL device list:\n");
   for(device *d = root; d != NULL; d = d->next) devices_print_one(d);
 }
 
@@ -79,7 +79,7 @@ void interface_open_ipc(device *d) {
   int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
 
   /* a) Open communication pipes for IPC reading and writing */
-  fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
+// fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
   if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
     fprintf(stderr, "Pipe creation failed\n");
     exit(EXIT_FAILURE);
@@ -160,7 +160,7 @@ void interface_open_inet(device *d) {
 void interface_open_tty(device *d) {
   int fd;
   if ((fd = open(d->path, O_RDWR)) < 0) {
-    fprintf(stderr, "Error opening device: %s %s\n", d->id, d->path);
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path);
     exit(EXIT_FAILURE);
   }
   d->readfd = fd;
@@ -175,6 +175,6 @@ void devices_open(device *dev_linked_list_root) {
     else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else { fprintf(stderr, "Device %s [%s] unknown\n", d->id, d->path); exit(EXIT_FAILURE);}
-    fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
+    // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
   }
 }

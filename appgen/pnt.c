@@ -12,14 +12,14 @@
 
 void pnt_print (pnt_datatype *pnt) {
   fprintf(stderr, "PNT id=%d, tr=%d, lo=(%d.%d), lat=(%d.%d), alt=(%d.%d)\n",
-  pnt->message_id,
-  pnt->track_index,
-  pnt->lon,
-  pnt->lon_frac,
-  pnt->lat,
-  pnt->latfrac,
-  pnt->alt,
-  pnt->altfrac);
+  pnt->MessageID,
+  pnt->TrackIndex,
+  pnt->Lon,
+  pnt->LonFrac,
+  pnt->Lat,
+  pnt->LatFrac,
+  pnt->Alt,
+  pnt->AltFrac);
 }
 
 /*
@@ -29,14 +29,14 @@ void pnt_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
   pnt_datatype *p1 = (pnt_datatype *) buff_in;
   pnt_datatype *p2 = (pnt_datatype *) buff_out;
     
-  p2->message_id  = htons(p1->message_id);
-  p2->track_index = htons(p1->track_index);
-  p2->lon         = htons(p1->lon);
-  p2->lon_frac    = htons(p1->lon_frac);
-  p2->lat         = htons(p1->lat);
-  p2->latfrac     = htons(p1->latfrac);
-  p2->alt         = htons(p1->alt);
-  p2->altfrac     = htons(p1->altfrac);
+  p2->MessageID  = htons(p1->MessageID);
+  p2->TrackIndex = htons(p1->TrackIndex);
+  p2->Lon         = htons(p1->Lon);
+  p2->LonFrac    = htons(p1->LonFrac);
+  p2->Lat         = htons(p1->Lat);
+  p2->LatFrac     = htons(p1->LatFrac);
+  p2->Alt         = htons(p1->Alt);
+  p2->AltFrac     = htons(p1->AltFrac);
   *len_out = *len_in;
 }
   
@@ -47,13 +47,13 @@ void pnt_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
   pnt_datatype *p1 = (pnt_datatype *) buff_out;
   pnt_datatype *p2 = (pnt_datatype *) buff_in;
     
-  p2->message_id  = ntohs(p1->message_id);
-  p2->track_index = ntohs(p1->track_index);
-  p2->lon         = ntohs(p1->lon);
-  p2->lon_frac    = ntohs(p1->lon_frac);
-  p2->lat         = ntohs(p1->lat);
-  p2->latfrac     = ntohs(p1->latfrac);
-  p2->alt         = ntohs(p1->alt);
-  p2->altfrac     = ntohs(p1->altfrac);
+  p2->MessageID  = ntohs(p1->MessageID);
+  p2->TrackIndex = ntohs(p1->TrackIndex);
+  p2->Lon         = ntohs(p1->Lon);
+  p2->LonFrac     = ntohs(p1->LonFrac);
+  p2->Lat         = ntohs(p1->Lat);
+  p2->LatFrac     = ntohs(p1->LatFrac);
+  p2->Alt         = ntohs(p1->Alt);
+  p2->AltFrac     = ntohs(p1->AltFrac);
   *len_in = *len_out;
 }

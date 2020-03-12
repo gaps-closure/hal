@@ -70,12 +70,12 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
     }
     if(feof(stdin)) break;
     if (read_cnt >= 1) {
-      fprintf(stderr, "ZC Read_cnt = %ld: ", read_cnt);
+//      fprintf(stderr, "ZC Read_cnt = %ld: ", read_cnt);
       for (int j = 0; j < read_cnt; j++) {
-        if ((j%4)==0) fprintf(stderr, " ");
-        fprintf(stderr, "%02X", (uint8_t) buffer[j]);
+//        if ((j%4)==0) fprintf(stderr, " ");
+//        fprintf(stderr, "%02X", (uint8_t) buffer[j]);
       }
-      fprintf(stderr, "\n");
+//      fprintf(stderr, "\n");
       break;
     }
     buffer = realloc(buffer,total+STDIN_READ_SIZE);
@@ -90,7 +90,7 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
 
   err = zmq_sendmsg(socket, &msg, 0);
   if(err==-1) exit_with_zmq_error("zmq_sendmsg");
-  fprintf(stderr, "zc sends %ld bytes to %s\n", total, endpoint);
+  if(verbose) fprintf(stderr, "zc sends %ld bytes to %s\n", total, endpoint);
 
   clearerr(stdin);     /* clears stdin end-of-file and error indicators (prevent looping) */
   return total;

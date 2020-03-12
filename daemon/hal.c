@@ -27,7 +27,7 @@ int hal_verbose=0;
 void selector_print(selector *s) {
   fprintf(stderr, " %s ", s->dev);
   if (s->ctag < 0) tag_print(&(s->tag));
-  else             fprintf(stderr, "[ctag=%u] ", s->ctag);
+  else             fprintf(stderr, "[ctag=0x%08x]   ", s->ctag);
 }
 
 /* Print a information from an internal PDU */
@@ -54,7 +54,6 @@ void halmap_print_all(halmap *map_root) {
     for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
       halmap_print_one(hm);
     }
-    fprintf(stderr, "\n");
 }
 
 /**********************************************************************/
@@ -179,6 +178,10 @@ pdu *read_pdu(device *idev) {
       || (strcmp(com_type, "tcp") == 0)
       ) {
     pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
+    if (pkt_len < 0) {
+      printf("%s read error %d\n", __func__, pkt_len);
+      exit(EXIT_FAILURE);
+    }
   }
   else if (strcmp(com_type, "udp") == 0) {
     rv = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &(idev->socaddr_out), (socklen_t *) &pkt_len);
@@ -189,10 +192,8 @@ pdu *read_pdu(device *idev) {
       
   }
   else {fprintf(stderr, "%s unknown comms type %s", __func__, com_type); exit(EXIT_FAILURE);}
-  if(hal_verbose) {
-    fprintf(stderr, "HAL read input (len=%d rv=%d) on %s (model=%s) fd=%d", pkt_len, rv, dev_id, idev->model, fd);
-    data_print("", (uint8_t *) buf, pkt_len);
-  }
+  
+  fprintf(stderr, "HAL reads  %s from %s, fd=%02d:", idev->model, dev_id, fd); data_print("", (uint8_t *) buf, pkt_len);
   
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));
@@ -223,6 +224,8 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   /* b) Write to interface based on interface comms type */
   fd = odev->writefd;
   com_type = odev->comms;
+
+
   if(hal_verbose) fprintf(stderr, "HAL writing using comms type %s\n", com_type);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
@@ -231,15 +234,13 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
     rv = write(fd, buf, pkt_len);     /* write = send for tcp with no flags */
   }
   else if (strcmp(com_type, "udp") == 0) {
-    fprintf(stderr, "XXX: Write udp mode to %s interface\n", com_type);
-//    len = sizeof(cliaddr);  //len is value/resuslt
-    /* (const struct sockaddr *) &cliaddr */
+//    fprintf(stderr, "XXX: Write udp mode to %s interface\n", com_type);
     rv = sendto(fd, buf, pkt_len, MSG_CONFIRM, (const struct sockaddr *) &(odev->socaddr_out), sizeof(odev->socaddr_out));
-//    rv = recvfrom(fd, buf, pkt_len, MAXLINE, ( struct sockaddr *) &cliaddr, &len);
   }
   else {fprintf(stderr, "%s unknown comms type %s", __func__, com_type); exit(EXIT_FAILURE);}
   
-  if(hal_verbose) fprintf(stderr, "HAL wrote on %s (fd=%d) and got rv=%d\n", odev->id, fd, rv);
+  if(hal_verbose) fprintf(stderr, "%s rv=%d\n", __func__, rv);
+  fprintf(stderr, "HAL writes %s onto %s, fd=%02d:", odev->model, odev->id, fd); data_print("", buf, pkt_len);
 }
 
 /* Free memory allocated for PDU */
@@ -293,13 +294,13 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
 
   FD_ZERO(readfds);
   maxrfd = -1;
-  fprintf(stderr, "HAL Waiting for input on fds");
+  fprintf(stderr, "\nHAL Waiting for input on fds");
 
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       if (d->readfd >= maxrfd) maxrfd = d->readfd + 1;
       FD_SET(d->readfd, readfds);
-      if(hal_verbose) fprintf(stderr, ", %d", d->readfd);
+      fprintf(stderr, ", %d", d->readfd);
     }
   }
   fprintf(stderr, "\n");

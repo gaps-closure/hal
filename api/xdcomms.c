@@ -80,15 +80,15 @@ void type_check(uint32_t typ) {
 /*
  * Create packet (serialize data and adding header)
  */
-void gaps_data_encode(pkt_c *p, size_t *p_len, uint8_t *buff_in, size_t *len_in, gaps_tag *tag) {
+void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len_in, gaps_tag *tag) {
   size_t adu_len;
   uint32_t typ = tag->typ;
   
   /* a) serialize data into packet */
   type_check(typ);
   cmap[typ].encode (p->data, &adu_len, buff_in, len_in);
-  if(xdc_verbose) data_print("CLOSURE -- raw app data:", buff_in, *len_in);
-  if(xdc_verbose) data_print("        -> encoded data:", p->data, adu_len);
+  if(xdc_verbose) data_print("API <- raw app data:", buff_in, *len_in);
+  if(xdc_verbose) data_print("    -> encoded data:", p->data, adu_len);
   
   /* b) Create CLOSURE packet header */
   tag_encode(&(p->tag), tag);
@@ -99,7 +99,7 @@ void gaps_data_encode(pkt_c *p, size_t *p_len, uint8_t *buff_in, size_t *len_in,
 /*
  * Decode data from packet
  */
-void gaps_data_decode(pkt_c *p, size_t p_len, uint8_t *buff_out, size_t *len_out, gaps_tag *tag) {
+void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len_out, gaps_tag *tag) {
   uint32_t typ = tag->typ;
 
   /* a) deserialize data from packet */
@@ -108,8 +108,8 @@ void gaps_data_decode(pkt_c *p, size_t p_len, uint8_t *buff_out, size_t *len_out
   len_decode(len_out, p->data_len);
   cmap[typ].decode (buff_out, len_out, p->data, &p_len);
   if(xdc_verbose) {
-    data_print("CLOSURE -> raw app data:", p->data,  *len_out);
-    data_print("        -- encoded data:", buff_out, *len_out);
+    data_print("API -> raw app data:", p->data,  *len_out);
+    data_print("    <- encoded data:", buff_out, *len_out);
     tag_print(tag);
     fprintf(stderr, "data_len=%lu\n", *len_out);
   }
@@ -138,7 +138,7 @@ void * z_connect(int type, const char *dest) {
   err = zmq_connect(socket, dest);
   if(err) exit_with_zmq_error("zmq_connect");
 
-  if(xdc_verbose) fprintf(stderr,"CLOSURE connected (s=%p t=%d) to %s\n", socket, type, dest);
+  if(xdc_verbose) fprintf(stderr,"API connects (s=%p t=%d) to %s\n", socket, type, dest);
   usleep(10000); // let connection establish before sending a message
   return (socket);
 }
@@ -149,9 +149,8 @@ void * z_connect(int type, const char *dest) {
 void xdc_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
   static int   do_once = 1;
   static void *socket;
-  pkt_c         packet;
-  pkt_c         *p=&packet;
-  size_t        packet_len;
+  sdh_ha_v1    packet, *p=&packet;
+  size_t       packet_len;
   
   if (do_once == 1) {    /* a) Open connection with HAL ZMQ subscriber */
     socket = z_connect(ZMQ_PUB, HAL_IPC_SUB);
@@ -159,7 +158,7 @@ void xdc_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
   }
   gaps_data_encode(p, &packet_len, adu, &adu_len, &tag);
   if(xdc_verbose) {
-    fprintf(stderr, "CLOSURE sending (on ZMQ s=%p): ", socket);
+    fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
     tag_print(&tag);
     fprintf(stderr, "len=%ld ", adu_len);
     data_print("Packet", (uint8_t *) p, packet_len);
@@ -174,8 +173,7 @@ void xdc_asyn_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
   static int   do_once = 1;
   static void *socket;
   int          err;
-  pkt_c         packet;
-  pkt_c        *p=&packet;
+  sdh_ha_v1    packet, *p=&packet;
   int          size;
   gaps_tag     tag4filter;
   
@@ -189,7 +187,7 @@ void xdc_asyn_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
     if(socket == NULL) exit_with_zmq_error("zmq_socket");
     err = zmq_connect(socket, HAL_IPC_PUB);
     if(err) exit_with_zmq_error("zmq_connect");
-    if(xdc_verbose) fprintf(stderr,"CLOSURE connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, HAL_IPC_PUB);
+    if(xdc_verbose) fprintf(stderr,"API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, HAL_IPC_PUB);
 
     tag_encode(&tag4filter, tag);
     err = zmq_setsockopt (socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
@@ -199,13 +197,13 @@ void xdc_asyn_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
    
   /* b) Get a packet from HAL ZMQ publisher */
   if(xdc_verbose) {
-    fprintf(stderr, "CLOSURE waiting to recv (using len=%d filter ", RX_FILTER_LEN);
+    fprintf(stderr, "API waiting to recv (using len=%d filter ", RX_FILTER_LEN);
     uint8_t *f = (uint8_t *) &tag4filter;
     for (int i=0; i < RX_FILTER_LEN; i++) fprintf(stderr, "%.02x", *(f++));
     fprintf(stderr, ")\n");
   }
   size = zmq_recv (socket, (uint8_t *) p, PACKET_MAX, 0);
-  if(xdc_verbose) data_print("CLOSURE recv packet", (uint8_t *) p, size);
+  if(xdc_verbose) data_print("API recv packet", (uint8_t *) p, size);
 
   /* c) Decode information from packet */
   gaps_data_decode(p, size, adu, adu_len, tag);

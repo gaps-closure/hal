@@ -109,7 +109,7 @@ halmap *get_mappings(config_t *cfg) {
       ret[i].to.tag.typ   = get_param_int(map, "to_typ",    1, i);
       ret[i].codec        = get_param_str(map, "codec",     1, i);
       ret[i].next         = i < count - 1 ? &ret[i+1] : (halmap *) NULL;
-      fprintf(stderr, "ctags = %d %d\n", ret[i].from.ctag, ret[i].to.ctag);
+//      fprintf(stderr, "ctags = %d %d\n", ret[i].from.ctag, ret[i].to.ctag);
     }
   }
   return ret;

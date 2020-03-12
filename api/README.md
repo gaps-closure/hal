@@ -1,18 +1,37 @@
 ## HAL API
-The defines the data and control-plane APIs between HAL and the 
-partitioned application programs.
+Partitioned application programs use the HAL data and control-plane APIs to communicate through Cross-Domain Gateways (CDGs).
 
 ### HAL Data-Plane API
 
-The HAL Data-Plane API gives single uniform high-level interface to APPs, 
-abstracting the different hardware APIs used by cross-domain programs. 
-The API allows applications to a) send and receive arbitary binary data and 
-b) set the tag (mux, sec, typ) values that control multiplexing, security and 
-data formatting: 
-* The tag session ID (mux) determines which application will receive the data.
-* The tag security ID (sec) determines the security policies required.
-* The tag data type (typ) identifies the type of application data (and its 
-  associated DFDL description). 
+The HAL Data-Plane API abstracts the different hardware APIs used by 
+CDGs, providing a single high-level interace to support all cross-domain 
+communication (xdc) between security enclaves. 
+
+Before any data type is sent, the application must provide HAL a description of the 
+data. This desciption, contained in a DFDL file, allows HAL to automatically generate the encode and decode funtions to serialize the data. The HAL API provides a single call to generate these functions:
+```
+xdc_generate (uint8_t *adu, size_t  adu_len, hal_tag  tag);
+xdc_asyn_recv (uint8_t *adu, size_t *adu_len, hal_tag *tag);
+```
+
+
+The APP can send and receive the arbitary binary data in Application 
+Data Units (ADU) chunks with a user in a different security enclave.  For 
+asynchronous communication, the API provides a pub/sub communication model, 
+without requiring any feedback from the other enclave or CDG:
+```
+xdc_asyn_send (uint8_t *adu, size_t  adu_len, hal_tag  tag);
+xdc_asyn_recv (uint8_t *adu, size_t *adu_len, hal_tag *tag);
+```
+
+The tag provides three orthoganol identifiers for:
+. a) Session multiplexing (mux), which acts as a local handle to identify the applicaiton. The mux value is the same for the send and recv calls.
+. b) CDG security (sec), selects which security policies will be used to processing sent data. It also gives the security rules that were used to process received data. 
+. c) ADU type (typ) describes the data (based on DFDL xsd definition). This tells HAL how to serialize the ADU. The CDG can also use this information to process (e.g., downgrade) the ADU contents.
+
+ 
+The API allows applications to a) send and receive and 
+b) set 
 
 In order to send and receive cross-domain data via HAL, applications programs use 
 CLOSURE API functions. The C-program API is available by including  "closure.h" and 
@@ -30,12 +49,6 @@ For example, to send/receive PNT data  (pnt1), it sets typ=DATA_TYP_PNT:
 ```
 gaps_data_encode(uint8_t *adu, size_t *adu_len, uint8_t *pnt1, size_t *pnt1_len, int DATA_TYP_PNT);
 gaps_data_decode(uint8_t *adu, size_t *adu_len, uint8_t *pnt1, size_t *pnt1_len, int DATA_TYP_PNT);
-```
-The APP can then send/receive the adu based on a specified tag value. For
-asynchronous communication, the CLOSURE API provides the following functions:
-```
-gaps-asyn-send    (uint8_t *adu, size_t  adu_len, hal_tag  tag);
-gaps-asyn-receive (uint8_t *adu, size_t *adu_len, hal_tag *tag);
 ```
 For the send function, the tag specifies the packet tag information that 
 accompanies the data; for the receive function, the tag both specifies the desired

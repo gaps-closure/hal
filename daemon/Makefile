@@ -6,7 +6,7 @@ LDLIBS      = -L../api -lxdcomms -lzmq   # -L../codecs -lpnt
 
 all: hal
 
-hal: config.o devices.o packetize.o packetize_sdh-be-v1.o packetize_sdh-bw-v1.o crc.o hal.o 
+hal: config.o devices.o packetize.o packetize_sdh_be_v1.o packetize_sdh_be_v2.o packetize_sdh_bw_v1.o crc.o hal.o 
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS) $(LDFLAGS)
 
 %.o:	%.c

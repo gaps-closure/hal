@@ -12,15 +12,16 @@
 
 /* Data structure: PNT */
 typedef struct _pnt_datatype {
-    uint16_t    message_id;
-    uint16_t    track_index;
-    int16_t     lon;
-    uint16_t    lon_frac;
-    int16_t     lat;
-    uint16_t    latfrac;
-    int16_t     alt;
-    uint16_t    altfrac;
+    uint16_t    MessageID;
+    uint16_t    TrackIndex;
+    int16_t     Lon;
+    uint16_t    LonFrac;
+    int16_t     Lat;
+    uint16_t    LatFrac;
+    int16_t     Alt;
+    uint16_t    AltFrac;
 } pnt_datatype;
+
 
 
 extern void pnt_print (pnt_datatype *);
