@@ -188,17 +188,15 @@ void interface_open_tty(device *d) {
 void ilp_open_read_writes(device *d) {
   int fd_read, fd_write;
 
-fprintf(stderr, "%s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
-//return;
-
-//  if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR | O_NONBLOCK)) < 0) {
+  // fprintf(stderr, "%s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
+  // tried | O_NONBLOCK  and O_RDWR
   if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
     fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r);
     exit(EXIT_FAILURE);
   }
   d->readfd  = fd_read;
   
-  if ((fd_write = open(d->path_w, O_RDONLY, S_IRUSR)) < 0) {
+  if ((fd_write = open(d->path_w, O_WRONLY, S_IWUSR)) < 0) {
     fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w);
     exit(EXIT_FAILURE);
   }
@@ -254,7 +252,7 @@ void ilp_root_open(root_device *rd) {
   }
 }
 
-/* save root paths (and the associated devices) in root_device structs */
+/* save root paths (and the associated devices) inro root_device structs */
 void ilp_add2root(device *d, int *root_count, root_device *root_list) {
   int i, rc, dc;
   const char *path=d->path;
@@ -267,21 +265,17 @@ void ilp_add2root(device *d, int *root_count, root_device *root_list) {
     rdp = &(root_list[i]);
     if (strcmp((char *) (rdp->root_path), path) == 0)  break;
   }
-  
-  /* b) If no match found, wrtie new root device */
+  /* b) If no match found, write new root device */
   if (i == rc) {
     rdp = &(root_list[rc]);
     rdp->data_dev_count = 0;
     rdp->root_path = path;
     (*root_count)++;
   }
-
   /* c) Add device to (new or existing) entry pointed to by root_device struct */
   dc = rdp->data_dev_count;
   (rdp->data_dev_list)[dc] = d;
   (rdp->data_dev_count)++;
-  
-//  fprintf(stderr, "%s: New device (%s) added (root path = %s, dev count = %d, root count = %d)\n", __func__, d->id, path, rdp->data_dev_count, *root_count);
 }
 
 /* Open ILIP interface */
@@ -290,7 +284,7 @@ void interface_open_ilp(device *d) {
   static root_device  root_list[8], *rd;
   int                 i, j;
   
-  if (d != NULL) {   /* adding new devces */
+  if (d != NULL) {        /* adding new devces */
 //    fprintf(stderr, "%s: dev=%s %s\n", __func__, d->id, d->comms);
     ilp_add2root(d, &root_count, root_list);
     return;
@@ -299,8 +293,9 @@ void interface_open_ilp(device *d) {
   for (j=0; j<root_count; j++) {
     rd = &(root_list[j]);
     ilp_root_open(rd);
-    for (i=0; i<(rd->data_dev_count); i++)
+    for (i=0; i<(rd->data_dev_count); i++) {
       ilp_open_read_writes(rd->data_dev_list[i]);
+    }
   }
 }
 
