@@ -27,7 +27,7 @@ int hal_verbose=0;
 void selector_print(selector *s) {
   fprintf(stderr, " %s ", s->dev);
   if (s->ctag < 0) tag_print(&(s->tag));
-  else             fprintf(stderr, "[ctag=0x%08x]   ", s->ctag);
+  else             fprintf(stderr, "[ctag=0x%08x]      ", s->ctag);
 }
 
 /* Print a information from an internal PDU */
@@ -307,7 +307,6 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       select_add(d->readfd, &maxrfd, readfds);
-      select_add(d->read2fd, &maxrfd, readfds);
     }
   }
   fprintf(stderr, "\n");

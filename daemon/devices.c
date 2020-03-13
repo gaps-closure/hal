@@ -12,22 +12,33 @@
 #define CHILD_WRITE  read_pipe[1]
 #define CHILD_READ   write_pipe[0]
 
+typedef struct _root_device {
+  const char   *root_path;
+  int           data_dev_count;
+  device       *data_dev_list[10];
+} root_device;
+
+void device_print_str(char *name, const char *s) {
+  if (strlen(s) > 0) fprintf(stderr, " %s=%s", name, s);
+}
+
+void device_print_int(char *name, int v) {
+  if (v >= 0) fprintf(stderr, " %s=%d", name, v);
+}
+
 void devices_print_one(device *d)  {
-  fprintf(stderr, " %s [v=%d p=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
-  if (strlen(d->addr_in)  > 0) fprintf(stderr, " ai=%s", d->addr_in);
-  if (strlen(d->addr_out) > 0) fprintf(stderr, " ao=%s", d->addr_out);
-  if (strlen(d->mode_in)  > 0) fprintf(stderr, " mi=%s", d->mode_in);
-  if (strlen(d->mode_out) > 0) fprintf(stderr, " mo=%s", d->mode_out);
-  if (d->port_in          > 0) fprintf(stderr, " pi=%d", d->port_in);
-  if (d->port_out         > 0) fprintf(stderr, " po=%d", d->port_out);
-  if (d->readfd          >= 0) fprintf(stderr, " r=%d",  d->readfd);
-  if (d->writefd         >= 0) fprintf(stderr, " w=%d",  d->writefd);
-  if (d->read2fd         >= 0) fprintf(stderr, " r2=%d", d->read2fd);
-  if (d->write2fd        >= 0) fprintf(stderr, " w2=%d", d->write2fd);
-  if (strlen(d->path_r1)  > 0) fprintf(stderr, " r1=%s", d->path_r1);
-  if (strlen(d->path_r2)  > 0) fprintf(stderr, " r2=%s", d->path_r2);
-  if (strlen(d->path_w1)  > 0) fprintf(stderr, " w1=%s", d->path_w1);
-  if (strlen(d->path_w2)  > 0) fprintf(stderr, " w2=%s", d->path_w2);
+  fprintf(stderr, " %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
+  device_print_str("ai", d->addr_in);
+  device_print_str("ao", d->addr_out);
+  device_print_str("mi", d->mode_in);
+  device_print_str("mo", d->mode_out);
+  device_print_int("pi", d->port_in);
+  device_print_int("po", d->port_out);
+  device_print_int("fr", d->readfd);
+  device_print_int("fw", d->writefd);
+  device_print_str("dr", d->path_r);
+  device_print_str("dw", d->path_w);
+  device_print_int("mx", d->from_mux);
   fprintf(stderr, "]\n");
 }
   
@@ -173,12 +184,36 @@ void interface_open_tty(device *d) {
   d->writefd = fd;
 }
 
-void ilp_root_check(int fd_root) {
-  int      i;
+/* open read and write ILIP device pair */
+void ilp_open_read_writes(device *d) {
+  int fd_read, fd_write;
+
+//fprintf(stderr, "TODO %s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
+//return;
+
+  if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r);
+    exit(EXIT_FAILURE);
+  }
+  if ((fd_write = open(d->path_w, O_RDONLY, S_IRUSR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w);
+    exit(EXIT_FAILURE);
+  }
+  d->readfd  = fd_read;
+  d->writefd = fd_write;
+}
+
+/* Check ILIP root device */
+void ilp_root_check(int fd_root, root_device *rd) {
+  int      i, j, device_pair_count;
   ssize_t  write_bytes, read_bytes;
   uint32_t application_id[2] = { 1, 2 };
   uint32_t session_id[2] = {0xffffffff, 0xffffffff};
 
+  /* Take application_id from HAL config */
+  device_pair_count = rd->data_dev_count;
+  for (j=0; j<device_pair_count; j++) application_id[j] = rd->data_dev_list[j]->from_mux;
+  
   /* For this test and this set of devices application ID is equal to session ID */
   for ( i=0; i<2; i++ ) {
     write_bytes = write(fd_root, (const void *)&application_id[i], sizeof(application_id[i]));
@@ -191,6 +226,9 @@ void ilp_root_check(int fd_root) {
       perror( "Error in the read of the session ID");
       exit(EXIT_FAILURE);
     }
+    
+fprintf(stderr, "TODO %s: Write Session IDs from Root Device into halmap: from_mux=%u to_mux=%u\n", __func__, application_id[i], session_id[i]);
+    
     if (session_id[i] != application_id[i]) {
       fprintf( stderr, "Invalid session ID returned Application: %u, Session ID: %u\n", application_id[i], session_id[i] );
       exit(EXIT_FAILURE);
@@ -198,45 +236,70 @@ void ilp_root_check(int fd_root) {
   }
 }
 
-void ilp_open_read_writes(device *d) {
-  int fd_read[2] = {-1};
-  int fd_write[2] = {-1};
-
-  if ((fd_read[0]  = open(d->path_r1, O_RDONLY, S_IRUSR)) < 0) {
-    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r1);
-    exit(EXIT_FAILURE);
-  }
-  if ((fd_write[0] = open(d->path_w1, O_RDONLY, S_IRUSR)) < 0) {
-    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w1);
-    exit(EXIT_FAILURE);
-  }
-  if ((fd_read[1]  = open(d->path_r2, O_RDONLY, S_IRUSR)) < 0) {
-    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r2);
-    exit(EXIT_FAILURE);
-  }
-  if ((fd_write[1] = open(d->path_w2, O_RDONLY, S_IRUSR)) < 0) {
-    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w2);
-    exit(EXIT_FAILURE);
-  }
+/* Open root ILIP device */
+void ilp_root_open(root_device *rd) {
+  const char *root_path = rd->root_path;
+  int  fd_root = -1;
   
-  d->readfd  = fd_read[0];
-  d->writefd = fd_write[0];
-  d->read2fd  = fd_read[1];
-  d->write2fd = fd_write[1];
+  if (root_path != NULL) {
+    if ((fd_root = open(root_path, O_RDWR, S_IRUSR | S_IWUSR)) < 0) {
+      fprintf(stderr, "%s: Error opening device %s: fd=%d\n", __func__, root_path, fd_root);
+      exit(EXIT_FAILURE);
+    }
+//    fprintf(stderr, "%s: successfully opened root device %s (fd=%d)\n", __func__, root_path, fd_root);
+    ilp_root_check(fd_root, rd);
+    close(fd_root);
+  }
 }
 
-/* Open a ILIP interfaces for reads and writes */
-void interface_open_ilp(device *d) {
-  int fd_root = -1;
+/* save root paths (and the associated devices) in root_device structs */
+void ilp_add2root(device *d, int *root_count, root_device *root_list) {
+  int i, rc, dc;
+  const char *path=d->path;
+  root_device *rdp = NULL;
 
-  if ((fd_root = open(d->path, O_RDWR, S_IRUSR | S_IWUSR)) < 0) {
-    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path);
-    exit(EXIT_FAILURE);
+  /* a) Find if matches previous root device */
+  rc = *root_count;
+//  fprintf(stderr, "%s: dev=%s %s rc=%d\n", __func__, d->id, d->comms, rc);
+  for (i=0; i<rc; i++) {
+    rdp = &(root_list[i]);
+    if (strcmp((char *) (rdp->root_path), path) == 0)  break;
   }
-  fprintf(stderr, "%s: Opened root device %s (%s) with fd_root=%d\n", __func__, d->id, d->path, fd_root);
-  ilp_root_check(fd_root);
-  close(fd_root);
-//  ilp_open_read_writes(d);
+  
+  /* b) If no match found, wrtie new root device */
+  if (i == rc) {
+    rdp = &(root_list[rc]);
+    rdp->data_dev_count = 0;
+    rdp->root_path = path;
+    (*root_count)++;
+  }
+
+  /* c) Add device to (new or existing) entry pointed to by root_device struct */
+  dc = rdp->data_dev_count;
+  (rdp->data_dev_list)[dc] = d;
+  (rdp->data_dev_count)++;
+  
+//  fprintf(stderr, "%s: New device (%s) added (root path = %s, dev count = %d, root count = %d)\n", __func__, d->id, path, rdp->data_dev_count, *root_count);
+}
+
+/* Open ILIP interface */
+void interface_open_ilp(device *d) {
+  static int          root_count=0;
+  static root_device  root_list[8], *rd;
+  int                 i, j;
+  
+  if (d != NULL) {   /* adding new devces */
+//    fprintf(stderr, "%s: dev=%s %s\n", __func__, d->id, d->comms);
+    ilp_add2root(d, &root_count, root_list);
+    return;
+  }
+//  fprintf(stderr, "%s: Open %d root device(s)\n", __func__, root_count);
+  for (j=0; j<root_count; j++) {
+    rd = &(root_list[j]);
+    ilp_root_open(rd);
+    for (i=0; i<(rd->data_dev_count); i++)
+      ilp_open_read_writes(rd->data_dev_list[i]);
+  }
 }
 
 /* Open enabled devices (from linked-list of devices) and get their in/out handles */
@@ -248,6 +311,7 @@ void devices_open(device *dev_linked_list_root) {
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
     else { fprintf(stderr, "Device %s [%s] unknown\n", d->id, d->path); exit(EXIT_FAILURE);}
-    // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
+// fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
   }
+  interface_open_ilp(NULL);
 }

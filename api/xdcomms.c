@@ -14,7 +14,7 @@ int xdc_verbose=1;
 /**********************************************************************/
 
 void tag_print (gaps_tag *tag) {
-  fprintf(stderr, "[mux=%u sec=%u typ=%u] ", tag->mux, tag->sec, tag->typ);
+  fprintf(stderr, "[mux=%02u sec=%02u typ=%02u] ", tag->mux, tag->sec, tag->typ);
 }
 
 /* Print raw data of specified length */

@@ -75,15 +75,12 @@ device *get_devices(config_t *cfg) {
       ret[i].mode_out = get_param_str(dev, "mode_out", 1, i);
       ret[i].port_in  = get_param_int(dev, "port_in",  1, i);
       ret[i].port_out = get_param_int(dev, "port_out", 1, i);
-      ret[i].path_r1  = get_param_str(dev, "path_r1",  1, i);
-      ret[i].path_r2  = get_param_str(dev, "path_r2",  1, i);
-      ret[i].path_w1  = get_param_str(dev, "path_w1",  1, i);
-      ret[i].path_w2  = get_param_str(dev, "path_w2",  1, i);
+      ret[i].path_r   = get_param_str(dev, "path_r",   1, i);
+      ret[i].path_w   = get_param_str(dev, "path_w",   1, i);
+      ret[i].from_mux = get_param_int(dev, "from_mux", 1, i);
 
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */
-      ret[i].read2fd  = -1; /* to be set when opened */
-      ret[i].write2fd = -1; /* to be set when opened */
 
       ret[i].next     = i < count - 1 ? &ret[i+1] : (device *) NULL;
     }
