@@ -188,18 +188,20 @@ void interface_open_tty(device *d) {
 void ilp_open_read_writes(device *d) {
   int fd_read, fd_write;
 
-//fprintf(stderr, "TODO %s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
+fprintf(stderr, "%s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
 //return;
 
+//  if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR | O_NONBLOCK)) < 0) {
   if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
     fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r);
     exit(EXIT_FAILURE);
   }
+  d->readfd  = fd_read;
+  
   if ((fd_write = open(d->path_w, O_RDONLY, S_IRUSR)) < 0) {
     fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w);
     exit(EXIT_FAILURE);
   }
-  d->readfd  = fd_read;
   d->writefd = fd_write;
 }
 

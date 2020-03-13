@@ -175,11 +175,17 @@ pdu *read_pdu(device *idev) {
   if(hal_verbose) fprintf(stderr, "HAL reading using comms type %s\n", com_type);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
+      || (strcmp(com_type, "ilp") == 0)
       || (strcmp(com_type, "tcp") == 0)
       ) {
     pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
     if (pkt_len < 0) {
-      printf("%s read error %d\n", __func__, pkt_len);
+      printf("%s read error on fd=%d: rv=%d errno=%d\n", __func__, fd, pkt_len, errno);
+      if (errno == EAGAIN) {
+        printf("EAGAIN: Read would block (use O_NONBLOCK?)\n");
+        sleep (2);
+        return (NULL);
+      }
       exit(EXIT_FAILURE);
     }
   }
@@ -229,6 +235,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   if(hal_verbose) fprintf(stderr, "HAL writing using comms type %s\n", com_type);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
+      || (strcmp(com_type, "ilp") == 0)
       || (strcmp(com_type, "tcp") == 0)
      ) {
     rv = write(fd, buf, pkt_len);     /* write = send for tcp with no flags */
@@ -322,7 +329,7 @@ void read_wait_loop(device *devs, halmap *map) {
   while (1) {
     maxrfd = select_init(devs,  &readfds);
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
-    // fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
+    if(hal_verbose) fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
         process_input(i, map, devs);
