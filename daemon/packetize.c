@@ -1,4 +1,7 @@
-/* Convert between Internal HAL PDU and any external packet */
+/*
+ * Convert between HAL PDU and any external packet
+ *   March 2020, Perspecta Labs
+ */
 
 #include "hal.h"
 #include "packetize.h"

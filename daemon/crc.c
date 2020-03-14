@@ -1,12 +1,23 @@
 /*
- * 16-bit CRC
- *    Based on RFC 1662 Appendix C (by Drew D. Perkins, CMU)
+ * 16-bit CRC using RFC 1662 Appendix C code (by Drew D. Perkins, CMU)
  *    Input: Data buffer (array of bytes) -> Output: crc16 (uint16_t)
+ *
+ * Uses CCITT'a generator polynomial: x^16 + x^12 + x^5 + 1
+ * Wikipedia shows the different polynomial representations:
+ *  16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0   coefficient
+ *   1 [0  0  0  1 |0  0  0  0 |0  0  1  0 |0  0  0  1]  Normal
+ *     [     1     |     0     |     2     |     1    ]  Normal=0x1021
+ *  [1  0  0  0 |0  1  0  0 |0  0  0  0 |1  0  0  0] 1   Reverse
+ *  [     8     |     4     |     0     |     8    ]     Hex=0x8408
+ * Initial value of CRC=0xffff
+ *
+ * TODO:
+ *  Compare results with another implementation
  */
 
 #include "crc.h"
 
-static uint16_t   fcstab[256];
+static uint16_t   fcstab[256];      /* lookup table */
 
 /*
  * Create lookup table (see RFC-1662) in fcstab.
@@ -45,7 +56,7 @@ uint16_t pppfcs16(uint16_t *fcstab, register uint16_t fcs, register unsigned cha
 }
 
 /*
- * Check CRc is working (see RFC-1662)
+ * Check CRC is working (see RFC-1662)
  */
 void tryfcs16(uint16_t *fcstab) {
   int len=3;

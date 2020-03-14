@@ -1,4 +1,7 @@
-/* Read (libconfig) config file information into HAL */
+/*
+* Read configuration information into HAL from (libconfig) file
+*   March 2020, Perspecta Labs
+*/
 
 #include "hal.h"
 

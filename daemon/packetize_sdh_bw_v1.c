@@ -1,3 +1,10 @@
+/*
+ * Convert between HAL PDU and SDH BW packet
+ *   March 2020, Perspecta Labs
+ *
+ * v1 uses compressed (April 2020) packet format
+ */
+
 /* Convert between Internal HAL PDU and sdh_bw_v1 packets */
 
 #include "hal.h"

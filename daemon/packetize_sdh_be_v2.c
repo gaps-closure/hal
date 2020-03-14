@@ -1,4 +1,9 @@
-/* Convert between Internal HAL PDU and SDH BE packet */
+/*
+ * Convert between HAL PDU and SDH BE packet
+ *   March 2020, Perspecta Labs
+ *
+ * v2 is oringal (2019) packet format with no timestamps
+ */
 
 #include "hal.h"
 #include "packetize_sdh_be_v2.h"

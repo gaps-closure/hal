@@ -1,31 +1,39 @@
-/* Open, Find and Print Devices (based on config file info) */
-/*   Currently, it can open three types of devices:
- *     a) Serial Device (tty)
+/* Open, Find and Print Devices (based on config file info):
+ *     a) IPC (ZMQ pub/sub)
  *     b) INET device (tcp or udp)
- *     c) IPC device (ZMQ pub/sub)
+ *     c) Bidirectional Serial Device (tty)
+ *     d) Unidirectional Serial Device (ilp)
  */
 
 #include "hal.h"
 
+/* Define IPC parent-child process file descriptors */
 #define PARENT_READ  read_pipe[0]
 #define PARENT_WRITE write_pipe[1]
 #define CHILD_WRITE  read_pipe[1]
 #define CHILD_READ   write_pipe[0]
 
+/* Store information on ILP devices associated with serial root device */
 typedef struct _root_device {
   const char   *root_path;
   int           data_dev_count;
   device       *data_dev_list[10];
 } root_device;
 
+/**********************************************************************/
+/* Print Device Deffinition */
+/*********t************************************************************/
+/* Print device definition element (if it exists) */
 void device_print_str(char *name, const char *s) {
   if (strlen(s) > 0) fprintf(stderr, " %s=%s", name, s);
 }
 
+/* Print device definition element (if it exists) */
 void device_print_int(char *name, int v) {
   if (v >= 0) fprintf(stderr, " %s=%d", name, v);
 }
 
+/* Print device definition */
 void devices_print_one(device *d)  {
   fprintf(stderr, " %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
   device_print_str("ai", d->addr_in);
@@ -49,9 +57,8 @@ void devices_print_all(device *root)  {
 }
 
 /**********************************************************************/
-/* HAL Device Processing */
+/* Match from Device List  */
 /*********t************************************************************/
-
 /* Loop through devs linked list, return device with fd as its read file descriptor */
 device *find_device_by_readfd(device *root, int fd) {
   for(device *d = root; d != NULL; d = d->next) {
@@ -70,8 +77,11 @@ device *find_device_by_id(device *root, const char *id) {
   return ((device *) NULL);
 }
 
+/**********************************************************************/
+/* Open Device; a) IPC  */
+/*********t************************************************************/
 /* Open HAL child process to read or write using the Application API (using zcat) */
-void start_api_process(device *d, int *read_pipe, int *write_pipe, int pipe_open, int pipe_close, int fd_open, const char *mode, const char *addr) {
+void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open, int pipe_close, int fd_open, const char *mode, const char *addr) {
   int  pid;
 
   if ((pid = fork()) < 0) {
@@ -105,8 +115,8 @@ void interface_open_ipc(device *d) {
 
 //  fprintf(stderr, "UUUUUUUUUUU %s %s %s %s\n", d->addr_in, HAL_IPC_SUB, d->addr_out, HAL_IPC_PUB);
   /* b) Fork HAL child processes (to read and write on ipc channels) */
-  start_api_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in,  HAL_IPC_SUB);
-  start_api_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, HAL_IPC_PUB);
+  ipc_open_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in,  HAL_IPC_SUB);
+  ipc_open_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, HAL_IPC_PUB);
 
   /* c) Parent (HAL) process finishes up */
   close(CHILD_READ);
@@ -115,8 +125,11 @@ void interface_open_ipc(device *d) {
   d->writefd = PARENT_WRITE;
 }
 
-/* Open a network socket and return its fd. Optionally bind (bind_flag=1) and connect (bind_flag=0 & tcp) socket */
-int interface_open_inet_one(device *d, const char *addr, int port, struct sockaddr_in *serv_addr, int bind_flag) {
+/**********************************************************************/
+/* Open Device; b) INET (TCP or UDP)  */
+/*********t************************************************************/
+/* Open network socket and return its fd: optionally bind (bind_flag=1) and connect (bind_flag=0 & tcp) */
+int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *serv_addr, int bind_flag) {
   int fd, comm_type;
   
   /* a) Copy IP destination information into sockaddr_in struture */
@@ -163,8 +176,8 @@ void interface_open_inet(device *d) {
   int fd_out = -1, fd_in = -1;
   
   /* Create socket and connect if required */
-  if (strlen(d->addr_out) > 0) fd_out = interface_open_inet_one(d, d->addr_out, d->port_out, &(d->socaddr_out), 0);
-  if (strlen(d->addr_in)  > 0) fd_in  = interface_open_inet_one(d, d->addr_in,  d->port_in,  &(d->socaddr_in),  1);
+  if (strlen(d->addr_out) > 0) fd_out = inet_open_socket(d, d->addr_out, d->port_out, &(d->socaddr_out), 0);
+  if (strlen(d->addr_in)  > 0) fd_in  = inet_open_socket(d, d->addr_in,  d->port_in,  &(d->socaddr_in),  1);
 
   /* Save file descriptors */
   if ( (fd_out == -1) && (fd_in == -1) ) {fprintf(stderr, "\n%s: No address speciffied for interface %s\n", __func__, d->id); exit(EXIT_FAILURE);}
@@ -173,6 +186,9 @@ void interface_open_inet(device *d) {
   if ( (fd_out != -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_out;}
 }
 
+/**********************************************************************/
+/* Open Device; c) Bidirectional TTY Serial Link  */
+/*********t************************************************************/
 /* Open a serial (tty) interface for read-write and save the fds */
 void interface_open_tty(device *d) {
   int fd;
@@ -184,8 +200,11 @@ void interface_open_tty(device *d) {
   d->writefd = fd;
 }
 
-/* open read and write ILIP device pair */
-void ilp_open_read_writes(device *d) {
+/**********************************************************************/
+/* Open Device; d) Unidirectional Serial Links (based on root device) */
+/*********t************************************************************/
+/* open unidirection ILIP device pair (for read and write) */
+void ilp_open_data_devices(device *d) {
   int fd_read, fd_write;
 
   // fprintf(stderr, "%s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
@@ -203,7 +222,7 @@ void ilp_open_read_writes(device *d) {
   d->writefd = fd_write;
 }
 
-/* Check ILIP root device */
+/* Get session information (to_mux) from root device */
 void ilp_root_check(int fd_root, root_device *rd) {
   int      i, j, device_pair_count;
   ssize_t  write_bytes, read_bytes;
@@ -237,7 +256,7 @@ fprintf(stderr, "TODO %s: Write Session IDs from Root Device into halmap: from_m
 }
 
 /* Open root ILIP device */
-void ilp_root_open(root_device *rd) {
+void ilp_open_root_devices(root_device *rd) {
   const char *root_path = rd->root_path;
   int  fd_root = -1;
   
@@ -292,13 +311,16 @@ void interface_open_ilp(device *d) {
 //  fprintf(stderr, "%s: Open %d root device(s)\n", __func__, root_count);
   for (j=0; j<root_count; j++) {
     rd = &(root_list[j]);
-    ilp_root_open(rd);
+    ilp_open_root_devices(rd);
     for (i=0; i<(rd->data_dev_count); i++) {
-      ilp_open_read_writes(rd->data_dev_list[i]);
+      ilp_open_data_devices(rd->data_dev_list[i]);
     }
   }
 }
 
+/**********************************************************************/
+/* Open Devices */
+/*********t************************************************************/
 /* Open enabled devices (from linked-list of devices) and get their in/out handles */
 void devices_open(device *dev_linked_list_root) {
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
