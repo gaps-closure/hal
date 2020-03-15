@@ -1,38 +1,47 @@
 #!/bin/bash
 
-# Use netcat to communicate with HAL (on a network interface or a serial device)
+# Simple emulatation of CDG devices that communicate with HAL
+# on a network interface or a serial device.
+#
+# Netcat process emulated GDG:
 #   - Receives data by listening on sepcified IP address and ports
 #   - Transmits precanned DATA back to specified adresss and port
-#        Note: May transmit on same connection as it receives or can send-back
-#        on HAL listening port (but must match the HAL configuration).
+#        Normally sends back to a HAL listening port; but also,
+#        supports sending back on same connection as it receives.
 
-# Network conifgurations
+# Network Devices
+IF_NET1="/dev/vcom1"      # socat serial device
+IF_NET3="lo"              # network udp connection
+IF_NET4="lo"              # network tcp connection
+# Emulated CDG Addresses
 IP_ADDR="127.0.0.1"
-IP_PORT1=12345
-IP_PORT2=12345
-IP_PORT3=50000
-IP_PORT3h=6788
-IP_PORT4=6787
-FIF0_NET1="fifo1"
-FIF0_NET3="fifo3"
-FIF0_NET3h="fifo3b"
-FIF0_NET4="fifo4"
-IF_NET1="/dev/vcom1"
-IF_NET2="/dev/vcom2"
-IF_NET3="lo"
-IF_NET4="lo"
- 
-# Packets written as plaintext hexdump (fed into xxd -r -p to create binary)
-DATA01="00 01 01 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 11"
-DATA02="00 02 02 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 22"
-DATA03="00 03 03 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 33"
-DATA04="00 04 04 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 44"
-DATA05="00 00 00 05 00 00 00 05 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 55"
-DATA06="00 00 00 06 00 00 00 06 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 66"
-DATA07="00 00 00 07 00 00 00 07 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 77"
-DATA08="00 00 00 08 00 00 00 08 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 88"
+# Emulated CDG Network Ports
+IP_PORT1=12345            # CDG Port for tcp connection with socat serial device
+IP_PORT3=50000            # CDG listening port for network udp connection
+IP_PORT3h=6788            # HAL listening port for network udp connection (optional)
+IP_PORT4=6787             # CDG listening port for network tcp connection
+# fifos (to feed into netcat)
+FIF0_NET1="fifo1"         # socat FIFO
+FIF0_NET3="fifo3"         # network udp connection with bidirectional HAL-CDG link
+FIF0_NET3h="fifo3b"       # network udp connection with unidirectional HAL-CDG links
+FIF0_NET4="fifo4"         # network tcp connection
 
-# Network emuluation: Fifos feed input into netcat; netcat (binary) output onverted to HEX (-w1 avoids line buffering, but ugly)
+# Packets written as plaintext hexdump (fed into xxd -r -p to create binary)
+# 1) sdh_bw_v1 (compressed header) packets (xdd3 and xdd4)
+DATA_BW1_11="00 0b 0b 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0b"
+DATA_BW1_12="00 0c 0c 01 00 10 5d d6 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0c"
+DATA_BW1_13="00 0d 0d 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0d"
+DATA_BW1_14="00 0e 0e 01 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0e"
+# 2) sdh_be_v1 (with timestamps) packets (xdd1, xdd2, xdd6, xdd7)
+DATA_BE1_01="00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 01"
+DATA_BE1_02="00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 02"
+DATA_BE1_05="00 00 00 05 00 00 00 05 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 05"
+DATA_BE1_06="00 00 00 06 00 00 00 06 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 06"
+DATA_BE1_07="00 00 00 07 00 00 00 07 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 07"
+DATA_BE1_08="00 00 00 08 00 00 00 08 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 08"
+
+# Network emuluation: Fifos feed input into netcat;
+# od converts netcat (binary) output into HEX (-w1 avoids line buffering, but ugly)
 rm -f $FIF0_NET1 $FIF0_NET3 $FIF0_NET3h $FIF0_NET4
 mkfifo $FIF0_NET1
 mkfifo $FIF0_NET3
@@ -65,38 +74,45 @@ trap 'kill $(jobs -p)' EXIT
 while true; do
   echo "Listening on $IF_NET1 ($IP_ADDR:$IP_PORT1) and $IF_NET3 ($IP_ADDR:udp:$IP_PORT3, $IP_ADDR:tcp:$IP_PORT4)"
   echo "Type APP id to send data to APP"
-  echo "  2     sent via '$IF_NET3' ($IP_ADDR:udp:$IP_PORT3h) (20 to send-back from port=$IP_PORT3; 3 to send on wrong mux=3)"
-  echo "  4     sent via '$IF_NET4' (reuses $IP_ADDR:tcp:$IP_PORT4)"
-  echo "  6 & 8 sent via '$IF_NET1' (resues $IP_ADDR:tcp:$IP_PORT1)"
+  echo "  6 & 8 sent via '$IF_NET1' (reuses $IP_ADDR:tcp:$IP_PORT1)"
+  echo "  12    sent via '$IF_NET3' ($IP_ADDR:udp:$IP_PORT3h) (120 to reuse $IP_PORT3; 13 to send on wrong mux=13)"
+  echo "  14    sent via '$IF_NET4' (reuses $IP_ADDR:tcp:$IP_PORT4)"
   read APP_INDEX
   case $APP_INDEX in
+    1)
+      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_01"
+      echo "$DATA_BE1_01" | stdbuf -oL xxd -r -p  > $FIF0_NET1
+      ;;
     2)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA02"
-      echo "$DATA02" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
-      ;;
-    20)
-      echo "Sending back to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT3 prot=UDP: $DATA02"
-      echo " **** HAL not listening on that socket, unless configure HAL so it has no: addr_in and port_in ****\n"
-      echo "$DATA02" | stdbuf -oL xxd -r -p  > $FIF0_NET3
-      ;;
-    3)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA03"
-      echo " **** No HAL map for mux=3 on $IF_NET3, so HAL drops ****\n"
-      echo "$DATA03" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
-        ;;
-    4)
-      echo "Sending to $IF_NET4 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA04"
-      echo "$DATA04" | stdbuf -oL xxd -r -p  > $FIF0_NET4
+      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_02"
+      echo "$DATA_BE1_02" | stdbuf -oL xxd -r -p  > $FIF0_NET1
       ;;
     6)
-      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA06"
-      echo "$DATA06" | stdbuf -oL xxd -r -p  > $FIF0_NET1
+      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_06"
+      echo "$DATA_BE1_06" | stdbuf -oL xxd -r -p  > $FIF0_NET1
       ;;
     8)
-      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA08"
-      echo "$DATA08" | stdbuf -oL xxd -r -p  > $FIF0_NET1
+      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_08"
+      echo "$DATA_BE1_08" | stdbuf -oL xxd -r -p  > $FIF0_NET1
       ;;
-
+    12)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_12"
+      echo "$DATA_BW1_12" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      ;;
+    120)
+      echo "Sending back to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT3 prot=UDP: $DATA_BW1_12"
+      echo " **** HAL not listening on that socket, unless configure HAL for no: addr_in and port_in ****\n"
+      echo "$DATA_BW1_12" | stdbuf -oL xxd -r -p  > $FIF0_NET3
+      ;;
+    13)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_13"
+      echo " **** No HAL map for mux=3 on $IF_NET3, so HAL drops ****\n"
+      echo "$DATA_BW1_13" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+        ;;
+    14)
+      echo "Sending to $IF_NET4 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA_BW1_14"
+      echo "$DATA_BW1_14" | stdbuf -oL xxd -r -p  > $FIF0_NET4
+      ;;
     *)
       echo -n "Unsupported APP-type = $APP_INDEX. "
       ;;

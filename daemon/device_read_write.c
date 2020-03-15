@@ -12,8 +12,8 @@
 #include "device_open.h"
 #include "packetize.h"
 
-int drw_verbose=1;
-
+int drw_verbose=0;
+int sel_verbose=0;
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
@@ -66,12 +66,15 @@ pdu *read_pdu(device *idev) {
       ) {
     pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
     if (pkt_len < 0) {
-      printf("%s read error on fd=%d: rv=%d errno=%d\n", __func__, fd, pkt_len, errno);
+      
+      if (sel_verbose==1) printf("%s read error on fd=%d: rv=%d errno=%d ", __func__, fd, pkt_len, errno);
       if (errno == EAGAIN) {
-        printf("EAGAIN: device unavaiable or read would block\n");
+        if (sel_verbose==1) printf("(EAGAIN: device unavaiable or read would block)\n");
+        else printf(".");
         sleep (1);
         return (NULL);
       }
+      printf("\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -158,7 +161,7 @@ void process_input(int ifd, halmap *map, device *devs) {
 
   ipdu = read_pdu(idev);
   if(ipdu == NULL) { 
-    fprintf(stderr, "%s: Input PDU is NULL\n", __func__);
+    if (sel_verbose==1) fprintf(stderr, "%s: Input PDU is NULL\n", __func__);
     return; 
   }
 
@@ -187,7 +190,7 @@ void select_add(int fd, int *maxrfd, fd_set *readfds){
   if (fd > 0) {
     if (fd >= *maxrfd) *maxrfd = fd + 1;
     FD_SET(fd, readfds);
-    fprintf(stderr, ", %d", fd);
+    if (sel_verbose==1) fprintf(stderr, ", %d", fd);
   }
 }
 
@@ -198,14 +201,13 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
 
   FD_ZERO(readfds);
   maxrfd = -1;
-  fprintf(stderr, "\nHAL Waiting for input on fds");
-
+  if (sel_verbose==1) fprintf(stderr, "\nHAL Waiting for input on fds");
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       select_add(d->readfd, &maxrfd, readfds);
     }
   }
-  fprintf(stderr, "\n");
+  if (sel_verbose==1) fprintf(stderr, "\n");
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 
@@ -218,7 +220,7 @@ void read_wait_loop(device *devs, halmap *map) {
   while (1) {
     maxrfd = select_init(devs,  &readfds);
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
-    if(drw_verbose) fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
+//    if(drw_verbose) fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
         process_input(i, map, devs);

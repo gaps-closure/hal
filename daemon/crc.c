@@ -86,7 +86,6 @@ uint16_t crc16(uint8_t *buf, size_t len) {
   }
   // Step 1) Initialize crc to starting value to all 1's
   crc = pppfcs16(fcstab, PPPINITFCS16, buf, len);
-  printf("crc=0x%04x\n", crc);
   return (crc);
 }
 
@@ -95,8 +94,10 @@ uint16_t crc16(uint8_t *buf, size_t len) {
 int main(void) {
   uint8_t  buf[3]={1,10,128}; // 0x010a80 = 68224
   size_t   len = 3;
-  
-  crc16(buf, len);
+  uint16_t crc=0;
+
+  crc = crc16(buf, len);
+  printf("crc=0x%04x\n", crc);
   return (0);
 }
 */
