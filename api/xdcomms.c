@@ -170,7 +170,7 @@ void xdc_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
 /*
  * Send ADU to HAL (which should be listening on the ZMQ publisher socket)
  */
-void xdc_asyn_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
+void xdc_blocking_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
   static int   do_once = 1;
   static void *socket;
   int          err;

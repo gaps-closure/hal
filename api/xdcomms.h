@@ -56,6 +56,6 @@ extern void len_decode (size_t *, uint32_t);
 // Main HAL API functions
 extern void xdc_register(codec_func_ptr, codec_func_ptr, int);
 extern void xdc_asyn_send(uint8_t *, size_t,   gaps_tag);
-extern void xdc_asyn_recv(uint8_t *, size_t *, gaps_tag *);
+extern void xdc_blocking_recv(uint8_t *, size_t *, gaps_tag *);
 
 #endif

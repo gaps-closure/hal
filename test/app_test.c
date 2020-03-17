@@ -165,7 +165,7 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *s_tag) {
 
 /* Create, send and print one message */
 void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *r_tag) {
-  xdc_asyn_recv(adu, adu_len, r_tag);
+  xdc_blocking_recv(adu, adu_len, r_tag);
   fprintf(stderr, "app rx ");
   tag_print(r_tag);
   switch (r_tag->typ) {
