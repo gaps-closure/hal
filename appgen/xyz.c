@@ -22,7 +22,6 @@ void xyz_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
   p2->x  = pack754_be(p1->x);
   p2->y  = pack754_be(p1->y);
   p2->z  = pack754_be(p1->z);
-
   *len_out = *len_in;
 }
   
@@ -33,7 +32,6 @@ void xyz_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
   xyz_output   *p1 = (xyz_output *)   buff_out;
   xyz_datatype *p2 = (xyz_datatype *) buff_in;
     
-  fprintf (stderr, "ZZZZZAZ\n");
   p2->x  = unpack754_be(p1->x);
   p2->y  = unpack754_be(p1->y);
   p2->z  = unpack754_be(p1->z);

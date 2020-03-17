@@ -34,7 +34,7 @@ void opts_print(void) {
   printf("OPTION: one of the following options:\n");
   printf(" -h --help : print this message\n");
   printf(" -v --hal_verbose : print debug messages in stderr\n");
-  printf(" -w --hal_verbose : select wait time (in microseconds) when device not ready (EAGAIN) - default to 1000us\n");
+  printf(" -w --hal_verbose : select wait time (in microseconds) when device not ready (EAGAIN) - default to 1000us (-1 will exit if device is not ready)\n");
   printf("CONFIG-FILE: path to file with HAL configuration information (e.g., sample.cfg)\n");
 }
 

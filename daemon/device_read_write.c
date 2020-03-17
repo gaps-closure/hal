@@ -57,7 +57,7 @@ pdu *read_pdu(device *idev, int hal_verbose) {
   fd = idev->readfd;
   com_type = idev->comms;
 //exit (21);
-  if(hal_verbose) fprintf(stderr, "HAL reading using comms type %s\n", com_type);
+  if (hal_verbose && sel_verbose) fprintf(stderr, "HAL reading using comms type %s\n", com_type);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "ilp") == 0)
@@ -65,9 +65,9 @@ pdu *read_pdu(device *idev, int hal_verbose) {
       ) {
     pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
     if (pkt_len < 0) {
-      if (sel_verbose==1) printf("%s read error on fd=%d: rv=%d errno=%d ", __func__, fd, pkt_len, errno);
+      if (hal_verbose && sel_verbose) printf("%s: read error on fd=%d: rv=%d errno=%d ", __func__, fd, pkt_len, errno);
       if (errno == EAGAIN) {
-        if (sel_verbose==1) printf("(EAGAIN: device unavaiable or read would block)\n");
+        if (hal_verbose && sel_verbose) printf("(EAGAIN: device unavaiable or read would block)\n");
         return (NULL);
       }
       printf("%s read error on fd=%d: rv=%d errno=%d ", __func__, fd, pkt_len, errno);
@@ -222,14 +222,17 @@ void read_wait_loop(device *devs, halmap *map, int hal_verbose, int hal_wait_us)
     maxrfd = select_init(devs,  &readfds);
     nunready=0;
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
-    if(hal_verbose) fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
+    if (hal_verbose && sel_verbose) fprintf(stderr, "Selected n=%d max=%d\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
         nunready += process_input(i, map, devs, hal_verbose);
         nready--;
       }
     }
-    if(hal_verbose) fprintf(stderr, "Selected number unready=%d\n", nunready);
-    if (nunready >= 0) usleep (hal_wait_us);
+    if (nunready >= 0) {
+      if (hal_verbose && sel_verbose) fprintf(stderr, "%d devices were not ready atter being selected (hal_wait_us=%d)\n", nunready, hal_wait_us);
+      if (hal_wait_us < 0) exit(EXIT_FAILURE);
+      else                 usleep (hal_wait_us);
+    }
   }
 }

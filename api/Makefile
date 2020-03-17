@@ -1,7 +1,7 @@
 CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
-#LDLIBS      = -L./codecs -lpnt
+#LDLIBS      = -L./codecs -lpnt -lxyz
 
 all: libxdcomms.a
 

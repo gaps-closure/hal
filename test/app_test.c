@@ -20,6 +20,7 @@ int r_mux = 1, r_sec = 1, r_typ = 1;    /* recv tag */
 int receive_first    = 0;
 int loop_pause_us    = 0;
 int loop_count       = 1;
+int demo_number      = 0;
 
 /* Print options */
 void opts_print(void) {
@@ -84,9 +85,32 @@ void opts_get(int argc, char **argv) {
         fprintf(stderr, "\nSkipping undefined option (%d)\n", opt);
     }
   }
-  fprintf(stderr, "Read options: send-tag = [%d, %d, %d] recv-tag = [%d, %d, %d ", s_mux, s_sec, s_typ, r_mux, r_sec, r_typ);
+  if(optind<argc) {
+    demo_number = atoi(argv[optind++]);
+    fprintf(stderr, "demo_num=%d\n", demo_number);
+    switch (demo_number) {
+      case 1:
+        s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
+        break;
+      case 2:
+        s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
+        break;
+      case 5:
+        s_mux = 5; s_sec = 5; s_typ = 1; r_mux = 6; r_sec = 6; r_typ = 1;
+        break;
+      case 11:
+        s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
+        break;
+      case 13:
+        s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
+        break;
+      default:
+        fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", opt);
+    }
+  }
+
+  fprintf(stderr, "Read options: send-tag = [%d, %d, %d] recv-tag = [%d, %d, %d] ", s_mux, s_sec, s_typ, r_mux, r_sec, r_typ);
   fprintf(stderr, "loop_count=%d, loop_pause_us=%d, receive_first=%d\n", loop_count, loop_pause_us, receive_first);
-//  if(optind<argc) file_name = argv[optind++];
 //  return (file_name);
 }
 
