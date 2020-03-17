@@ -22,7 +22,8 @@
 #include "map.h"
 #include "packetize.h"
 
-int hal_verbose=0;
+int hal_verbose=0;        /* print debug flag */
+int hal_wait_us=1000;     /* select (EAGAIN) wait loop (in microseconds) */
 
 /**********************************************************************/
 /* HAL get options */
@@ -32,7 +33,8 @@ void opts_print(void) {
   printf("Usage: hal [OPTION]... CONFIG-FILE\n");
   printf("OPTION: one of the following options:\n");
   printf(" -h --help : print this message\n");
-  printf(" -v --hal_verbose : print some messages in stderr\n");
+  printf(" -v --hal_verbose : print debug messages in stderr\n");
+  printf(" -w --hal_verbose : select wait time (in microseconds) when device not ready (EAGAIN) - default to 1000us\n");
   printf("CONFIG-FILE: path to file with HAL configuration information (e.g., sample.cfg)\n");
 }
 
@@ -45,12 +47,18 @@ char *opts_get (int argc, char **argv) {
     opts_print();
     exit(EXIT_FAILURE);
   }
-  while((opt =  getopt(argc, argv, "v")) != EOF)
+  while((opt =  getopt(argc, argv, "hvw:")) != EOF)
   {
     switch (opt)
     {
+      case 'h':
+        opts_print();
+        exit(0);
       case 'v':
         hal_verbose = 1;
+        break;
+      case 'w':
+        hal_wait_us = atoi(optarg);
         break;
       default:
         printf("\nSkipping undefined Option (%d)\n", opt);
@@ -82,9 +90,9 @@ int main(int argc, char **argv) {
   map  = get_mappings(&cfg);
   if(hal_verbose) {fprintf(stderr, "Config file "); halmap_print_all(map);}
   config_destroy(&cfg);
-  devices_open(devs);
+  devices_open(devs, hal_verbose);
   devices_print_all(devs);
   halmap_print_all(map);
-  read_wait_loop(devs, map);
+  read_wait_loop(devs, map, hal_verbose, hal_wait_us);
   return 0;
 }

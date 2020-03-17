@@ -1,8 +1,9 @@
 /*
- * XDCOMMS.C
- *   CLOSURE API functions
+ * Cross Domain (XD) Communication API between Applicaitons and GAP XD Guards
+ *   March 2020, Perspecta Labs
  *
- * March 2020, Perspecta Labs (amcauley@perspectalabs.com)
+ * TODO:
+ *  XXX: enclose data encode/decode API functions by passing data file description
  */
 
 #include "xdcomms.h"

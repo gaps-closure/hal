@@ -1,1 +1,1 @@
-void read_wait_loop(device *, halmap *);
+void read_wait_loop(device *, halmap *, int, int);

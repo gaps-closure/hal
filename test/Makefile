@@ -1,7 +1,7 @@
 CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
-LDLIBS      = -L../api -lxdcomms -lzmq -L../appgen -lpnt 
+LDLIBS      = -L../api -lxdcomms -lzmq -L../appgen -lxyz -lpnt 
 
 all: app_test
 

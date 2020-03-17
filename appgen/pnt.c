@@ -1,17 +1,12 @@
 /*
- * PNT.C
- *   PNT Datatype functions
- *
- * February 2020
- * A. McAuley, Perspecta Labs (amcauley@perspectalabs.com)
- *
- * For description and revision history see README.txt
+ * PNT Datatype API functions (hardcoded)
+ *   March 2020, Perspecta Labs
  */
 
 #include "pnt.h"
 
 void pnt_print (pnt_datatype *pnt) {
-  fprintf(stderr, "PNT id=%d, tr=%d, lo=(%d.%d), lat=(%d.%d), alt=(%d.%d)\n",
+  fprintf(stderr, "PNT (len=%ld): id=%d, tr=%d, lo=(%d.%d), lat=(%d.%d), alt=(%d.%d)\n", sizeof(*pnt), 
   pnt->MessageID,
   pnt->TrackIndex,
   pnt->Lon,

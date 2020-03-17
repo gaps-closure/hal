@@ -9,7 +9,6 @@
  *  Adds conversion of encoded (host-byte ordered) double to and from big_endian network format
  */
 
-
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -91,31 +90,33 @@ long double unpack754_be(uint64_t i) {
   return (unpack754_64(h));
 }
 
+#ifdef FLOAT_TEST
 /* testing */
 int main(void)
 {
-  float f = 3.1415926, f2;
-  double d = 3.14159265358979323, d2;
+  float    f = 3.1415926, f2;
+  double   d, d2;
   uint32_t fi;
   uint64_t di, ni;
 
   fi = pack754_32(f);
   f2 = unpack754_32(fi);
-
+  
+  d = 3.14159265358979323;
+  d = 74.574489;
   di = pack754_64(d);
   d2 = unpack754_64(di);
-  
-  printf("float before : %.7f\n", f);
-  printf("float encoded: 0x%08" PRIx32 "\n", fi);
-  printf("float after  : %.7f\n\n", f2);
-
-  printf("double before : %.20lf\n", d);
-  printf("double encoded: 0x%016" PRIx64 "\n", di);
-  printf("double after  : %.20lf\n", d2);
-  
   ni = pack754_be(d);
-  printf("double encoded big endian: 0x%016" PRIx64 "\n", ni);
-  printf("double from big endian encoding: %.20lf\n", (double) unpack754_be(ni));
+
+  printf("float before   (bytes = %lu): %.7f\n",             sizeof(f), f);
+  printf("float encoded  (bytes = %lu): 0x%08" PRIx32 "\n",  sizeof(fi), fi);
+  printf("float after    (bytes = %lu): %.7f\n\n",           sizeof(f2), f2);
+  
+  printf("double before  (bytes = %lu): %.20lf\n",           sizeof(d), d);
+  printf("double encoded (bytes = %lu): 0x%016" PRIx64 "\n", sizeof(di), di);
+  printf("double big-end (bytes = %lu): 0x%016" PRIx64 "\n", sizeof(ni), ni);
+  printf("double decoder (bytes = %lu): %.20lf [%.20lf]\n",  sizeof(d), d2, (double) unpack754_be(ni));
 
   return 0;
 }
+#endif

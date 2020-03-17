@@ -23,7 +23,6 @@ typedef struct _pnt_datatype {
 } pnt_datatype;
 
 
-
 extern void pnt_print (pnt_datatype *);
 extern void pnt_data_encode (uint8_t *, size_t *, uint8_t *, size_t *);
 extern void pnt_data_decode (uint8_t *, size_t *, uint8_t *, size_t *);
