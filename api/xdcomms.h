@@ -41,7 +41,7 @@ typedef struct _codec_map {
   codec_func_ptr encode;
   codec_func_ptr decode;
 } codec_map;
-codec_map  cmap[DATA_TYP_MAX];
+extern codec_map  cmap[DATA_TYP_MAX];
 
 /* Minor exposed function prototypes */
 extern void tag_print (gaps_tag *);
