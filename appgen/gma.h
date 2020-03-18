@@ -11,29 +11,41 @@
 #define DATA_TYP_POSITION    1
 #define DATA_TYP_DISTANCE    2
 
+typedef struct _trailer_datatype {
+	uint32_t seq;
+	uint32_t rqr;
+	uint32_t oid;
+	uint16_t mid;
+	uint16_t crc;
+} trailer_datatype;
+
 /* Data structure: PNT */
 typedef struct _position_datatype {
     double x;
     double y;
     double z;
+    trailer_datatype trailer;
 } position_datatype;
 
 typedef struct _position_output {
     uint64_t  x;
     uint64_t  y;
     uint64_t  z;
+    trailer_datatype trailer;
 } position_output;
 
 typedef struct _distance_datatype {
     double x;
     double y;
     double z;
+    trailer_datatype trailer;
 } distance_datatype;
 
 typedef struct _distance_output {
     uint64_t  x;
     uint64_t  y;
     uint64_t  z;
+    trailer_datatype trailer;
 } distance_output;
 
 extern void position_print (position_datatype *);

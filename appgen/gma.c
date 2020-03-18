@@ -13,10 +13,15 @@
 #include "gma.h"
 
 void position_print (position_datatype *position) {
-  fprintf(stderr, "position (len=%ld): %f, %f, %f\n", sizeof(*position),
-  position->x,
-  position->y,
-  position->z);
+  fprintf(stderr, "position (len=%ld): %f, %f, %f, %d, %d, %d, %d, %d\n", sizeof(*position),
+          position->x,
+          position->y,
+          position->z,
+          position->trailer.seq,
+          position->trailer.rqr,
+          position->trailer.oid,
+          position->trailer.mid,
+          position->trailer.crc);
 }
 
 /*
@@ -29,6 +34,13 @@ void position_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->x  = pack754_be(p1->x);
   p2->y  = pack754_be(p1->y);
   p2->z  = pack754_be(p1->z);
+
+  p2->trailer.seq = htonl(p1->trailer.seq);
+  p2->trailer.rqr = htonl(p1->trailer.rqr);
+  p2->trailer.oid = htonl(p1->trailer.oid);
+  p2->trailer.mid = htons(p1->trailer.mid);
+  p2->trailer.crc = htons(p1->trailer.crc);
+
   *len_out = *len_in;
 }
 
@@ -42,14 +54,26 @@ void position_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->x  = unpack754_be(p1->x);
   p2->y  = unpack754_be(p1->y);
   p2->z  = unpack754_be(p1->z);
+
+  p2->trailer.seq = ntohl(p1->trailer.seq);
+  p2->trailer.rqr = ntohl(p1->trailer.rqr);
+  p2->trailer.oid = ntohl(p1->trailer.oid);
+  p2->trailer.mid = ntohs(p1->trailer.mid);
+  p2->trailer.crc = ntohs(p1->trailer.crc);
+
   *len_in = *len_out;
 }
 
 void distance_print (distance_datatype *distance) {
-  fprintf(stderr, "distance (len=%ld): %f, %f, %f\n", sizeof(*distance),
-  distance->x,
-  distance->y,
-  distance->z);
+  fprintf(stderr, "position (len=%ld): %f, %f, %f, %d, %d, %d, %d, %d\n", sizeof(*distance),
+          distance->x,
+          distance->y,
+          distance->z,
+          distance->trailer.seq,
+          distance->trailer.rqr,
+          distance->trailer.oid,
+          distance->trailer.mid,
+          distance->trailer.crc);
 }
 
 /*
@@ -62,6 +86,13 @@ void distance_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->x  = pack754_be(p1->x);
   p2->y  = pack754_be(p1->y);
   p2->z  = pack754_be(p1->z);
+
+  p2->trailer.seq = htonl(p1->trailer.seq);
+  p2->trailer.rqr = htonl(p1->trailer.rqr);
+  p2->trailer.oid = htonl(p1->trailer.oid);
+  p2->trailer.mid = htons(p1->trailer.mid);
+  p2->trailer.crc = htons(p1->trailer.crc);
+
   *len_out = *len_in;
 }
 
@@ -75,5 +106,12 @@ void distance_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->x  = unpack754_be(p1->x);
   p2->y  = unpack754_be(p1->y);
   p2->z  = unpack754_be(p1->z);
+
+  p2->trailer.seq = ntohl(p1->trailer.seq);
+  p2->trailer.rqr = ntohl(p1->trailer.rqr);
+  p2->trailer.oid = ntohl(p1->trailer.oid);
+  p2->trailer.mid = ntohs(p1->trailer.mid);
+  p2->trailer.crc = ntohs(p1->trailer.crc);
+
   *len_in = *len_out;
 }
