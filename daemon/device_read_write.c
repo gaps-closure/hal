@@ -44,13 +44,13 @@ pdu *codec(halmap *h, pdu *ipdu) {
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev, int hal_verbose) {
-  int             rv=-1;
   int             pkt_len=0;
   pdu            *ret = NULL;
   static uint8_t  buf[PACKET_MAX];
   int             fd;
   const char     *dev_id;
   const char     *com_type;
+  socklen_t       sock_len;
 
   /* a) read input into buf and get its length (with input dev_id and fd) */
   dev_id = idev->id;
@@ -76,8 +76,8 @@ pdu *read_pdu(device *idev, int hal_verbose) {
     }
   }
   else if (strcmp(com_type, "udp") == 0) {
-    rv = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &(idev->socaddr_out), (socklen_t *) &pkt_len);
-    if (rv < 0) {
+    pkt_len = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &(idev->socaddr_out), &sock_len);
+    if (pkt_len < 0) {
       printf("%s recvfrom errno code: %d\n", __func__, errno);
       exit(EXIT_FAILURE);
     }
@@ -85,7 +85,7 @@ pdu *read_pdu(device *idev, int hal_verbose) {
   }
   else {fprintf(stderr, "%s unknown comms type %s", __func__, com_type); exit(EXIT_FAILURE);}
   
-  fprintf(stderr, "HAL reads  %s from %s, fd=%02d:", idev->model, dev_id, fd); data_print("", (uint8_t *) buf, pkt_len);
+  fprintf(stderr, "HAL reads %s from %s, fd=%02d:", idev->model, dev_id, fd); data_print("", (uint8_t *) buf, pkt_len);
   
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));

@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define DATA_TYP_PNT    1
+#define DATA_TYP_PNT    101
 
 /* Data structure: PNT */
 typedef struct _pnt_datatype {

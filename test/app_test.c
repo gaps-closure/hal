@@ -8,6 +8,7 @@
 #include "../api/xdcomms.h"
 #include "../appgen/pnt.h"
 #include "../appgen/xyz.h"
+#include "../appgen/gma.h"
 #include <stdio.h>
 #include <sys/time.h>
 
@@ -104,6 +105,13 @@ void opts_get(int argc, char **argv) {
       case 13:
         s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
         break;
+      case 101:
+        s_mux = 101; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
+        break;
+      case 102:
+        s_mux = 102; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
+        break;
+
       default:
         fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", opt);
     }
@@ -114,7 +122,7 @@ void opts_get(int argc, char **argv) {
 //  return (file_name);
 }
 
-/* Data type 1 */
+/* Data type 101 */
 void pnt_set (uint8_t *adu, size_t *len) {
   static int  AltFrac=0;
   pnt_datatype  *pnt = (pnt_datatype *) adu;
@@ -132,9 +140,35 @@ void pnt_set (uint8_t *adu, size_t *len) {
   AltFrac++;
 }
 
-/* Data type 2 */
+/* Data type 1, 2, 102 */
+void distance_set (uint8_t *adu, size_t *len) {
+  static double  z = 0.5;
+  distance_datatype  *xyz = (distance_datatype *) adu;
+
+  xyz->x = -1.021;
+  xyz->y =  2.334;
+  xyz->z = z;
+  *len=(size_t) sizeof(*xyz);
+  distance_print(xyz);
+  z += 0.1;
+}
+
+/* Data type 1, 2, 102 */
+void position_set (uint8_t *adu, size_t *len) {
+  static double  z = 102;
+  position_datatype  *xyz = (position_datatype *) adu;
+
+  xyz->x = -74.574489;
+  xyz->y =  40.695545;
+  xyz->z = z;
+  *len=(size_t) sizeof(*xyz);
+  position_print(xyz);
+  z += 0.1;
+}
+
+/* Data type 1, 2, 102 */
 void xyz_set (uint8_t *adu, size_t *len) {
-  static double  z=3.3;
+  static double  z = 3.3;
   xyz_datatype  *xyz = (xyz_datatype *) adu;
 
   xyz->x = 1.1;
@@ -142,7 +176,7 @@ void xyz_set (uint8_t *adu, size_t *len) {
   xyz->z = z;
   *len=(size_t) sizeof(*xyz);
   xyz_print(xyz);
-  z += 1;
+  z += 0.1;
 }
 
 /* Create, send and print one message */
@@ -150,6 +184,12 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *s_tag) {
   fprintf(stderr, "app tx ");
   tag_print(s_tag);
   switch (s_tag->typ) {
+    case DATA_TYP_POSITION:
+      xyz_set(adu, adu_len);
+      break;
+    case DATA_TYP_DISTANCE:
+      xyz_set(adu, adu_len);
+      break;
     case DATA_TYP_PNT:
       pnt_set(adu, adu_len);
       break;
@@ -169,6 +209,12 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *r_tag) {
   fprintf(stderr, "app rx ");
   tag_print(r_tag);
   switch (r_tag->typ) {
+    case DATA_TYP_POSITION:
+      position_print((position_datatype *) adu);
+      break;
+    case DATA_TYP_DISTANCE:
+      distance_print((distance_datatype *) adu);
+      break;
     case DATA_TYP_PNT:
       pnt_print((pnt_datatype *) adu);
       break;
@@ -203,8 +249,10 @@ int main(int argc, char **argv) {
   tag_write(&s_tag, s_mux, s_sec, s_typ);  tag_write(&r_tag, r_mux, r_sec, r_typ);
   /* Low level API registers a manually created encode and decode function per */
   /* data type. This will be replaced by an xdc_generate function */
-  xdc_register(pnt_data_encode, pnt_data_decode, DATA_TYP_PNT);
-  xdc_register(xyz_data_encode, xyz_data_decode, DATA_TYP_XYZ);
+  xdc_register(position_data_encode, position_data_decode, DATA_TYP_POSITION);
+  xdc_register(distance_data_encode, distance_data_decode, DATA_TYP_DISTANCE);
+  xdc_register(pnt_data_encode,      pnt_data_decode,      DATA_TYP_PNT);
+  xdc_register(xyz_data_encode,      xyz_data_decode,      DATA_TYP_XYZ);
   gettimeofday(&t0, NULL);
   for (i=0; i<loop_count; i++) send_and_recv(&s_tag, &r_tag);  // usleep(1111);
   
