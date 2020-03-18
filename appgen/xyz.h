@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include "float.h"
 
-#define DATA_TYP_XYZ    2
+#define DATA_TYP_XYZ    102
 
 /* Data structure */
 typedef struct _xyz_datatype {
