@@ -81,15 +81,20 @@ long double unpack754(uint64_t i, unsigned bits, unsigned expbits)
 /* Adds conversion (of IEEE-754 encoded double) into Network Big-Endian byte ordering */
 uint64_t pack754_be(long double f) {
   uint64_t h = pack754_64(f);
-  return ((htonll(h)));
+  if (FLOAT_BIG_ENDIAN != 0)  return ((htonll(h)));
+  else                        return ((htoxll(h)));
 }
 
 /* Adds conversion (of IEEE-754 encoded double) from Network Big-Endian byte ordering */
 long double unpack754_be(uint64_t i) {
-  uint64_t h = (ntohll(i));
+  uint64_t    h;
+  
+  if (FLOAT_BIG_ENDIAN != 0)  h = (htonll(i));
+  else                        h = (htoxll(i));
   return (unpack754_64(h));
 }
 
+//#define FLOAT_TEST
 #ifdef FLOAT_TEST
 /* testing */
 int main(void)

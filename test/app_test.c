@@ -141,12 +141,16 @@ void opts_get(int argc, char **argv) {
 void position_set (uint8_t *adu, size_t *len) {
   static double  z = 102;     /* changing value intitialized */
   position_datatype  *xyz = (position_datatype *) adu;
-
+  trailer_datatype   *trl = &(xyz->trailer);
+  
   xyz->x    = -74.574489;
   xyz->y    =  40.695545;
   xyz->z    =  z;
-  xyz->pad1 =  0;
-  xyz->pad2 =  0;
+  trl->seq  =  0;
+  trl->rqr  =  0;
+  trl->oid  =  0;
+  trl->mid  =  0;
+  trl->crc  =  0;
   *len=(size_t) sizeof(*xyz);
   position_print(xyz);
   z += 0.1;                   /* changing value for next call */
@@ -155,12 +159,16 @@ void position_set (uint8_t *adu, size_t *len) {
 void distance_set (uint8_t *adu, size_t *len) {
   static double  z = 0.5;    /* changing value intitialized */
   distance_datatype  *xyz = (distance_datatype *) adu;
+  trailer_datatype   *trl = &(xyz->trailer);
 
   xyz->x    = -1.021;
   xyz->y    =  2.334;
   xyz->z    =  z;
-  xyz->pad1 =  0;
-  xyz->pad2 =  0;
+  trl->seq  =  0;
+  trl->rqr  =  0;
+  trl->oid  =  0;
+  trl->mid  =  0;
+  trl->crc  =  0;
   *len=(size_t) sizeof(*xyz);
   distance_print(xyz);
   z += 0.1;                   /* changing value for next call */

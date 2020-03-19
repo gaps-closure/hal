@@ -1,10 +1,14 @@
 /*
- * uint64_t Conversion Macros
- *   Test (1==htonl(1)) determines (at runtime sadly) if we need byte-swapping.
- *   If byte-swapping, then swap each 32-bits of uint64_t using htonl (and swap the two 32=bit words).
+ * uint64_t Conversion Macros: a) host to network (big endian), b) host to x86 (little endian)
+ *   Test determines (at runtime sadly) if host is big endian).
+ *   If byte-swapping, then swap each 32-bits using htonl (and swap the two 32=bit words).
  */
-#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#define big_end_test(x) (1==htonl(1))
+#define swap_uint64(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#define htonll(x) (big_end_test(x) ? (x) : swap_uint64(x))
+#define htoxll(x) (big_end_test(x) ? swap_uint64(x) : (x))
+
+#define FLOAT_BIG_ENDIAN 0      /* 0 = Little endian, 1 = Big endian */
 
 /* Exported double packing functions */
 extern uint64_t      pack754_be(long double);
