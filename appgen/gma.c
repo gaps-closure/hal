@@ -27,7 +27,8 @@ void position_print (position_datatype *position) {
 /*
  * Convert Data (TODO, Use DFDL schema)
  */
-void position_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
+void position_data_encode (void *buff_out, size_t *len_out,
+                           void *buff_in, size_t *len_in) {
   position_datatype *p1 = (position_datatype *) buff_in;
   position_output   *p2 = (position_output *)   buff_out;
 
@@ -41,13 +42,15 @@ void position_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->trailer.mid = htons(p1->trailer.mid);
   p2->trailer.crc = htons(p1->trailer.crc);
 
-  *len_out = *len_in;
+  *len_in = sizeof(p1->x) * 3 + sizeof(trailer_datatype);
+  *len_out = sizeof(p2->x) * 3 + sizeof(trailer_datatype);
 }
 
 /*
  * Convert Data (TODO, Use DFDL schema)
  */
-void position_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
+void position_data_decode (void *buff_out, size_t *len_out,
+                           void *buff_in, size_t *len_in) {
   position_output   *p1 = (position_output *)   buff_out;
   position_datatype *p2 = (position_datatype *) buff_in;
 
@@ -61,7 +64,8 @@ void position_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->trailer.mid = ntohs(p1->trailer.mid);
   p2->trailer.crc = ntohs(p1->trailer.crc);
 
-  *len_in = *len_out;
+  *len_in = sizeof(p1->x) * 3 + sizeof(trailer_datatype);
+  *len_out = sizeof(p2->x) * 3 + sizeof(trailer_datatype);
 }
 
 void distance_print (distance_datatype *distance) {
@@ -79,7 +83,8 @@ void distance_print (distance_datatype *distance) {
 /*
  * Convert Data (TODO, Use DFDL schema)
  */
-void distance_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
+void distance_data_encode (void *buff_out, size_t *len_out,
+                           void *buff_in, size_t *len_in) {
   distance_datatype *p1 = (distance_datatype *) buff_in;
   distance_output   *p2 = (distance_output *)   buff_out;
 
@@ -93,13 +98,15 @@ void distance_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->trailer.mid = htons(p1->trailer.mid);
   p2->trailer.crc = htons(p1->trailer.crc);
 
-  *len_out = *len_in;
+  *len_in = sizeof(p1->x) * 3 + sizeof(trailer_datatype);
+  *len_out = sizeof(p2->x) * 3 + sizeof(trailer_datatype);
 }
 
 /*
  * Convert Data (TODO, Use DFDL schema)
  */
-void distance_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
+void distance_data_decode (void *buff_out, size_t *len_out,
+                           void *buff_in, size_t *len_in) {
   distance_output   *p1 = (distance_output *)   buff_out;
   distance_datatype *p2 = (distance_datatype *) buff_in;
 
@@ -113,5 +120,6 @@ void distance_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in,
   p2->trailer.mid = ntohs(p1->trailer.mid);
   p2->trailer.crc = ntohs(p1->trailer.crc);
 
-  *len_in = *len_out;
+  *len_in = sizeof(p1->x) * 3 + sizeof(trailer_datatype);
+  *len_out = sizeof(p2->x) * 3 + sizeof(trailer_datatype);
 }

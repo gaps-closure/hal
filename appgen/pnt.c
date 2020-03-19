@@ -20,7 +20,7 @@ void pnt_print (pnt_datatype *pnt) {
 /*
  * Convert Data (TODO, Use DFDL schema)
  */
-void pnt_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
+void pnt_data_encode (void *buff_out, size_t *len_out, void *buff_in, size_t *len_in) {
   pnt_datatype *p1 = (pnt_datatype *) buff_in;
   pnt_datatype *p2 = (pnt_datatype *) buff_out;
     
@@ -32,13 +32,15 @@ void pnt_data_encode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
   p2->LatFrac     = htons(p1->LatFrac);
   p2->Alt         = htons(p1->Alt);
   p2->AltFrac     = htons(p1->AltFrac);
-  *len_out = *len_in;
+
+  *len_in = sizeof(pnt_datatype);
+  *len_out = sizeof(pnt_datatype);
 }
   
 /*
  * Convert Data (TODO, Use DFDL schema)
  */
-void pnt_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size_t *len_in) {
+void pnt_data_decode (void *buff_out, size_t *len_out, void *buff_in, size_t *len_in) {
   pnt_datatype *p1 = (pnt_datatype *) buff_out;
   pnt_datatype *p2 = (pnt_datatype *) buff_in;
     
@@ -50,5 +52,7 @@ void pnt_data_decode (uint8_t *buff_out, size_t *len_out, uint8_t *buff_in, size
   p2->LatFrac     = ntohs(p1->LatFrac);
   p2->Alt         = ntohs(p1->Alt);
   p2->AltFrac     = ntohs(p1->AltFrac);
-  *len_in = *len_out;
+
+  *len_in = sizeof(pnt_datatype);
+  *len_out = sizeof(pnt_datatype);
 }

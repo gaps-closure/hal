@@ -10,7 +10,7 @@
 
 codec_map  cmap[DATA_TYP_MAX];
 
-int xdc_verbose=0;
+int xdc_verbose=1;
 
 /**********************************************************************/
 /* LIB Printing Functions */
@@ -149,7 +149,7 @@ void * z_connect(int type, const char *dest) {
 /*
  * Send ADU to HAL (which should be listening on the ZMQ subscriber socket)
  */
-void xdc_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
+void xdc_asyn_send(void *adu, gaps_tag tag) {
   static int   do_once = 1;
   static void *socket;
   sdh_ha_v1    packet, *p=&packet;
@@ -159,6 +159,7 @@ void xdc_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
     socket = z_connect(ZMQ_PUB, HAL_IPC_SUB);
     do_once = 0;
   }
+  size_t adu_len;
   gaps_data_encode(p, &packet_len, adu, &adu_len, &tag);
   if(xdc_verbose) {
     fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
@@ -172,7 +173,7 @@ void xdc_asyn_send(uint8_t *adu, size_t adu_len, gaps_tag tag) {
 /*
  * Send ADU to HAL (which should be listening on the ZMQ publisher socket)
  */
-void xdc_blocking_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
+void xdc_blocking_recv(void *adu, size_t *adu_len, gaps_tag *tag) {
   static int   do_once = 1;
   static void *socket;
   int          err;
