@@ -29,10 +29,10 @@ FIF0_NET4="fifo4"         # network tcp connection
 # Packets written as plaintext hexdump (fed into xxd -r -p to create binary)
 # 1) sdh_bw_v1 (compressed header) packets (xdd3 and xdd4)
 DATA_BW1_01="00 01 01 01 00 28 17 e6 5a ba 82 6d c4 a4 52 c0 bb f2 59 9e 07 59 44 40 00 00 00 00 00 80 59 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-DATA_BW1_02="00 02 02 01 00 10 5d d6 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0c"
-DATA_BW1_03="00 0d 0d 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0d"
-DATA_BW1_04="00 0e 0e 01 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0e"
-DATA_BW1_06="00 10 10 02 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 10"
+DATA_BW1_02="00 02 02 01 00 28 2F E7 5a ba 82 6d c4 a4 52 c0 bb f2 59 9e 07 59 44 40 00 00 00 00 00 80 59 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+DATA_BW1_03="00 02 02 02 00 28 c0 83 bc 74 93 18 04 56 f0 bf 79 e9 26 31 08 ac 02 40 00 00 00 00 00 00 e0 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+DATA_BW1_04="00 04 04 01 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0e"
+DATA_BW1_06="00 06 06 02 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 10"
 # 2) sdh_be_v1 (with timestamps) packets (xdd1, xdd2, xdd6, xdd7)
 DATA_BE1_01="00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 01"
 DATA_BE1_02="00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 02"
@@ -109,13 +109,9 @@ while true; do
       echo " **** HAL not listening on that socket, unless configure HAL for no: addr_in and port_in ****\n"
       echo "$DATA_BW1_02" | stdbuf -oL xxd -r -p  > $FIF0_NET3
       ;;
-    14)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_04"
-      echo "$DATA_BW1_04" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
-      ;;
-    16)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_06"
-      echo "$DATA_BW1_06" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+    13)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_03"
+      echo "$DATA_BW1_03" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
       ;;
     30)
       echo "Sending to $IF_NET4 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA_BW1_04"
