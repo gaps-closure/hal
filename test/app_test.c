@@ -21,7 +21,7 @@ int r_mux = 1, r_sec = 1, r_typ = 1;    /* recv tag */
 int receive_first    = 0;
 int loop_pause_us    = 0;
 int loop_count       = 1;
-int experiment_number      = 0;
+int experiment_num   = 0;
 
 /* Print options */
 void opts_print(void) {
@@ -42,9 +42,9 @@ void opts_print(void) {
 }
 
 /* get precanned experiment number for command line */
-void set_precanned_tags(int experiment_number) {
-  fprintf(stderr, "exp=%d: ", experiment_number);
-  switch (experiment_number) {
+void set_precanned_tags(int experiment_num) {
+  fprintf(stderr, "exp=%d: ", experiment_num);
+  switch (experiment_num) {
     case 6111:
       s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
       break;
@@ -79,7 +79,7 @@ void set_precanned_tags(int experiment_number) {
       s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
       break;
     default:
-      fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", experiment_number);
+      fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", experiment_num);
   }
 }
 
@@ -227,12 +227,12 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *s_tag) {
       fprintf(stderr, "\nUndefined data type (%d)\n", s_tag->typ);
       exit(2);
   }
-  xdc_asyn_send(adu, *adu_len, *s_tag);
+  xdc_asyn_send(adu, *s_tag);
 }
 
 /* Create, send and print one message */
 void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *r_tag) {
-  xdc_blocking_recv(adu, adu_len, r_tag);
+  xdc_blocking_recv(adu, r_tag);
   fprintf(stderr, "app rx ");
   tag_print(r_tag);
   switch (r_tag->typ) {
