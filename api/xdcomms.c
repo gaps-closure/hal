@@ -89,8 +89,8 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len
   
   /* a) serialize data into packet */
   type_check(typ);
-  cmap[typ].encode (p->data, &adu_len, buff_in, len_in);
-  if(xdc_verbose) data_print("API <- raw app data:", buff_in, *len_in);
+  cmap[typ].encode (p->data, buff_in, &adu_len);
+  //if(xdc_verbose) data_print("API <- raw app data:", buff_in, *len_in);
   if(xdc_verbose) data_print("    -> encoded data:", p->data, adu_len);
   
   /* b) Create CLOSURE packet header */
@@ -109,10 +109,10 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
   type_check(typ);
   tag_decode(tag, &(p->tag));
   len_decode(len_out, p->data_len);
-  cmap[typ].decode (buff_out, len_out, p->data, &p_len);
+  cmap[typ].decode (buff_out, p->data, &p_len);
   if(xdc_verbose) {
     data_print("API -> raw app data:", p->data,  *len_out);
-    data_print("    <- encoded data:", buff_out, *len_out);
+    data_print("    <- decoded data:", buff_out, *len_out);
     tag_print(tag);
     fprintf(stderr, "data_len=%lu\n", *len_out);
   }
@@ -173,7 +173,7 @@ void xdc_asyn_send(void *adu, gaps_tag tag) {
 /*
  * Send ADU to HAL (which should be listening on the ZMQ publisher socket)
  */
-void xdc_blocking_recv(void *adu, size_t *adu_len, gaps_tag *tag) {
+void xdc_blocking_recv(void *adu, gaps_tag *tag) {
   static int   do_once = 1;
   static void *socket;
   int          err;
@@ -210,7 +210,8 @@ void xdc_blocking_recv(void *adu, size_t *adu_len, gaps_tag *tag) {
   if(xdc_verbose) data_print("API recv packet", (uint8_t *) p, size);
 
   /* c) Decode information from packet */
-  gaps_data_decode(p, size, adu, adu_len, tag);
+  size_t adu_len;  // TODO: remove
+  gaps_data_decode(p, size, adu, &adu_len, tag);
 }
 
 /*

@@ -49,12 +49,12 @@ typedef struct _distance_output {
 } distance_output;
 
 extern void position_print (position_datatype *);
-extern void position_data_encode (void *, size_t *, void *, size_t *);
-extern void position_data_decode (void *, size_t *, void *, size_t *);
+extern void position_data_encode (void *, void *, size_t *);
+extern void position_data_decode (void *, void *, size_t *);
 
 extern void distance_print (distance_datatype *);
-extern void distance_data_encode (void *, size_t *, void *, size_t *);
-extern void distance_data_decode (void *, size_t *, void *, size_t *);
+extern void distance_data_encode (void *, void *, size_t *);
+extern void distance_data_decode (void *, void *, size_t *);
 
 // Guard Provisioning calls to be added here
 

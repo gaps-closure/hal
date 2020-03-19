@@ -24,8 +24,8 @@ typedef struct _pnt_datatype {
 
 
 extern void pnt_print (pnt_datatype *);
-extern void pnt_data_encode (void *, size_t *, void *, size_t *);
-extern void pnt_data_decode (void *, size_t *, void *, size_t *);
+extern void pnt_data_encode (void *, void *, size_t *);
+extern void pnt_data_decode (void *, void *, size_t *);
 // Guard Provisioning calls to be added here
 
 #endif

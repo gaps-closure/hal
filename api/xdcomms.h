@@ -34,8 +34,9 @@ typedef struct _sdh_ha_v1 {
 } sdh_ha_v1;
 
 /* Map of (encode and decode) function pointers for each data type */
+
 /* (Data type is the index into the codec_map) */
-typedef void (*codec_func_ptr)(void *, size_t *, void *, size_t *);
+typedef void (*codec_func_ptr)(void *, void *, size_t *);
 typedef struct _codec_map {
   int valid;
   codec_func_ptr encode;
@@ -56,6 +57,6 @@ extern void len_decode (size_t *, uint32_t);
 // Main HAL API functions
 extern void xdc_register(codec_func_ptr, codec_func_ptr, int);
 extern void xdc_asyn_send(void *, gaps_tag);
-extern void xdc_blocking_recv(void *, size_t *, gaps_tag *);
+extern void xdc_blocking_recv(void *, gaps_tag *);
 
 #endif

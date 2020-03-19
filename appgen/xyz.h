@@ -27,8 +27,8 @@ typedef struct _xyz_output {
 
 
 extern void xyz_print (xyz_datatype *);
-extern void xyz_data_encode (void *, size_t *, void *, size_t *);
-extern void xyz_data_decode (void *, size_t *, void *, size_t *);
+extern void xyz_data_encode (void *, void *, size_t *);
+extern void xyz_data_decode (void *, void *, size_t *);
 // Guard Provisioning calls to be added here
 
 #endif
