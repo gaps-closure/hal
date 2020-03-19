@@ -28,11 +28,11 @@ FIF0_NET4="fifo4"         # network tcp connection
 
 # Packets written as plaintext hexdump (fed into xxd -r -p to create binary)
 # 1) sdh_bw_v1 (compressed header) packets (xdd3 and xdd4)
-DATA_BW1_11="00 0b 0b 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0b"
-DATA_BW1_12="00 0c 0c 01 00 10 5d d6 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0c"
-DATA_BW1_13="00 0d 0d 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0d"
-DATA_BW1_14="00 0e 0e 01 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0e"
-DATA_BW1_16="00 10 10 02 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 10"
+DATA_BW1_01="00 01 01 01 00 28 17 e6 5a ba 82 6d c4 a4 52 c0 bb f2 59 9e 07 59 44 40 00 00 00 00 00 80 59 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+DATA_BW1_02="00 02 02 01 00 10 5d d6 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0c"
+DATA_BW1_03="00 0d 0d 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0d"
+DATA_BW1_04="00 0e 0e 01 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0e"
+DATA_BW1_06="00 10 10 02 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 10"
 # 2) sdh_be_v1 (with timestamps) packets (xdd1, xdd2, xdd6, xdd7)
 DATA_BE1_01="00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 01"
 DATA_BE1_02="00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 02"
@@ -96,26 +96,30 @@ while true; do
       echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_08"
       echo "$DATA_BE1_08" | stdbuf -oL xxd -r -p  > $FIF0_NET1
       ;;
+    11)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_01"
+      echo "$DATA_BW1_01" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      ;;
     12)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_12"
-      echo "$DATA_BW1_12" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_02"
+      echo "$DATA_BW1_02" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
       ;;
     120)
-      echo "Sending back to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT3 prot=UDP: $DATA_BW1_12"
+      echo "Sending back to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT3 prot=UDP: $DATA_BW1_02"
       echo " **** HAL not listening on that socket, unless configure HAL for no: addr_in and port_in ****\n"
-      echo "$DATA_BW1_12" | stdbuf -oL xxd -r -p  > $FIF0_NET3
+      echo "$DATA_BW1_02" | stdbuf -oL xxd -r -p  > $FIF0_NET3
       ;;
     14)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_14"
-      echo "$DATA_BW1_14" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_04"
+      echo "$DATA_BW1_04" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
       ;;
     16)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_16"
-      echo "$DATA_BW1_16" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_06"
+      echo "$DATA_BW1_06" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
       ;;
     30)
-      echo "Sending to $IF_NET4 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA_BW1_14"
-      echo "$DATA_BW1_14" | stdbuf -oL xxd -r -p  > $FIF0_NET4
+      echo "Sending to $IF_NET4 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA_BW1_04"
+      echo "$DATA_BW1_04" | stdbuf -oL xxd -r -p  > $FIF0_NET4
       ;;
     *)
       echo -n "Unsupported APP-type = $APP_INDEX. "

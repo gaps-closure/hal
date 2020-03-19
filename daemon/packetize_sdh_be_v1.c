@@ -7,7 +7,7 @@
 
 #include "hal.h"
 #include "packetize_sdh_be_v1.h"
-//#include "../appgen/float.h"    /* no longer use uint64_t */
+#include "../appgen/float.h"          /* use htonll */
 
 void linux_time_set(uint64_t *t) {
   struct timeval tv;
@@ -15,8 +15,9 @@ void linux_time_set(uint64_t *t) {
   
   gettimeofday(&tv,NULL);
   ns =  (tv.tv_usec * 1000) + (tv.tv_sec  * 1000000000);
-  fprintf(stderr, "current time=%lu.%lu sec = %lu (0x%lx) nsec\n", tv.tv_sec, tv.tv_usec, ns, ns);
-  *t = ns;    // TODO: Convert to BIG ENDIAN?
+  *t = htonll(ns);          // Convert to BIG ENDIAN
+  fprintf(stderr, "unix time = %lu = 0x%lx nsec\n", ns, ns);
+//  fprintf(stderr, "unix time=%lu.%lu sec = %lu = 0x%lx (net=0x%lx) nsec\n", tv.tv_sec, tv.tv_usec, ns, ns, *t);
 }
 
 /* Print M1 Packet */

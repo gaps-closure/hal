@@ -55,13 +55,13 @@ void set_precanned_tags(int experiment_number) {
       s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
       break;
     case 3111:
-      s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
+      s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 11; r_sec = 11; r_typ = 1;
       break;
     case 3221:
-      s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
+      s_mux = 12; s_sec = 12; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
       break;
     case 3222:
-      s_mux = 15; s_sec = 15; s_typ = 2; r_mux = 16; r_sec = 16; r_typ = 2;
+      s_mux = 13; s_sec = 13; s_typ = 2; r_mux = 13; r_sec = 13; r_typ = 2;
       break;
     case 1:
       s_mux = 101; s_sec = 1; s_typ = 101; r_mux = 1; r_sec = 1; r_typ = 1;
