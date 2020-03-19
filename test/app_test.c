@@ -21,12 +21,13 @@ int r_mux = 1, r_sec = 1, r_typ = 1;    /* recv tag */
 int receive_first    = 0;
 int loop_pause_us    = 0;
 int loop_count       = 1;
-int demo_number      = 0;
+int experiment_number      = 0;
 
 /* Print options */
 void opts_print(void) {
-  printf("Test program for sending/receiving data to/from the GAPS Hardware Abstraction Layer (HAL)\n");
-  printf("Usage: app_test [OPTIONS]\n");
+  printf("Test program for sending and receiving data to and from the GAPS Hardware Abstraction Layer (HAL)\n");
+  printf("Usage: ./app_test [Options] [Experiment Number]\n");
+  printf("[Options]:\n");
   printf(" -c : Number of send & receive loops: Default = 1\n");
   printf(" -h : Print this message\n");
   printf(" -p : Pause time (in microseconds) after send & receive loop: Default = 0\n");
@@ -37,12 +38,54 @@ void opts_print(void) {
   printf(" -M : Recv multiplexing (mux) tag (integer): Default = 1\n");
   printf(" -S : Recv security (sec)     tag (integer): Default = 1\n");
   printf(" -T : Recv data type (typ)    tag (integer): Default = 1\n");
+  printf("[Experiment Number]: Optional Precanned send and recv tags (overrides -m -s -t -M -S -T options)\n");
+}
+
+/* get precanned experiment number for command line */
+void set_precanned_tags(int experiment_number) {
+  fprintf(stderr, "exp=%d: ", experiment_number);
+  switch (experiment_number) {
+    case 6111:
+      s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
+      break;
+    case 6221:
+      s_mux = 2; s_sec = 2; s_typ = 1; r_mux = 2; r_sec = 2; r_typ = 1;
+      break;
+    case 6222:
+      s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
+      break;
+    case 3111:
+      s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
+      break;
+    case 3221:
+      s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
+      break;
+    case 3222:
+      s_mux = 15; s_sec = 15; s_typ = 2; r_mux = 16; r_sec = 16; r_typ = 2;
+      break;
+    case 1:
+      s_mux = 101; s_sec = 1; s_typ = 101; r_mux = 1; r_sec = 1; r_typ = 1;
+      break;
+    case 2:
+      s_mux = 102; s_sec = 2; s_typ = 102; r_mux = 2; r_sec = 2; r_typ = 2;
+      break;
+    case 5:
+      s_mux = 5; s_sec = 5; s_typ = 1; r_mux = 6; r_sec = 6; r_typ = 1;
+      break;
+    case 11:
+      s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
+      break;
+    case 13:
+      s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
+      break;
+    default:
+      fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", experiment_number);
+  }
 }
 
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt;
-//  char  *file_name= NULL;
   while((opt =  getopt(argc, argv, "c:hp:rm:s:t:M:S:T:")) != EOF)
   {
     switch (opt)
@@ -86,45 +129,45 @@ void opts_get(int argc, char **argv) {
         fprintf(stderr, "\nSkipping undefined option (%d)\n", opt);
     }
   }
-  if(optind<argc) {
-    demo_number = atoi(argv[optind++]);
-    fprintf(stderr, "demo_num=%d\n", demo_number);
-    switch (demo_number) {
-      case 1:
-        s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
-        break;
-      case 2:
-        s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
-        break;
-      case 5:
-        s_mux = 5; s_sec = 5; s_typ = 1; r_mux = 6; r_sec = 6; r_typ = 1;
-        break;
-      case 11:
-        s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
-        break;
-      case 13:
-        s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
-        break;
-      case 101:
-        s_mux = 101; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
-        break;
-      case 102:
-        s_mux = 102; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
-        break;
+  if(optind<argc) set_precanned_tags(atoi(argv[optind++]));
 
-      default:
-        fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", opt);
-    }
-  }
-
-  fprintf(stderr, "Read options: send-tag = [%d, %d, %d] recv-tag = [%d, %d, %d] ", s_mux, s_sec, s_typ, r_mux, r_sec, r_typ);
+  fprintf(stderr, "send-tag = [%d, %d, %d] recv-tag = [%d, %d, %d] ", s_mux, s_sec, s_typ, r_mux, r_sec, r_typ);
   fprintf(stderr, "loop_count=%d, loop_pause_us=%d, receive_first=%d\n", loop_count, loop_pause_us, receive_first);
-//  return (file_name);
 }
 
-/* Data type 101 */
+/**********************************************************************/
+/* Specify Application Data Unit (ADU) Information */
+/*********t************************************************************/
+void position_set (uint8_t *adu, size_t *len) {
+  static double  z = 102;     /* changing value intitialized */
+  position_datatype  *xyz = (position_datatype *) adu;
+
+  xyz->x    = -74.574489;
+  xyz->y    =  40.695545;
+  xyz->z    =  z;
+  xyz->pad1 =  0;
+  xyz->pad2 =  0;
+  *len=(size_t) sizeof(*xyz);
+  position_print(xyz);
+  z += 0.1;                   /* changing value for next call */
+}
+
+void distance_set (uint8_t *adu, size_t *len) {
+  static double  z = 0.5;    /* changing value intitialized */
+  distance_datatype  *xyz = (distance_datatype *) adu;
+
+  xyz->x    = -1.021;
+  xyz->y    =  2.334;
+  xyz->z    =  z;
+  xyz->pad1 =  0;
+  xyz->pad2 =  0;
+  *len=(size_t) sizeof(*xyz);
+  distance_print(xyz);
+  z += 0.1;                   /* changing value for next call */
+}
+
 void pnt_set (uint8_t *adu, size_t *len) {
-  static int  AltFrac=0;
+  static int  AltFrac=0;    /* changing value intitialized */
   pnt_datatype  *pnt = (pnt_datatype *) adu;
   
   pnt->MessageID  = 130;
@@ -137,38 +180,11 @@ void pnt_set (uint8_t *adu, size_t *len) {
   pnt->AltFrac    = 0;
   *len=(size_t) sizeof(*pnt);
   pnt_print(pnt);
-  AltFrac++;
+  AltFrac++;                   /* changing value for next call */
 }
 
-/* Data type 1, 2, 102 */
-void distance_set (uint8_t *adu, size_t *len) {
-  static double  z = 0.5;
-  distance_datatype  *xyz = (distance_datatype *) adu;
-
-  xyz->x = -1.021;
-  xyz->y =  2.334;
-  xyz->z = z;
-  *len=(size_t) sizeof(*xyz);
-  distance_print(xyz);
-  z += 0.1;
-}
-
-/* Data type 1, 2, 102 */
-void position_set (uint8_t *adu, size_t *len) {
-  static double  z = 102;
-  position_datatype  *xyz = (position_datatype *) adu;
-
-  xyz->x = -74.574489;
-  xyz->y =  40.695545;
-  xyz->z = z;
-  *len=(size_t) sizeof(*xyz);
-  position_print(xyz);
-  z += 0.1;
-}
-
-/* Data type 1, 2, 102 */
 void xyz_set (uint8_t *adu, size_t *len) {
-  static double  z = 3.3;
+  static double  z = 3.3;    /* changing value intitialized */
   xyz_datatype  *xyz = (xyz_datatype *) adu;
 
   xyz->x = 1.1;
@@ -176,19 +192,22 @@ void xyz_set (uint8_t *adu, size_t *len) {
   xyz->z = z;
   *len=(size_t) sizeof(*xyz);
   xyz_print(xyz);
-  z += 0.1;
+  z += 0.1;                   /* changing value for next call */
 }
 
+/**********************************************************************/
+/* Send and receive (or receive and send) one ADU */
+/*********t************************************************************/
 /* Create, send and print one message */
 void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *s_tag) {
   fprintf(stderr, "app tx ");
   tag_print(s_tag);
   switch (s_tag->typ) {
     case DATA_TYP_POSITION:
-      xyz_set(adu, adu_len);
+      position_set(adu, adu_len);
       break;
     case DATA_TYP_DISTANCE:
-      xyz_set(adu, adu_len);
+      distance_set(adu, adu_len);
       break;
     case DATA_TYP_PNT:
       pnt_set(adu, adu_len);
@@ -227,7 +246,6 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *r_tag) {
   }
 }
 
-
 /* One send & receive loop (using xdc API)  */
 void send_and_recv(gaps_tag *s_tag, gaps_tag *r_tag) {
   uint8_t       adu[ADU_SIZE_MAX_C];
@@ -239,12 +257,16 @@ void send_and_recv(gaps_tag *s_tag, gaps_tag *r_tag) {
   usleep (loop_pause_us);
 }
          
+/**********************************************************************/
+/* Conifgure API, Run experiment and collect results */
+/*********t************************************************************/
 int main(int argc, char **argv) {
   int             i;
   gaps_tag        s_tag, r_tag;
   struct timeval  t0, t1;
   long            elapsed_us;
-          
+  
+  /* A) Conigure API */
   opts_get (argc, argv);
   tag_write(&s_tag, s_mux, s_sec, s_typ);  tag_write(&r_tag, r_mux, r_sec, r_typ);
   /* Low level API registers a manually created encode and decode function per */
@@ -253,12 +275,13 @@ int main(int argc, char **argv) {
   xdc_register(distance_data_encode, distance_data_decode, DATA_TYP_DISTANCE);
   xdc_register(pnt_data_encode,      pnt_data_decode,      DATA_TYP_PNT);
   xdc_register(xyz_data_encode,      xyz_data_decode,      DATA_TYP_XYZ);
+  
+  /* B) Run Experiment (Calculating delay and read-write loop rate) */
   gettimeofday(&t0, NULL);
   for (i=0; i<loop_count; i++) send_and_recv(&s_tag, &r_tag);  // usleep(1111);
-  
-  /* Calculate delay and read-write loop rate */
   gettimeofday(&t1, NULL);
   elapsed_us = ((t1.tv_sec-t0.tv_sec)*1000000) + t1.tv_usec-t0.tv_usec;
   fprintf(stderr, "Elapsed = %ld us, LoopPause = %d us, rate = %f rw/sec\n", elapsed_us, loop_pause_us, (double) 1000000*loop_count/elapsed_us);
+  
   return (0);
 }

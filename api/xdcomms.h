@@ -15,7 +15,7 @@
 #define RX_FILTER_LEN   4
 #define HAL_IPC_SUB     "ipc:///tmp/halsub1"
 #define HAL_IPC_PUB     "ipc:///tmp/halpub1"
-#define DATA_TYP_MAX    8
+#define DATA_TYP_MAX    200
 /**********************************************************************/
 /* LIB Structures */
 /*********t************************************************************/

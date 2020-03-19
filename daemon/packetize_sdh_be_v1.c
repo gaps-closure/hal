@@ -9,22 +9,20 @@
 #include "packetize_sdh_be_v1.h"
 //#include "../appgen/float.h"    /* no longer use uint64_t */
 
-void linux_time_print(uint32_t *t) {
-  uint32_t sec  = ntohl(*t);
-  uint32_t usec = ntohl(*(t+1));
-  fprintf(stderr, "tl=%u.%u ", sec, usec);
-}
-
-void linux_time_set(uint32_t *t) {
-    struct timeval tv;
-    gettimeofday(&tv,NULL);
-    *t     = htonl((uint32_t) tv.tv_sec);
-    *(t+1) = htonl((uint32_t) tv.tv_usec);
+void linux_time_set(uint64_t *t) {
+  struct timeval tv;
+  uint64_t ns;
+  
+  gettimeofday(&tv,NULL);
+  ns =  (tv.tv_usec * 1000) + (tv.tv_sec  * 1000000000);
+  fprintf(stderr, "current time=%lu.%lu sec = %lu (0x%lx) nsec\n", tv.tv_sec, tv.tv_usec, ns, ns);
+  *t = ns;    // TODO: Convert to BIG ENDIAN?
 }
 
 /* Print M1 Packet */
 void sdh_be_v1_print(pkt_sdh_be_v1 *p) {
   tlv_sdh_be_v1 *tlv;
+  uint64_t *ut;
   
   fprintf(stderr, "%s: ", __func__);
   fprintf(stderr, "mux=%u ",  ntohl(p->session_tag));
@@ -32,8 +30,9 @@ void sdh_be_v1_print(pkt_sdh_be_v1 *p) {
   for (int i=0; i < ntohl(p->message_tlv_count); i++) {
     tlv = &(p->tlv[i]);
     fprintf(stderr, "[ty=%u ", ntohl(tlv->data_tag));
-    fprintf(stderr, "tg=%x %x", tlv->gaps_time, tlv->gaps_time_us);
-    linux_time_print(&(tlv->linux_time));
+    fprintf(stderr, "tg=%x.%x ", tlv->gaps_time, tlv->gaps_time_us);
+    ut = (uint64_t *) &(tlv->linux_time);
+    fprintf(stderr, "ut=%lu ns ", *ut);
     data_print("Data", tlv->data, ntohl(tlv->data_len));
     fprintf(stderr, "]");
   }
@@ -69,12 +68,15 @@ int pdu_into_sdh_be_v1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   for (int i=0; i < 1; i++) {
     tlv = &(pkt->tlv[i]);
     tlv->data_tag = htonl(otag->typ);
-    tlv->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
-    tlv->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
-    linux_time_set(&(tlv->linux_time));
+//    tlv->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
+//    tlv->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
+    tlv->gaps_time = 0;
+    tlv->gaps_time_us = 0;
+    linux_time_set((uint64_t *) &(tlv->linux_time));
     tlv->data_len = htonl(in->data_len);
     memcpy((char *) tlv->data, (char *) in->data, in->data_len);
   }
+//  sdh_be_v1_print(pkt);
   /* XXX: Fix packet length to depend on message_tlv_count */
   return (sizeof(pkt->session_tag) + sizeof(pkt->message_tag) + sizeof(pkt->message_tlv_count) + sizeof(*tlv) -  SDH_BE_V1_ADU_SIZE_MAX + in->data_len);
 }

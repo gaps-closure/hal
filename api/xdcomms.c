@@ -10,7 +10,7 @@
 
 codec_map  cmap[DATA_TYP_MAX];
 
-int xdc_verbose=1;
+int xdc_verbose=0;
 
 /**********************************************************************/
 /* LIB Printing Functions */
@@ -215,7 +215,7 @@ void xdc_blocking_recv(uint8_t *adu, size_t *adu_len, gaps_tag *tag) {
 /*
  * Print Codec Table
  */
-void codec_maps_print(void) {
+void xdc_maps_print(void) {
   fprintf(stderr, "%s: ", __func__);
   for (int i=0; i < DATA_TYP_MAX; i++) {
     if (cmap[i].valid != 0) {
@@ -237,10 +237,11 @@ void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
     for (int i=0; i < DATA_TYP_MAX; i++)  cmap[i].valid=0;
     do_once = 0;
   }
+//  fprintf(stderr, "%s: typ=%d\n", __func__, typ);
   cmap[typ].valid=1;
   cmap[typ].encode=encode;
   cmap[typ].decode=decode;
-  if(xdc_verbose) codec_maps_print();
+  if(xdc_verbose) xdc_maps_print();
 }
 
 // XXX: Additional Functions TBD

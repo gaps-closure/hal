@@ -32,6 +32,7 @@ DATA_BW1_11="00 0b 0b 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 0
 DATA_BW1_12="00 0c 0c 01 00 10 5d d6 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0c"
 DATA_BW1_13="00 0d 0d 01 00 10 08 6a 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0d"
 DATA_BW1_14="00 0e 0e 01 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 0e"
+DATA_BW1_16="00 10 10 02 00 10 77 28 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 10"
 # 2) sdh_be_v1 (with timestamps) packets (xdd1, xdd2, xdd6, xdd7)
 DATA_BE1_01="00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 01"
 DATA_BE1_02="00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 01 23 45 67 89 AB CD EF 5E 67 CE DC 00 0D DD 7C 00 00 00 10 00 82 00 A5 00 64 80 00 00 43 C0 00 00 02 00 02"
@@ -104,12 +105,15 @@ while true; do
       echo " **** HAL not listening on that socket, unless configure HAL for no: addr_in and port_in ****\n"
       echo "$DATA_BW1_12" | stdbuf -oL xxd -r -p  > $FIF0_NET3
       ;;
-    13)
-      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_13"
-      echo " **** No HAL map for mux=3 on $IF_NET3, so HAL drops ****\n"
-      echo "$DATA_BW1_13" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
-        ;;
     14)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_14"
+      echo "$DATA_BW1_14" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      ;;
+    16)
+      echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT3h prot=UDP: $DATA_BW1_16"
+      echo "$DATA_BW1_16" | stdbuf -oL xxd -r -p  > $FIF0_NET3h
+      ;;
+    30)
       echo "Sending to $IF_NET4 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA_BW1_14"
       echo "$DATA_BW1_14" | stdbuf -oL xxd -r -p  > $FIF0_NET4
       ;;
