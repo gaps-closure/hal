@@ -45,6 +45,8 @@ void opts_print(void) {
 void set_precanned_tags(int experiment_num) {
   fprintf(stderr, "exp=%d: ", experiment_num);
   switch (experiment_num) {
+    /* 3 unidirectional flows between 2 enclaves for device xdd6 (BE) */
+    /* Note: It uses 2 data types: typ=1 is sent by both enclaves; typ=2 is sent by one */
     case 6111:
       s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
       break;
@@ -54,6 +56,7 @@ void set_precanned_tags(int experiment_num) {
     case 6222:
       s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
       break;
+    /* 3 unidirectional flows (same as above), but for device xdd3 (BW) - */
     case 3111:
       s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 11; r_sec = 11; r_typ = 1;
       break;
@@ -63,6 +66,7 @@ void set_precanned_tags(int experiment_num) {
     case 3222:
       s_mux = 13; s_sec = 13; s_typ = 2; r_mux = 13; r_sec = 13; r_typ = 2;
       break;
+    /* Other tests were used for initial testing */
     case 1:
       s_mux = 101; s_sec = 1; s_typ = 101; r_mux = 1; r_sec = 1; r_typ = 1;
       break;
