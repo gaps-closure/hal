@@ -1,5 +1,5 @@
 # Hardware Abstraction Layer
-This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within an security enclave with a simple high-level interface to communicate with application in other enclaces. Based only on the application specified *tag*, HAL routes selected trafic through one of its network interfaces. It ensures all *cross-domain* comminication passes through the correct Cross Domain Guard (CDG) hardware, which enforces the provisioned security policies.
+This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within an security enclave with a simple high-level interface to communicate with application in other enclaces. Based only on the application specified *tag*, HAL routes selected trafic through one of its network interfaces. It ensures all *cross-domain* comminication passes through the correct Cross Domain Guard (CDG) hardware that enforces provisioned security policies.
 
 The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
 
@@ -12,10 +12,19 @@ This repository is maintained by Perspecta Labs.
 - [Build](#build)
 
 ## HAL Components
+HAL is implemented as a single daemon running on the host. As shown in the figure below, its left interface connects to various applications, while its right interface connects (through the host interfaces) to the CDGs (residing either as a *bookend* on the same host as HAL or as a *bump-in-the-wire*).
+
 ![HAL interfaces between applications and Network Interfaces.](hal_api.png)
-As shown in the Figure abover, 
-a daemon that control communication between applicaitons in diffferent and network interfaces, b) HAL's API to applicaitons, c) the codecs that define how application data is serialized for transmission, and d) the conversion to amd from different GAPS packet formats. 
-(residing either as a *bookend* on the same host as HAL or as a *bump-in-the-wire*)
+
+The HAL daemon has various major components:
+- HAL's API to applicaitons (*xdcomms*), which provide the high level inteface used by Applications to: a) send and receive Applicaiton Data Units (ADUs), and b) describe the ADU confuration.
+- HAL's Codecs that define how application data are serialized for transmission (based on the ADU configuration description).
+- conversion to amd from different GAPS packet formats. 
+- ccc
+
+ALso included in the HAL directory are test programs and confifguration that use HAL for commication 
+
+
 ## Build
 
 Install the HAL pre-requisite libraries.
