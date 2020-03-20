@@ -12,17 +12,18 @@ This repository is maintained by Perspecta Labs.
 - [Build](#build)
 
 ## HAL Components
-HAL is implemented as a single daemon running on the host. As shown in the figure below, its left interface connects to various applications, while its right interface connects (through the host interfaces) to the CDGs (residing either as a *bookend* on the same host as HAL or as a *bump-in-the-wire*).
+HAL is implemented as a single daemon running on the host. As shown in the figure below, its left interface connects to various applications, while its right interface connects (through the host's network interfaces) to the CDGs (residing either as a *bookend* on the same host as HAL or as a *bump-in-the-wire*).
 
 ![HAL interfaces between applications and Network Interfaces.](hal_api.png)
 
 The HAL daemon has various major components:
 - HAL's API to applicaitons (*xdcomms*), which provide the high level inteface used by Applications to: a) send and receive Applicaiton Data Units (ADUs), and b) describe the ADU confuration.
-- HAL's Codecs that define how application data are serialized for transmission (based on the ADU configuration description).
-- conversion to amd from different GAPS packet formats. 
-- ccc
+- HAL's Codecs that define how aADUs are serialized for transmission (based on the ADU configuration description).
+- conversion to amd from different GAPS packet formats, along with separate sub-components that speciffy and convert to and from each CDG specififc packet format.
+- Device Management, which opens the devices specified in the configuration file. 
+- Device read and write routines, whcih wait for data on all the opened read devices and write the output to the device specified in the configuration file.
 
-ALso included in the HAL directory are test programs and confifguration that use HAL for commication 
+ALso included in the HAL directory are test programs, which include a) an example appplication program sending and receiving data through HAL, HAL confifguration files, and a simple network emulation. 
 
 
 ## Build
