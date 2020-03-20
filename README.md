@@ -1,7 +1,5 @@
-# Hardware Abstraction Layer (HAL)
-This repository hosts the open source components of HAL: a) the daemon communicating between applicaitons and network interfaces, b) HAL's API to applicaitons, and c) the codecs that define how application data is serialized for transmission. 
-
-![HAL interfaces between applications and Network Interfaces.](hal_api.png)
+# Hardware Abstraction Layer
+This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within an security enclave with a simple high-level interface to communicate with application in other enclaces. Based only on the application specified *tag*, HAL routes selected trafic through one of its network interfaces. It ensures all *cross-domain* comminication passes through the correct Cross Domain Guard (CDG) hardware, which enforces the provisioned security policies.
 
 The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
 
@@ -10,12 +8,14 @@ This repository is maintained by Perspecta Labs.
 ## Contents
 
 
-- [HAL Overview](#HAL-Overview)
+- [HAL Components](#HAL-Componenets)
 - [Build](#build)
 
-## HAL Overview
-Overview of HAL
-
+## HAL Components
+![HAL interfaces between applications and Network Interfaces.](hal_api.png)
+As shown in the Figure abover, 
+a daemon that control communication between applicaitons in diffferent and network interfaces, b) HAL's API to applicaitons, c) the codecs that define how application data is serialized for transmission, and d) the conversion to amd from different GAPS packet formats. 
+(residing either as a *bookend* on the same host as HAL or as a *bump-in-the-wire*)
 ## Build
 
 Install the HAL pre-requisite libraries.
@@ -26,6 +26,7 @@ sudo apt install -y libconfig-dev
 
 Compile [HAL](daemon), together with its [API](api/) use by application, [codecs](codecs/) to enocde/decide application data and [examples](/test) of applications and conifgurations for testing.
 
+Make files are used to compile the HAL daemon, its libraries and test applications:
 ```
 cd ~/gaps/top-level/hal/
 make clean; make
