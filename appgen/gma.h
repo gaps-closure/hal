@@ -48,13 +48,13 @@ typedef struct _distance_output {
     trailer_datatype trailer;
 } distance_output;
 
-extern void position_print (position_datatype *);
-extern void position_data_encode (void *, void *, size_t *);
-extern void position_data_decode (void *, void *, size_t *);
+extern void position_print (position_datatype *position);
+extern void position_data_encode (void *buff_out, void *buff_in, size_t *len_out);
+extern void position_data_decode (void *buff_out, void *buff_in, size_t *len_in);
 
-extern void distance_print (distance_datatype *);
-extern void distance_data_encode (void *, void *, size_t *);
-extern void distance_data_decode (void *, void *, size_t *);
+extern void distance_print (distance_datatype *distance);
+extern void distance_data_encode (void *buff_out, void *buff_in, size_t *len_out);
+extern void distance_data_decode (void *buff_out, void *buff_in, size_t *len_in);
 
 // Guard Provisioning calls to be added here
 
