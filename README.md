@@ -9,23 +9,24 @@ This repository is maintained by Perspecta Labs.
 
 ## Contents
 
+- [Build](#build)
 - [HAL daemon](daemon/)
 - [HAL API](api/)
 - [Application Codecs](codecs/)
-- [Build](#build)
+- 
 - [Run HAL with a Simple Network Emulator](#run-hal)
-- [Run the Application](#run-application)
+- [Test Application](test/)
 
 
 ## Build
 
-Make sure to install HAL pre-requisites.
+Install the HAL pre-requisite libraries.
 ```
 sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
-Compile HAL, together with the closure libarary (libclosure.a), HAL utilities, and application (e.g., app_test.c)
+Compile HAL, together with its libararies that define the [API use by application](api/), application dta codecs (codecs/) and   [examples of test applications and conifgurations](/test)
 ```
 cd ~/gaps/top-level/hal/
 make clean; make
