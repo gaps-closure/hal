@@ -10,6 +10,7 @@ This repository is maintained by Perspecta Labs.
 
 - [HAL Components](#HAL-Componenets)
 - [Build](#build)
+- [Run](#run)
 
 ## HAL Components
 HAL is implemented as a single daemon running on the host. As shown in the figure below, its left interface connects to various applications, while its right interface connects (through the host's network interfaces) to the CDGs (residing either as a *bookend* on the same host as HAL or as a *bump-in-the-wire*).
@@ -49,22 +50,24 @@ make clean; make
 ```
 Some devices may also require installation into the kernel.
 
-## Run HAL
+## Run
 
 Start HAL as a loopback device ready receive data from applications and echo back the same data back.
 ```
 cd ~/gaps/top-level/hal/
-daemon/hal sample_loopback.cfg
+daemon/hal test/sample_loopback.cfg
 ```
 
 To start HAL sending to real network device:
-- first, emulate the devices in one window
+- First, emulate the devices in one window
 ```
 cd ~/gaps/top-level/hal/test
 bash net.sh
 ```
-- Start hal in a separate window
+- Second, start hal in a separate window
 ```
 cd ~/gaps/top-level/hal/
 daemon/hal -v test/sample.cfg
 ```
+
+Note that the devices configured in the hal conifguration script [sample.cfg](test/sample.cfg) must match those in the network emulation sciprt [net.sh](test/net.sh)
