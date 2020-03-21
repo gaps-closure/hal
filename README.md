@@ -41,12 +41,12 @@ sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
 
-We use the Make file to compile HAL, together with its libraries [API](api/) and [codecs](codecs/)) and test programs:
+Run make in order to compile HAL, together with its libraries [API](api/) and [codecs](appgen/)) and test programs:
 ```
 cd ~/gaps/top-level/hal/
 make clean; make
 ```
-Some devices may also require installation into the kernel.
+Some devices also require installation into the kernel.
 
 ## Run
 
@@ -62,7 +62,7 @@ To start HAL sending to real network device:
 cd ~/gaps/top-level/hal/test
 bash net.sh
 ```
-- Second, start hal in a separate window
+- Second, start the HAL daemon in a separate window
 ```
 cd ~/gaps/top-level/hal/
 daemon/hal -v test/sample.cfg
