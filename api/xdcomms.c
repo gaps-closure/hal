@@ -84,19 +84,18 @@ void type_check(uint32_t typ) {
  * Create packet (serialize data and adding header)
  */
 void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len_in, gaps_tag *tag) {
-  size_t adu_len;
   uint32_t typ = tag->typ;
   
   /* a) serialize data into packet */
   type_check(typ);
-  cmap[typ].encode (p->data, buff_in, &adu_len);
+  cmap[typ].encode (p->data, buff_in, len_in);
   //if(xdc_verbose) data_print("API <- raw app data:", buff_in, *len_in);
-  if(xdc_verbose) data_print("    -> encoded data:", p->data, adu_len);
+  if(xdc_verbose) data_print("    -> encoded data:", p->data, *len_in);
   
   /* b) Create CLOSURE packet header */
   tag_encode(&(p->tag), tag);
-  len_encode(&(p->data_len), adu_len);
-  *p_len = adu_len + sizeof(p->tag) + sizeof(p->data_len);
+  len_encode(&(p->data_len), *len_in);
+  *p_len = (*len_in) + sizeof(p->tag) + sizeof(p->data_len);
 }
 
 /*
@@ -159,7 +158,7 @@ void xdc_asyn_send(void *adu, gaps_tag tag) {
     socket = z_connect(ZMQ_PUB, HAL_IPC_SUB);
     do_once = 0;
   }
-  size_t adu_len;
+  size_t adu_len;         /* Size of ADU is calculated by encoder */
   gaps_data_encode(p, &packet_len, adu, &adu_len, &tag);
   if(xdc_verbose) {
     fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);

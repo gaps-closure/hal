@@ -21,7 +21,7 @@ sub_zc:
 	make CC=$(CC) -C ./zc
 
 clean:
-	rm -f /tmp/halsub* /tmp/halpub*
+#	rm -f /tmp/halsub* /tmp/halpub*
 	rm -f zc/zc zc/*.o 
 	rm -f api/*.a api/*.o api/*.so
 	rm -f appgen/*.a appgen/*.o appgen/float appgen/*.so
