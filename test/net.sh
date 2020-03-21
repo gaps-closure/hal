@@ -126,11 +126,6 @@ while true; do
       echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT2 prot=UDP: $DATA_BW1_02"
       echo "$DATA_BW1_02" | stdbuf -oL xxd -r -p  > $FIF0_PORT2
       ;;
-    120)
-      echo "Sending back to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT3 prot=UDP: $DATA_BW1_02"
-      echo " **** HAL not listening on that socket, unless configure HAL for no: addr_in and port_in ****\n"
-      echo "$DATA_BW1_02" | stdbuf -oL xxd -r -p  > $FIF0_PORT3
-      ;;
     3222)
       echo "Sending to $IF_NET3 IP=$IP_ADDR HAL listening port=$IP_PORT2 prot=UDP: $DATA_BW1_03"
       echo "$DATA_BW1_03" | stdbuf -oL xxd -r -p  > $FIF0_PORT2
@@ -143,18 +138,12 @@ while true; do
       echo "Sending to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT4 prot=TCP: $DATA_BW1_06"
       echo "$DATA_BW1_06" | stdbuf -oL xxd -r -p  > $FIF0_PORT4
       ;;
-    2)
-      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_02"
-      echo "$DATA_BE1_02" | stdbuf -oL xxd -r -p  > $FIF0_PORT1
+    120000)
+      echo "Sending back to $IF_NET3 IP=$IP_ADDR send port=$IP_PORT3 prot=UDP: $DATA_BW1_02"
+      echo " **** HAL not listening on that socket, unless configure HAL for no: addr_in and port_in ****\n"
+      echo "$DATA_BW1_02" | stdbuf -oL xxd -r -p  > $FIF0_PORT3
       ;;
-    6)
-      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_06"
-      echo "$DATA_BE1_06" | stdbuf -oL xxd -r -p  > $FIF0_PORT1
-      ;;
-    8)
-      echo "Sending back to $IF_NET1 IP=$IP_ADDR send port=$IP_PORT1 prot=TCP: $DATA_BE1_08"
-      echo "$DATA_BE1_08" | stdbuf -oL xxd -r -p  > $FIF0_NET1
-      ;;
+
     *)
       echo -n "Unsupported APP-type = $APP_INDEX. "
       ;;
