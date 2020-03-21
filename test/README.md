@@ -1,7 +1,5 @@
-# Hardware Abstraction Layer (HAL)
-This repository hosts the open source components of HAL: a) the daemon communicating between applicaitons and network interfaces, b) HAL's API to applicaitons, and c) the codecs that define how application data is serialized for transmission. 
-
-![HAL interfaces between applications and Network Interfaces.](hal_api.png)
+# HAL Test Programs
+This directory has example application programs and HAL conifgurations used to test the HAL daemon. 
 
 The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
 
@@ -9,15 +7,17 @@ This repository is maintained by Perspecta Labs.
 
 ## Contents
 
-- [HAL daemon](daemon/)
-- [HAL API](api/)
-- [Application Codecs](codecs/)
-- [Build](#build)
+- [HAL Loopback](#Run Application with HAL in Loopback mode)
+- [Network emulation](api/)
+- [Starting HAL](codecs/)
+- [Simple Application](daemon/)
 - [Run HAL with a Simple Network Emulator](#run-hal)
 - [Run the Application](#run-application)
 
 
-## Build
+## Run Application with HAL in Loopback mode
+
+[I'm a relative reference to a repository file](../blob/master/LICENSE)
 
 Make sure to install HAL pre-requisites.
 ```
@@ -29,6 +29,11 @@ Compile HAL, together with the closure libarary (libclosure.a), HAL utilities, a
 ```
 cd ~/gaps/top-level/hal/
 make clean; make
+```
+Start the HAL daemon
+```
+cd ~/gaps/top-level/hal/
+daemon/
 ```
 
 ## Run HAL with a Simple Network Emulator 

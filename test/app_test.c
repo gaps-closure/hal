@@ -45,46 +45,49 @@ void opts_print(void) {
 void set_precanned_tags(int experiment_num) {
   fprintf(stderr, "exp=%d: ", experiment_num);
   switch (experiment_num) {
-    /* 3 unidirectional flows between 2 enclaves for device xdd6 (BE) */
+    /* 3 unidirectional flows between 2 enclaves for device xdd6 and xdd7 (BE) */
     /* Note: It uses 2 data types: typ=1 is sent by both enclaves; typ=2 is sent by one */
     case 6111:
-      s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 1; r_sec = 1; r_typ = 1;
+      s_mux = 1; s_sec = 1; s_typ = 1;        /* Position data */
       break;
     case 6221:
-      s_mux = 2; s_sec = 2; s_typ = 1; r_mux = 2; r_sec = 2; r_typ = 1;
+      s_mux = 2; s_sec = 2; s_typ = 1;        /* Position data */
       break;
     case 6222:
-      s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 2; r_sec = 2; r_typ = 2;
+      s_mux = 2; s_sec = 2; s_typ = 2;        /* Distance data */
       break;
     /* 3 unidirectional flows (same as above), but for device xdd3 (BW) - */
     case 3111:
-      s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 11; r_sec = 11; r_typ = 1;
+      s_mux = 11; s_sec = 11; s_typ = 1;      /* Position data */
       break;
     case 3221:
-      s_mux = 12; s_sec = 12; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
+      s_mux = 12; s_sec = 12; s_typ = 1;      /* Position data */
       break;
     case 3222:
-      s_mux = 13; s_sec = 13; s_typ = 2; r_mux = 13; r_sec = 13; r_typ = 2;
+      s_mux = 12; s_sec = 12; s_typ = 2;      /* Distance data */
       break;
-    /* Other tests were used for initial testing */
-    case 1:
-      s_mux = 101; s_sec = 1; s_typ = 101; r_mux = 1; r_sec = 1; r_typ = 1;
+    /* Additional cases that work with xdd6 and xdd7 (BE) loopback  */
+    case 6113:
+      s_mux = 1; s_sec = 1; s_typ = 101;    /* PNT data */
       break;
-    case 2:
-      s_mux = 102; s_sec = 2; s_typ = 102; r_mux = 2; r_sec = 2; r_typ = 2;
+    case 6233:
+      s_mux = 2; s_sec = 3; s_typ = 101;    /* PNT data */
       break;
-    case 5:
-      s_mux = 5; s_sec = 5; s_typ = 1; r_mux = 6; r_sec = 6; r_typ = 1;
+    /* Additional cases */
+    case 1553:
+      s_mux = 5; s_sec = 5; s_typ = 101;      /* PNT data on xdd1 */
       break;
-    case 11:
-      s_mux = 11; s_sec = 11; s_typ = 1; r_mux = 12; r_sec = 12; r_typ = 1;
+    case 4664:
+      s_mux = 6; s_sec = 6; s_typ = 102;      /* XYZ data on xdd4 */
       break;
-    case 13:
-      s_mux = 13; s_sec = 13; s_typ = 1; r_mux = 14; r_sec = 14; r_typ = 1;
+    case 0:
       break;
     default:
-      fprintf(stderr, "\nSkipping undefined demo-number (%d)\n", experiment_num);
+      fprintf(stderr, "\nExiting: Undefined demo-number (%d)\n", experiment_num);
+      opts_print();
+      exit(2);
   }
+  r_mux = s_mux; r_sec = s_sec; r_typ = s_typ;  /* test app acts as sender & receiver */
 }
 
 /* Parse the configuration file */
