@@ -27,7 +27,7 @@ The HAL daemon has the following major components:
 
 
 Also included in the HAL directory are [test](test/) programs, which includes:
-- **Appplication test program**, which provides and example of sending and receiving different data types through HAL.
+- **Appplication test**, which provides an example of sending and receiving different data types through HAL.
 - **Halperf**, whcih emulates an application sending and receiving data through HAL at a specified rate. It also collects performance statistics.
 - **HAL confifguration files**, which a) define the supported device conigurations, and b) define the halmap forwarding rules.
 - **Simple network emulation**, which emulate the HAL devices and the remote HAL.
