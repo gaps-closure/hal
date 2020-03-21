@@ -1,5 +1,5 @@
 # Hardware Abstraction Layer
-This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within an security enclave with a simple high-level interface to communicate with application in other enclaces. Based only on the application specified *tag*, HAL routes selected trafic through one of its network interfaces. It ensures all *cross-domain* comminication passes through the correct Cross Domain Guard (CDG) hardware that enforces provisioned security policies.
+This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within an security enclave with a simple high-level interface to communicate with application in other enclaces. Based only on the application specified *tag*, HAL routes all *cross-domain* comminication through the network via Cross Domain Guard (CDG) hardware (where provisioned security policies are enfforced).
 
 The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
 
@@ -16,14 +16,18 @@ HAL is implemented as a single daemon running on the host. As shown in the figur
 
 ![HAL interfaces between applications and Network Interfaces.](hal_api.png)
 
-The HAL daemon has various major components:
-- HAL's API to applicaitons (*xdcomms*), which provide the high level inteface used by Applications to: a) send and receive Applicaiton Data Units (ADUs), and b) describe the ADU confuration.
-- HAL's Codecs that define how aADUs are serialized for transmission (based on the ADU configuration description).
-- conversion to amd from different GAPS packet formats, along with separate sub-components that speciffy and convert to and from each CDG specififc packet format.
-- Device Management, which opens the devices specified in the configuration file. 
-- Device read and write routines, whcih wait for data on all the opened read devices and write the output to the device specified in the configuration file.
+The HAL daemon has the following major components:
+- [API](api/) to applicaitons (*xdcomms library*), which provide the high level inteface used by Applications to: a) send and receive Applicaiton Data Units (ADUs), and b) describe the ADU confuration.
+-[Application generated Codecs](appgen/), which define how how the xdcomms library serializes ADUs for transmission (based on the ADU configuration description).
+- [Packetization](daemon/), which converts between the inteal HAL format (containing tag and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
+- [Device Management](daemon/), which opens the devices specified in the configuration file. 
+- [Device read and write](daemon/), whcih wait for packets on all the opened read devices and forward them based on the **halmap** forwarding table specified in the configuration file.
 
-ALso included in the HAL directory are test programs, which include a) an example appplication program sending and receiving data through HAL, HAL confifguration files, and a simple network emulation. 
+ALso included in the HAL directory are [test](test/) programs, which includes:
+- **appplication test program**, which sends and receives different data types through HAL.
+- **halperf**, whcih emulates an application sending and receiving data through HAL.
+- **HAL confifguration files**, which a) define the supported device conigurations, and b) deine the halmap forwarding rules.
+- **Simple network emulation**, which emulate the HAL devices and the remote HAL.
 
 
 ## Build
@@ -47,13 +51,6 @@ make clean; make
 , with HAL and a socat device
 (to emulate the network).
 
-```
-sudo tshark -nli lo 'port 5678 or port 6789'
-netstat -aut4 | grep local | grep -e 5678 -e 6789
-
-# 1) Start the network device 
-cd ~/gaps/top-level/hal/test/
-/kill_my_hal.sh ; ./net.sh
 
 # 2) Start HAL as a loopback device
 ./hal sample_loopback.cfg
