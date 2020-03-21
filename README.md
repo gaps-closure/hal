@@ -19,14 +19,16 @@ HAL is implemented as a single daemon running on the host. As shown in the figur
 The HAL daemon has the following major components:
 - [API](api/) to applicaitons (*xdcomms library*), which provide the high level inteface used by Applications to: a) send and receive Applicaiton Data Units (ADUs), and b) describe the ADU confuration.
 - [Application generated Codecs](appgen/), which define how how the xdcomms library serializes ADUs for transmission (based on the ADU configuration description).
-- [Packetization](daemon/), which converts between the inteal HAL format (containing tag and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
-- [Device Management](daemon/), which opens the devices specified in the configuration file. 
+- [Data Plane Switch](daemon/), which forwards data based based on the HAL confifguration file forwarding rules.
+- [Packetizer](daemon/), which converts between the inteal HAL format (containing tag and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
 - [Device read and write](daemon/), whcih wait for packets on all the opened read devices and forward them based on the **halmap** forwarding table specified in the configuration file.
+- [Device Manager](daemon/), which opens the devices specified in the configuration file. It also provisions the CDGs with security policies. 
 
-ALso included in the HAL directory are [test](test/) programs, which includes:
+
+Also included in the HAL directory are [test](test/) programs, which includes:
 - **Appplication test program**, which provides and example of sending and receiving different data types through HAL.
 - **Halperf**, whcih emulates an application sending and receiving data through HAL at a specified rate. It also collects performance statistics.
-- **HAL confifguration files**, which a) define the supported device conigurations, and b) deine the halmap forwarding rules.
+- **HAL confifguration files**, which a) define the supported device conigurations, and b) define the halmap forwarding rules.
 - **Simple network emulation**, which emulate the HAL devices and the remote HAL.
 
 
@@ -45,29 +47,24 @@ Make files are used to compile the HAL daemon, its libraries and test applicatio
 cd ~/gaps/top-level/hal/
 make clean; make
 ```
+Some devices may also require installation into the kernel.
 
-## Run HAL with a Simple Network Emulator 
+## Run HAL
 
-, with HAL and a socat device
-(to emulate the network).
+Start HAL as a loopback device ready receive data from applications and echo back the same data back.
+```
+cd ~/gaps/top-level/hal/
+daemon/hal sample_loopback.cfg
+```
 
-
-# 2) Start HAL as a loopback device
-./hal sample_loopback.cfg
-# 2b) Start HAL sending to device
+To start HAL sending to real network device:
+- first, emulate the devices in one window
+```
+cd ~/gaps/top-level/hal/test
+bash net.sh
+```
+- Start hal in a separate window
+```
 cd ~/gaps/top-level/hal/
 daemon/hal -v test/sample.cfg
-
-# 3) Start the test APP
-cd ~/gaps/top-level/hal/test/
-./app_test
-```
-
-## Run Applications
-
-Runs one or more applicaitons (sending and receiving coded data) using the xdcomms API
-
-```
-# 1) Start APP sending the Network #1 (NET1)
-./app_test 1
 ```
