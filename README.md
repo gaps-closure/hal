@@ -18,14 +18,14 @@ HAL is implemented as a single daemon running on the host. As shown in the figur
 
 The HAL daemon has the following major components:
 - [API](api/) to applicaitons (*xdcomms library*), which provide the high level inteface used by Applications to: a) send and receive Applicaiton Data Units (ADUs), and b) describe the ADU confuration.
--[Application generated Codecs](appgen/), which define how how the xdcomms library serializes ADUs for transmission (based on the ADU configuration description).
+- [Application generated Codecs](appgen/), which define how how the xdcomms library serializes ADUs for transmission (based on the ADU configuration description).
 - [Packetization](daemon/), which converts between the inteal HAL format (containing tag and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
 - [Device Management](daemon/), which opens the devices specified in the configuration file. 
 - [Device read and write](daemon/), whcih wait for packets on all the opened read devices and forward them based on the **halmap** forwarding table specified in the configuration file.
 
 ALso included in the HAL directory are [test](test/) programs, which includes:
-- **appplication test program**, which sends and receives different data types through HAL.
-- **halperf**, whcih emulates an application sending and receiving data through HAL.
+- **Appplication test program**, which provides and example of sending and receiving different data types through HAL.
+- **Halperf**, whcih emulates an application sending and receiving data through HAL at a specified rate. It also collects performance statistics.
 - **HAL confifguration files**, which a) define the supported device conigurations, and b) deine the halmap forwarding rules.
 - **Simple network emulation**, which emulate the HAL devices and the remote HAL.
 
