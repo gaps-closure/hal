@@ -23,10 +23,10 @@ sub_zc:
 clean:
 	rm -f /tmp/halsub* /tmp/halpub*
 	rm -f zc/zc zc/*.o 
-	rm -f api/*.a api/*.o 
-	rm -f appgen/*.a appgen/*.o appgen/float
+	rm -f api/*.a api/*.o api/*.so
+	rm -f appgen/*.a appgen/*.o appgen/float appgen/*.so
 	rm -f daemon/hal daemon/*.o 
-	rm -f test/app_test test/*.o test/fifo* test/*_log.txt 
+	rm -f test/app_test test/*.o test/fifo* test/*_log.txt
 
 install: 
 	mkdir -p $(INSTALLPATH)
