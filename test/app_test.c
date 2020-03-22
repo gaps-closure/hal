@@ -38,23 +38,45 @@ void opts_print(void) {
   printf(" -M : Recv multiplexing (mux) tag (integer): Default = 1\n");
   printf(" -S : Recv security (sec)     tag (integer): Default = 1\n");
   printf(" -T : Recv data type (typ)    tag (integer): Default = 1\n");
-  printf("[Experiment Number]: Optional Precanned send and recv tags (overrides -m -s -t -M -S -T options)\n");
+  printf("[Experiment Number]: Optional override of send and recv tags (-m -s -t -M -S -T options)\n");
+  
+  printf(" With HAL config file sample.cfg, the numbers map to the following send/recv network tags:");
+  printf("\n  [6xxx] are for BE devices xdd6 (mux=1) & xdd7 (mux=2) with send/recv network tags:\n    ");
+  printf("6111 → <1,1,1>, ");
+  printf("6113 → <1,1,3>, ");
+  printf("6221 → <2,2,1>, ");
+  printf("6222 → <2,2,2>, ");
+  printf("6233 → <2,3,3>. ");
+  printf("\n  [3xxx] are for a BW device xdd3:\n    ");
+  printf("3111 → <1,1,1>, ");
+  printf("3221 → <2,2,1>, ");
+  printf("3222 → <2,2,2>. ");
+  printf("\n  [xxxx] are for other devices:\n    ");
+  printf("1553 → <5,5,3> on xdd1, ");
+  printf("3221 → <6,6,4> on xdd4. ");
+  printf("\n");
 }
 
 /* get precanned experiment number for command line */
 void set_precanned_tags(int experiment_num) {
   fprintf(stderr, "exp=%d: ", experiment_num);
   switch (experiment_num) {
-    /* 3 unidirectional flows between 2 enclaves for device xdd6 and xdd7 (BE) */
-    /* Note: It uses 2 data types: typ=1 is sent by both enclaves; typ=2 is sent by one */
+    /* Unidirectional flows for BE devices; xdd6 (mux=1) and xdd7 (mux=2) */
+    /* Note: typ=1 sent by both enclaves; typ=2 is sent by one, typ=3 (maps from 101) for testing */
     case 6111:
       s_mux = 1; s_sec = 1; s_typ = 1;        /* Position data */
+      break;
+    case 6113:
+      s_mux = 1; s_sec = 1; s_typ = 101;      /* PNT data */
       break;
     case 6221:
       s_mux = 2; s_sec = 2; s_typ = 1;        /* Position data */
       break;
     case 6222:
       s_mux = 2; s_sec = 2; s_typ = 2;        /* Distance data */
+      break;
+    case 6233:
+      s_mux = 2; s_sec = 3; s_typ = 101;      /* PNT data */
       break;
     /* 3 unidirectional flows (same as above), but for device xdd3 (BW) - */
     case 3111:
@@ -65,13 +87,6 @@ void set_precanned_tags(int experiment_num) {
       break;
     case 3222:
       s_mux = 12; s_sec = 12; s_typ = 2;      /* Distance data */
-      break;
-    /* Additional cases that work with xdd6 and xdd7 (BE) loopback  */
-    case 6113:
-      s_mux = 1; s_sec = 1; s_typ = 101;    /* PNT data */
-      break;
-    case 6233:
-      s_mux = 2; s_sec = 3; s_typ = 101;    /* PNT data */
       break;
     /* Additional cases */
     case 1553:
