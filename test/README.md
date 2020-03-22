@@ -13,7 +13,7 @@ This repository is maintained by Perspecta Labs.
 
 ## HAL Loopback Tests
 
-First [run HAL in loopback mode](../README.md#hal-loopback-mode) in one terminal. In a second terminal run the test application:
+First, [run HAL in loopback mode](../README.md#hal-loopback-mode) in one terminal; then, in a second terminal, run the test application:
 
 ```
 cd ~/gaps/top-level/hal/test
@@ -24,11 +24,12 @@ By default, [without any conifguration option](#test-app-configuration-options),
 - *mux=1* identiies this test application session.
 - *sec=1* identiies the security policies that must be applied.
 - *typ=1* means it will send POSITION data type, with the x, y, z information represented using *doubles*.
+
 Note that, running path.sh only needs to be done once, in order to ensure the HAL API dynamic library path is conifgured for the terminal.
 
 The HAL [loopback conifguraion script](sample_loopback.cfg) has only a single device (*xdd0*) and a single *halmap* entry. The *halmap* entry tells HAL to route packets from the application read interface (*xdd0*) back to the application write interface (*xdd0*). For loopback data, HAL adds a 50ms delay.
 
-After calling the send function, the test application calls the [HAL API recv function](../api/), with a tag mux value set to 1. This causes the echoed packet to be read and printed.
+After calling the send function, the test application calls the [HAL API recv function](../api/), with a tag mux value set to 1. This causes the echoed packet to be read and printed, then the test program exits.
 
 Below is an example of the application output from the test:
 ```
@@ -57,11 +58,26 @@ HAL writes sdh_ha_v1 onto xdd0, fd=06: (len=56) 00000001 89ABCDEF 00000001 00000
 
 ## HAL Single Node Tests
 
-This section describes the use of the application test program to generate and singe send and receive
-on with different devices, tags and data types.  
+This section describes the use of the application test program to generate and one send and one receive
+on with different real devices, tags and data types.  In this case, three scripts need to be run in the following order:
 
-, with HAL and a socat device
-(to emulate the network).
+### 1) Network emulation
+The [network emulation script](./net.sh) performs multiple functions. First, it cleans up any from any old runs.  Second, it 
+configures device that are not normally on the node. Third, it emulates the receiver server and client processes. finally, it provides the option of sending data back to the application.
+```
+cd ~/gaps/top-level/hal/test
+bash net.sh
+```
+### 2) HAL daemon
+Run [HAL with the multiple network device enabled](../README.md# hal-with-network-emulation) in a second terminal.
+ 
+### 3) Application
+The application can be started with many [options](#hal-command-options) that decide the tags used for sending and receiving data. The send tag's data typ  decides what application data type is sent. For example, *typ=1* sends position information, while *typ=2* sends location information. Below shows an example, for an application using tag=<2,2,2> sending location information on device xdd6 (as specified in the *halmap* section of the [configuration file](sample.cfg) used to start the HAL daemon).
+```
+cd ~/gaps/top-level/hal/test
+source path.sh 
+./app_test 6222
+```
 
 Below is an example of the application output from the test:
 ````
