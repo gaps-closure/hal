@@ -176,6 +176,12 @@ int process_input(int ifd, halmap *map, device *devs, int hal_verbose) {
     return (0);
   }
 
+  /* Avoid race between send and receive */
+  if (strcmp(idev->id, h->to.dev) == 0) {
+    if(hal_verbose) fprintf(stderr, "%s: Loopback (%s -> %s) sleep = 50ms\n", __func__, idev->id, h->to.dev);
+    usleep(50000);
+  }
+  
   write_pdu(odev, &(h->to), ipdu, hal_verbose);
   pdu_delete(ipdu);
   return (0);

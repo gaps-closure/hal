@@ -10,7 +10,7 @@
 
 codec_map  cmap[DATA_TYP_MAX];
 
-int xdc_verbose=1;
+int xdc_verbose=0;
 
 /**********************************************************************/
 /* LIB Printing Functions */

@@ -30,12 +30,12 @@ int hal_wait_us=1000;     /* select (EAGAIN) wait loop (in microseconds) */
 /*********t************************************************************/
 void opts_print(void) {
   printf("Hardware Abstraction Layer (HAL) for gaps CLOSURE project\n");
-  printf("Usage: hal [OPTION]... CONFIG-FILE\n");
-  printf("OPTION: one of the following options:\n");
+  printf("Usage: hal [OPTIONS]... CONFIG-FILE\n");
+  printf("OPTIONS: are one of the following:\n");
   printf(" -h --help : print this message\n");
-  printf(" -v --hal_verbose : print debug messages in stderr\n");
-  printf(" -w --hal_verbose : select wait time (in microseconds) when device not ready (EAGAIN) - default to 1000us (-1 will exit if device is not ready)\n");
-  printf("CONFIG-FILE: path to file with HAL configuration information (e.g., sample.cfg)\n");
+  printf(" -v --hal_verbose : print debug messages to stderr\n");
+  printf(" -w --hal_verbose : device not ready (EAGAIN) wait time (microseconds) - default 1000us (-1 exits if not ready)\n");
+  printf("CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)\n");
 }
 
 /* Parse the configuration file */
