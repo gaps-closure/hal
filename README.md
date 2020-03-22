@@ -53,7 +53,7 @@ Some devices also require installation into the kernel.
 Starting the HAL daemon requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
 
 ### HAL Loopback Mode
-At its simplest, we can start HAL to echo send requests made by the application back to the application. Loopback mode is enabled by specifying the loopback configuration file in the [test directory](test/)
+At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
 
 ```
 cd ~/gaps/top-level/hal/
