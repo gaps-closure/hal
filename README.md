@@ -50,22 +50,48 @@ Some devices also require installation into the kernel.
 
 ## Run
 
-HAL must be started with a specified configuration file. At its simplest, we can start HAL in echo mode, where HAL receives packets on its application interface and routes them immediately back to the application interface. HAL can be started as a loopback device by using the loopback configuration file.
+Starting the HAL daemon requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
+
+### HAL Loopback Mode
+At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
+
 ```
 cd ~/gaps/top-level/hal/
 daemon/hal test/sample_loopback.cfg
 ```
+In this case, HAL receives packets on its application read interface and routes them back to its application write interface. This requires no network devices (or network access).
 
-To start HAL sending to real network device:
-- First, emulate the devices in one window
+### HAL with Network Emulation
+
+We can test most of the functions of HAL on a single node. This requires all the enabled devices in the device list of the configuration script to be up and running. It also requires emulation of remote client and server functionality. If a specific device or network emulation is not available, then it must be disabled in the configuration script by specifying *enabled = 0*. 
+
+For the devices in configuration script [test/sample.cfg](test/sample.cfg), the [test directory](test/) includes a simple network emulation script [net.sh](test/net.sh) that can enable devices and emulate the remote network server/clients. The loopback devices, xdd6 and xdd7 in [test/sample.cfg](test/sample.cfg), must be separately installed into the kernel.
+
+To start the network emulation:
+
 ```
 cd ~/gaps/top-level/hal/test
 bash net.sh
 ```
-- Second, start the HAL daemon in a separate window
+
+After starting the network emulation, the HAL daemon can be started(in a separate window):
 ```
 cd ~/gaps/top-level/hal/
-daemon/hal -v test/sample.cfg
+daemon/hal test/sample.cfg
 ```
 
-Note that the network emulation script configurations [net.sh](test/net.sh) must match the devices configuration specified in the HAL configuration script [sample.cfg](test/sample.cfg). 
+### HAL End-to-End
+If two network ndoes are available, then HAL can be run on each node. Each node then has a separate conifguration script. 
+
+
+### HAL command options
+To see the HAL daemon command options, run with the -h option.  Below shows the current options:
+```
+$~/gaps/top-level/hal$ daemon/hal -h
+Hardware Abstraction Layer (HAL) for gaps CLOSURE project
+Usage: hal [OPTIONS]... CONFIG-FILE
+OPTIONS: are one of the following:
+ -h --help : print this message
+ -v --hal_verbose : print debug messages to stderr
+ -w --hal_verbose : device not ready (EAGAIN) wait time (microseconds) - default 1000us (-1 exits if not ready)
+CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
