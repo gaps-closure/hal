@@ -20,13 +20,13 @@ cd ~/gaps/top-level/hal/test
 source path.sh 
 ./app_test
 ```
-By default, [without any conifguration option](#test-app-configuration-options), the [test application](./app_test) calls the [HAL API send function](../api/) with: a) some example POSITION information, and b) a from-tag <*mux, sec, typ*> set to <1,1,1>, where:
+By default, [without any conifguration option](#test-app-configuration-options), the [test application](./app_test.c) calls the [HAL API send function](../api/) with: a) some example POSITION information, and b) a from-tag <*mux, sec, typ*> set to <1,1,1>, where:
 - *mux=1* identiies this test application session.
 - *sec=1* identiies the security policies that must be applied.
 - *typ=1* means it will send POSITION data type, with the x, y, z information represented using *doubles*.
 Note that, running path.sh only needs to be done once, in order to ensure the HAL API dynamic library path is conifgured for the terminal.
 
-The HAL [loopback conifguraion script](sample_loopback.cfg) has only a single device (*xdd0*) and a single *halmap* entry. The *halmap* entry tells HAL to route packets from the application read interface (*xdd0*) back to the application write interface (*xdd0*).
+The HAL [loopback conifguraion script](sample_loopback.cfg) has only a single device (*xdd0*) and a single *halmap* entry. The *halmap* entry tells HAL to route packets from the application read interface (*xdd0*) back to the application write interface (*xdd0*). For loopback data, HAL adds a 50ms delay.
 
 After calling the send function, the test application calls the [HAL API recv function](../api/), with a tag mux value set to 1. This causes the echoed packet to be read and printed.
 
