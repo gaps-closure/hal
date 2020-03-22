@@ -59,13 +59,13 @@ At its simplest, we can start HAL to echo send requests made back on the applica
 cd ~/gaps/top-level/hal/
 daemon/hal test/sample_loopback.cfg
 ```
-In this case HAL receives packets on its application read interface and routes them back to its application write interface. This requires no network access or no devices to be enabled.
+In this case, HAL receives packets on its application read interface and routes them back to its application write interface. This requires no network devices (or network access).
 
 ### HAL with Network Emulation
 
-We can test most of the functions of HAL on a single node. This requires all the enabled^ devices in the device list of the configuration script to be up and running. It also requires either devices to operate in loopback mode or emulation of remote client and server functionality. If a specific device or network emulation is not available, then it must be disabled in the configuration script by specifying *enabled = 0*. 
+We can test most of the functions of HAL on a single node. This requires all the enabled devices in the device list of the configuration script to be up and running. It also requires emulation of remote client and server functionality. If a specific device or network emulation is not available, then it must be disabled in the configuration script by specifying *enabled = 0*. 
 
-For the devices in configuration script [sample.cfg](test/sample.cfg), the [test directory](test/) includes a simple network emulation script [net.sh](test/net.sh) that can enable a device (e.g., /dev/vcom1) and emulate the remote network server/clients.  The loopback devices, xdd6 and xdd7 in [sample.cfg](test/sample.cfg), must be separately installed into the kernel.
+For the devices in configuration script [test/sample.cfg](test/sample.cfg), the [test directory](test/) includes a simple network emulation script [net.sh](test/net.sh) that can enable devices and emulate the remote network server/clients. The loopback devices, xdd6 and xdd7 in [test/sample.cfg](test/sample.cfg), must be separately installed into the kernel.
 
 To start the network emulation:
 
@@ -79,6 +79,10 @@ After starting the network emulation, the HAL daemon can be started(in a separat
 cd ~/gaps/top-level/hal/
 daemon/hal test/sample.cfg
 ```
+
+### HAL End-to-End
+If two network ndoes are available, then HAL can be run on each node. Each node then has a separate conifguration script. 
+
 
 ### HAL command options
 To see the HAL daemon command options, run with the -h option.  Below shows the current options:
