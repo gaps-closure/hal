@@ -39,7 +39,7 @@ def send(m, s, t, r):
     #initial values
     pos = Position(-74.574489, 40.695545, 101.9, ClosureTrailer(0,0,0,0,0))
     dis = Distance(-1.021, 2.334, 0.4)
-    while(int(r) != 0):
+    while(float(r) != 0):
         tag = GapsTag(int(m),int(s),int(t))
         tailer = ClosureTrailer(0,0,0,0,0)
         if int(t) == 1 or int(t) == 3:
