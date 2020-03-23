@@ -43,8 +43,10 @@ The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
 There are two types of tags:
 - The **Application tag**, which is used by the applicaitons and contained in the application packets (on the left side of HAL).
 - The **Network tag**, which is used by the CDG components in the network (and contained in the network packets (on the right side of HAL).
-At the sender, HAL will map the Applicaiton tag into the Network tag using its configuration file mapping (**halmap**) rules.
-At the receiver, HAL will map the Network tag back into an Applicaiton tag using its configuration file mapping (**halmap**) rules.
+
+HAL uses the tag to know how to route data to the correct interface using its configuration file mapping (**halmap**) rules. Also, the:
+- Sending HAL will map the Applicaiton tag into the Network tag using its *halmap* rules.
+- Receiving HAL will map the Network tag back into an Applicaiton tag using its *halmap* rules.
 
 
 ## Build
