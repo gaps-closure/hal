@@ -35,7 +35,7 @@ void device_print_int(char *name, int v) {
 
 /* Print device definition */
 void devices_print_one(device *d)  {
-  fprintf(stderr, " %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
+  fprintf(stderr, " %s [v=%d di=%s do=%s m=%s c=%s", d->id, d->enabled, d->path_in, d->path_out, d->model, d->comms);
   device_print_str("ai", d->addr_in);
   device_print_str("ao", d->addr_out);
   device_print_str("mi", d->mode_in);
@@ -92,11 +92,11 @@ void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open,
     close(PARENT_WRITE);
     close(pipe_close);
     dup2(pipe_open, fd_open);        /* copy fd_open file descriptor into pipe_open file descriptor */
-    char *argv2[] = {(char *) d->path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
+    char *argv2[] = {(char *) d->path_in, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
     if(execvp(argv2[0], argv2) < 0) perror("execvp()");
     exit(EXIT_FAILURE);                                      /* child process should not reach here */
   } else {                /* parent (HAL) process */
-    // fprintf(stderr, "Spawned %s subscriber pid=%d\n", d->path, pid);
+    // fprintf(stderr, "Spawned %s subscriber pid=%d\n", d->path_in, pid);
   }
 }
 
@@ -106,7 +106,7 @@ void interface_open_ipc(device *d) {
   int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
 
   /* a) Open communication pipes for IPC reading and writing */
-// fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
+// fprintf(stderr, "Open IPC %s %s\n", d->id, d->path_in);
   if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
     fprintf(stderr, "Pipe creation failed\n");
     exit(EXIT_FAILURE);
@@ -137,7 +137,7 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
   serv_addr->sin_port = htons(port);
   if(inet_pton(AF_INET, addr, &(serv_addr->sin_addr))<=0)
   {
-    printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path);
+    printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path_in);
     exit(EXIT_FAILURE);
   }
   
@@ -163,7 +163,7 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
     if ( strcmp(d->comms, "udp") != 0) {
       if (connect(fd, (struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0)
       {
-        printf("\nConnection Failed for %s %s\n", d->id, d->path);
+        printf("\nConnection Failed for %s %s\n", d->id, d->path_in);
         exit(EXIT_FAILURE);
       }
     }
@@ -192,8 +192,8 @@ void interface_open_inet(device *d) {
 /* Open a serial (tty) interface for read-write and save the fds */
 void interface_open_tty(device *d) {
   int fd;
-  if ((fd = open(d->path, O_RDWR)) < 0) {
-    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path);
+  if ((fd = open(d->path_in, O_RDWR)) < 0) {
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_in);
     exit(EXIT_FAILURE);
   }
   d->readfd = fd;
@@ -274,7 +274,7 @@ void ilp_root_device_open(root_device *rd, int hal_verbose) {
 /* save root's data paths and devices inro root_device structs */
 void ilp_root_device_save_conig(device *d, int *root_count, root_device *root_list) {
   int i, rc, dc;
-  const char *path=d->path;
+  const char *path=d->path_in;
   root_device *rdp = NULL;
 
   /* a) Find if matches previous root device */
@@ -329,8 +329,8 @@ void devices_open(device *dev_linked_list_root, int hal_verbose) {
     else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d, hal_verbose);
-    else { fprintf(stderr, "Device %s [%s] unknown\n", d->id, d->path); exit(EXIT_FAILURE);}
-// fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
+    else { fprintf(stderr, "Device %s [%s %s] unknown\n", d->id, d->path_in, d_path_out); exit(EXIT_FAILURE);}
+// fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path_in, d->readfd, d->writefd);
   }
   interface_open_ilp(NULL, hal_verbose);
 }

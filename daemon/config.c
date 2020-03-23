@@ -68,7 +68,8 @@ device *get_devices(config_t *cfg) {
       /* required parameters */
       ret[i].enabled  = get_param_int(dev, "enabled",  0, i);
       ret[i].id       = get_param_str(dev, "id",       0, i);
-      ret[i].path     = get_param_str(dev, "path",     0, i);
+      ret[i].path_in  = get_param_str(dev, "path_in",  0, i);
+      ret[i].path_out = get_param_str(dev, "path_out", 1, i);
       ret[i].model    = get_param_str(dev, "model",    0, i);
       ret[i].comms    = get_param_str(dev, "comms",    0, i);
       /* optional parameters */

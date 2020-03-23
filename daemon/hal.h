@@ -21,7 +21,8 @@
 typedef struct _dev {
   int         enabled;
   const char *id;
-  const char *path;
+  const char *path_in;
+  const char *path_out;
   const char *path_r;
   const char *path_w;
   const char *model;
