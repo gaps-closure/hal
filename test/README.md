@@ -117,35 +117,8 @@ Elapsed = 14440 us, LoopPause = 0 us, rate = 69.252078 rw/sec
 Below is the corresponding HAL daemon output from the test:
 ````
 ~/gaps/top-level/hal$ daemon/hal test/sample.cfg 
-HAL device list:
- xdd0 [v=1 d=./zc/zc m=sdh_ha_v1 c=ipc mi=sub mo=pub fr=3 fw=6]
- xdd1 [v=1 d=/dev/vcom1 m=sdh_be_v1 c=tty fr=4 fw=4]
- xdd2 [v=0 d=/dev/vcom1 m=sdh_be_v2 c=tty]
- xdd3 [v=1 d=lo m=sdh_bw_v1 c=udp ai=127.0.0.1 ao=127.0.0.1 pi=6788 po=50000 fr=7 fw=5]
- xdd4 [v=1 d=lo m=sdh_bw_v1 c=tcp ao=127.0.0.1 po=6787 fr=8 fw=8]
- xdd6 [v=1 d=/dev/gaps_ilip_0_root m=sdh_be_v1 c=ilp fr=9 fw=10 dr=/dev/gaps_ilip_1_read dw=/dev/gaps_ilip_1_write mx=1]
- xdd7 [v=1 d=/dev/gaps_ilip_0_root m=sdh_be_v1 c=ilp fr=11 fw=12 dr=/dev/gaps_ilip_2_read dw=/dev/gaps_ilip_2_write mx=2]
-HAL map list (0x560f1b6d42b0):
- xdd0 [mux=01 sec=01 typ=01] ->  xdd6 [mux=01 sec=01 typ=01] , codec=NULL
- xdd7 [mux=02 sec=02 typ=01] ->  xdd0 [mux=02 sec=02 typ=01] , codec=NULL
- xdd7 [mux=02 sec=02 typ=02] ->  xdd0 [mux=02 sec=02 typ=02] , codec=NULL
- xdd0 [mux=11 sec=11 typ=01] ->  xdd3 [ctag=0x00010101]      , codec=NULL
- xdd3 [ctag=0x00020201]      ->  xdd0 [mux=12 sec=12 typ=01] , codec=NULL
- xdd3 [ctag=0x00020202]      ->  xdd0 [mux=12 sec=12 typ=02] , codec=NULL
- xdd6 [mux=01 sec=01 typ=01] ->  xdd0 [mux=01 sec=01 typ=01] , codec=NULL
- xdd0 [mux=02 sec=02 typ=01] ->  xdd7 [mux=02 sec=02 typ=01] , codec=NULL
- xdd0 [mux=02 sec=02 typ=02] ->  xdd7 [mux=02 sec=02 typ=02] , codec=NULL
- xdd3 [ctag=0x00010101]      ->  xdd0 [mux=11 sec=11 typ=01] , codec=NULL
- xdd0 [mux=12 sec=12 typ=01] ->  xdd3 [ctag=0x00020201]      , codec=NULL
- xdd0 [mux=12 sec=12 typ=02] ->  xdd3 [ctag=0x00020202]      , codec=NULL
- xdd0 [mux=01 sec=01 typ=101] ->  xdd6 [mux=01 sec=01 typ=03] , codec=NULL
- xdd7 [mux=02 sec=03 typ=03] ->  xdd0 [mux=02 sec=03 typ=101] , codec=NULL
- xdd0 [mux=05 sec=05 typ=101] ->  xdd1 [mux=05 sec=05 typ=101] , codec=NULL
- xdd0 [mux=06 sec=06 typ=102] ->  xdd4 [ctag=0x00060666]      , codec=NULL
- xdd6 [mux=01 sec=01 typ=03] ->  xdd0 [mux=01 sec=01 typ=101] , codec=NULL
- xdd0 [mux=02 sec=03 typ=101] ->  xdd7 [mux=02 sec=03 typ=03] , codec=NULL
- xdd1 [mux=05 sec=05 typ=101] ->  xdd0 [mux=05 sec=05 typ=101] , codec=NULL
- xdd4 [ctag=0x00060666]      ->  xdd0 [mux=06 sec=06 typ=102] , codec=NULL
+HAL device list: ...
+HAL map list ...
 
 HAL Waiting for input on fds, 3, 4, 7, 8, 9, 11
 
@@ -183,8 +156,8 @@ Elapsed = 6488493 us, LoopPause = 0 us, rate = 0.154119 rw/sec
 Below is the corresponding HAL daemon output from the test:
 ```
 ~/gaps/top-level/hal$ daemon/hal test/sample.cfg 
-HAL device list:
-... (same devices and halmap as shown above)
+HAL device list: ...
+HAL map list ...
 
 HAL Waiting for input on fds, 3, 4, 7, 8, 9, 11
 
