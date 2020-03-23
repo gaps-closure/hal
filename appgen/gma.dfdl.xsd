@@ -119,7 +119,7 @@
           <xs:element ref="gma:Position">
             <xs:annotation>
               <xs:appinfo source="http://www.ogf.org/dfdl/">
-		<dfdl:discriminator test="{../gma:SDHBEHeader/dtag eq 1}" />
+                <dfdl:discriminator test="{../gma:SDHBEHeader/dtag eq 1 or ../gma:SDHBEHeader/dtag eq 3}" />
               </xs:appinfo>
             </xs:annotation>
           </xs:element>
