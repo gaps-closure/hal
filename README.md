@@ -36,15 +36,15 @@ Also included in the HAL directory are [test](test/) programs, which includes:
 ## HAL Tag
 HAL communication contains only the Application Data Unit (ADU) and a small HAL tag.
 The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
-. a) **mux** is a session multiplexing handle used to identify a unidirectional applicaiton flow.
-. b) **sec** identifies which security policy used to processing the the sent or received ADU. 
-. c) **typ** describes the ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also the tag *typ* with its associated description in order to process (e.g., downgrade) the ADU contents.
+- **mux** is a session multiplexing handle used to identify a unidirectional applicaiton flow.
+- **sec** identifies a CDG security policy used to processing an ADU. 
+- **typ** identifies the type of ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
 
 There are two types of tags:
-- The Application tag, which is used by the applicaitons and contained in the application packets (on the left side of HAL).
-- The Network tag, which is used by the CDG components in the network (and contained in the network packets (on the right side of HAL).
-At the sender, HAL will convert the Applicaiton tag into the Network tag using its configuration file mapping (**halmap**) rules.
-At the receiver, HAL will convert the Network tag back into an Applicaiton tag using its configuration file mapping (**halmap**) rules.
+- The **Application tag**, which is used by the applicaitons and contained in the application packets (on the left side of HAL).
+- The **Network tag**, which is used by the CDG components in the network (and contained in the network packets (on the right side of HAL).
+At the sender, HAL will map the Applicaiton tag into the Network tag using its configuration file mapping (**halmap**) rules.
+At the receiver, HAL will map the Network tag back into an Applicaiton tag using its configuration file mapping (**halmap**) rules.
 
 
 ## Build
