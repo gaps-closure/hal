@@ -51,7 +51,8 @@ pdu *read_pdu(device *idev, int hal_verbose) {
   const char     *dev_id;
   const char     *com_type;
   socklen_t       sock_len;
-
+  struct sockaddr_in socaddr_in;
+  
   /* a) read input into buf and get its length (with input dev_id and fd) */
   dev_id = idev->id;
   fd = idev->readfd;
@@ -76,7 +77,7 @@ pdu *read_pdu(device *idev, int hal_verbose) {
     }
   }
   else if (strcmp(com_type, "udp") == 0) {
-    pkt_len = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &(idev->socaddr_out), &sock_len);
+    pkt_len = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &socaddr_in, &sock_len);
     if (pkt_len < 0) {
       printf("%s recvfrom errno code: %d\n", __func__, errno);
       exit(EXIT_FAILURE);
