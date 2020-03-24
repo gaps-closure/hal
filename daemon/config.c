@@ -68,21 +68,22 @@ device *get_devices(config_t *cfg) {
     for(int i = 0; i < count; i++) {
       config_setting_t *dev = config_setting_get_elem(devs, i);
       /* required parameters */
-      ret[i].enabled  = get_param_int(dev, "enabled",  0, i);
-      ret[i].id       = get_param_str(dev, "id",       0, i);
-      ret[i].path     = get_param_str(dev, "path",     0, i);
-      ret[i].model    = get_param_str(dev, "model",    0, i);
-      ret[i].comms    = get_param_str(dev, "comms",    0, i);
+      ret[i].enabled     = get_param_int(dev, "enabled",     0, i);
+      ret[i].id          = get_param_str(dev, "id",          0, i);
+      ret[i].path        = get_param_str(dev, "path",        0, i);
+      ret[i].model       = get_param_str(dev, "model",       0, i);
+      ret[i].comms       = get_param_str(dev, "comms",       0, i);
       /* optional parameters */
-      ret[i].addr_in  = get_param_str(dev, "addr_in",  1, i);
-      ret[i].addr_out = get_param_str(dev, "addr_out", 1, i);
-      ret[i].mode_in  = get_param_str(dev, "mode_in",  1, i);
-      ret[i].mode_out = get_param_str(dev, "mode_out", 1, i);
-      ret[i].port_in  = get_param_int(dev, "port_in",  1, i);
-      ret[i].port_out = get_param_int(dev, "port_out", 1, i);
-      ret[i].path_r   = get_param_str(dev, "path_r",   1, i);
-      ret[i].path_w   = get_param_str(dev, "path_w",   1, i);
-      ret[i].from_mux = get_param_int(dev, "from_mux", 1, i);
+      ret[i].init_enable = get_param_int(dev, "init_enable", 1, i);
+      ret[i].addr_in     = get_param_str(dev, "addr_in",     1, i);
+      ret[i].addr_out    = get_param_str(dev, "addr_out",    1, i);
+      ret[i].mode_in     = get_param_str(dev, "mode_in",     1, i);
+      ret[i].mode_out    = get_param_str(dev, "mode_out",    1, i);
+      ret[i].port_in     = get_param_int(dev, "port_in",     1, i);
+      ret[i].port_out    = get_param_int(dev, "port_out",    1, i);
+      ret[i].path_r      = get_param_str(dev, "path_r",      1, i);
+      ret[i].path_w      = get_param_str(dev, "path_w",      1, i);
+      ret[i].from_mux    = get_param_int(dev, "from_mux",    1, i);
 
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */

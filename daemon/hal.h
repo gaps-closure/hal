@@ -20,6 +20,7 @@
 /* HAL Interface parameters (linked list) */
 typedef struct _dev {
   int         enabled;
+  int         init_enable;
   const char *id;
   const char *path;
   const char *path_r;

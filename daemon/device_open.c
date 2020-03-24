@@ -36,6 +36,7 @@ void device_print_int(char *name, int v) {
 /* Print device definition */
 void devices_print_one(device *d)  {
   fprintf(stderr, " %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
+  device_print_int("ie", d->init_enable);
   device_print_str("ai", d->addr_in);
   device_print_str("ao", d->addr_out);
   device_print_str("mi", d->mode_in);
@@ -210,6 +211,8 @@ void ilp_open_data_devices(device *d) {
 
   // fprintf(stderr, "%s: Create data Devices external to HAL: %s %s\n", __func__, d->path_r, d->path_w);
   // tried | O_NONBLOCK  and O_RDWR
+  if (d->enabled == 0) return;
+  
   if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
     fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r);
     exit(EXIT_FAILURE);
@@ -312,7 +315,9 @@ void interface_open_ilp(device *d, int hal_verbose) {
 //  fprintf(stderr, "%s: Open %d root device(s)\n", __func__, root_count);
   for (j=0; j<root_count; j++) {
     rd = &(root_list[j]);
-    ilp_root_device_open(rd, hal_verbose);
+    if (((rd->data_dev_list)[0])->init_enable == 1) {
+      ilp_root_device_open(rd, hal_verbose);
+    }
     for (i=0; i<(rd->data_dev_count); i++) {
       ilp_open_data_devices(rd->data_dev_list[i]);
     }
