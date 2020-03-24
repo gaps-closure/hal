@@ -14,7 +14,7 @@ This repository is maintained by Perspecta Labs.
 - [Run](#run)
 
 ## HAL Components
-HAL runs as a single daemon on the host, supporting multiple applications and network interfaces. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
+HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 
 ![HAL interfaces between applications and Network Interfaces.](hal_api.png)
 
@@ -39,9 +39,9 @@ The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
 - **sec** identifies a CDG security policy used to processing an ADU. 
 - **typ** identifies the type of ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
 
-There are two types of tags:
+There are tags on the application side and tags on the network (GAPS device) side:
 - The **Application tag**, which is used by the applicaitons and contained in the application packets (on the left side of HAL).
-- The **Network tag**, which is used by the CDG components in the network (and contained in the network packets (on the right side of HAL).
+- The **Network tag**, which is used by the CDG components in the network, and contained in the network packets (on the right side of HAL).
 
 HAL uses the tag to know how to route data to the correct interface using its configuration file mapping (**halmap**) rules. Also, the:
 - Sending HAL will map the Applicaiton tag into the Network tag using its *halmap* rules.
@@ -49,6 +49,8 @@ HAL uses the tag to know how to route data to the correct interface using its co
 
 
 ## Build
+
+We have built and tested HAL on a Linux Ubuntu 19.10 system, and while HAL can run on other operating systems / versions, the package isntallation instructions are for that particualr OS and version.
 
 Install the HAL pre-requisite libraries.
 ```
@@ -137,7 +139,7 @@ HAL map list (0x55d9ab3ea0e0):
 HAL Waiting for input on fds, 3, 5, 7, 9
 ```
 It shows the configuratin of the following enabled (*v=1*) devices:
-- Applicaiton interfface device called *xdd0* (as described above).
+- Application interfface device called *xdd0* (as described above).
 - Network device (*xdd3*) with mode sdh_bw_v1 with a udp connection on the localhost (*lo*) interface: reading/listening on port pi=6788 (using read file descriptor 5) and writing to port  po=50000 (on write file descriptor 4).
 - Looback Serial devices (*xdd6 and xdd7*) with mode sdh_be_v1 with ilip communications. Both devices are associated with a single root device (/dev/gaps_ilip_0_root), though each has separate read (/dev/gaps_ilip_1_read and /dev/gaps_ilip_2_read) and write (/dev/gaps_ilip_1_write mx=1, /dev/gaps_ilip_2_write mx=2) interfaces.
 
