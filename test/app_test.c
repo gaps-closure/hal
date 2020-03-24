@@ -41,17 +41,17 @@ void opts_print(void) {
   printf("[Experiment Number]: Optional override of send and recv tags (-m -s -t -M -S -T options)\n");
   
   printf(" With HAL config file sample.cfg, the numbers map to the following send/recv network tags:");
-  printf("\n  [6xxx] are for BE devices xdd6 (mux=1) & xdd7 (mux=2) with send/recv network tags:\n    ");
-  printf("6111 → <1,1,1>, ");
-  printf("6113 → <1,1,3>, ");
-  printf("6221 → <2,2,1>, ");
-  printf("6222 → <2,2,2>, ");
-  printf("6233 → <2,3,3>. ");
-  printf("\n  [3xxx] are for a BW device xdd3:\n    ");
+  printf("\n  Application tags value that match network tag values:\n    ");
+  printf("111 → <1,1,1>, ");
+  printf("113 → <1,1,3>, ");
+  printf("221 → <2,2,1>, ");
+  printf("222 → <2,2,2>, ");
+  printf("233 → <2,3,3>. ");
+  printf("\n  [3xxx] when APP mux = NET mux + 10:\n    ");
   printf("3111 → <1,1,1>, ");
   printf("3221 → <2,2,1>, ");
   printf("3222 → <2,2,2>. ");
-  printf("\n  [xxxx] are for other devices:\n    ");
+  printf("\n  [xxxx] when APP typ = NET typ + 98:\n    ");
   printf("1553 → <5,5,3> on xdd1, ");
   printf("3221 → <6,6,4> on xdd4. ");
   printf("\n");
