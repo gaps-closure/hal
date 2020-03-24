@@ -15,14 +15,14 @@ function kill_all {
   ps aux | grep -v $USER | grep 'net\.sh' | awk '{print $2}' | paste -sd" "  | xargs sudo kill -9 2> /dev/null
   ps aux | grep -v $USER | grep 'net2\.sh' | awk '{print $2}' | paste -sd" "  | xargs sudo kill -9 2> /dev/null
   sudo rm -f /tmp/halsub* /tmp/halpub*
-  sudo ip link set dev grtap0 down
-  sudo ip link set dev cdgrtap0 down
-  sudo ip link set dev cdortap0 down
-  sudo ip link set dev ortap0 down
-  sudo ip link delete grtap0
-  sudo ip link delete cdgrtap0
-  sudo ip link delete cdortap0
-  sudo ip link delete ortap0
+  sudo ip link set dev grtap0 down 2> /dev/null
+  sudo ip link set dev cdgrtap0 down 2> /dev/null
+  sudo ip link set dev cdortap0 down 2> /dev/null
+  sudo ip link set dev ortap0 down 2> /dev/null
+  sudo ip link delete grtap0 2> /dev/null
+  sudo ip link delete cdgrtap0 2> /dev/null
+  sudo ip link delete cdortap0 2> /dev/null
+  sudo ip link delete ortap0 2> /dev/null
 }
 
 function kill_mine {
