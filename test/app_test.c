@@ -148,7 +148,7 @@ void opts_get(int argc, char **argv) {
         exit(0);
         break;
       default:
-        fprintf(stderr, "\nSkipping undefined option (%d)\n", opt);
+        fprintf(stderr, "\nSkipping undefined option (%c)\n", opt);
     }
   }
   if(optind<argc) set_precanned_tags(atoi(argv[optind++]));

@@ -155,6 +155,7 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
     if ( bind(fd, (const struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0 )
     {
       perror("\nbind failed");
+      printf("%s\n", addr);
       exit(EXIT_FAILURE);
     }
   }

@@ -63,7 +63,7 @@ void position_data_decode (void *buff_out, void *buff_in, size_t *len_in) {
 }
 
 void distance_print (distance_datatype *distance) {
-  fprintf(stderr, "position (len=%ld): %f, %f, %f, %d, %d, %d, %d, %d\n", sizeof(*distance),
+  fprintf(stderr, "distance (len=%ld): %f, %f, %f, %d, %d, %d, %d, %d\n", sizeof(*distance),
           distance->x,
           distance->y,
           distance->z,
