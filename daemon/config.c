@@ -5,6 +5,8 @@
 
 #include "hal.h"
 
+char ipc_addr_in[]   = "ipc:///tmp/halpub1";
+char ipc_addr_out[]  = "ipc:///tmp/halsub1";
 /**********************************************************************/
 /* HAL Configuration file (read and parse) */
 /*********t************************************************************/

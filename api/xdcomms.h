@@ -13,9 +13,10 @@
 #define ADU_SIZE_MAX_C  200
 #define PACKET_MAX      2048
 #define RX_FILTER_LEN   12
-#define HAL_IPC_SUB     "ipc:///tmp/halsub1"
-#define HAL_IPC_PUB     "ipc:///tmp/halpub1"
 #define DATA_TYP_MAX    200
+
+#define IPC_ADDR_DEFAULT_IN  "ipc:///tmp/halpub1"
+#define IPC_ADDR_DEFAULT_OUT "ipc:///tmp/halsub1"
 /**********************************************************************/
 /* LIB Structures */
 /*********t************************************************************/
@@ -58,5 +59,7 @@ extern void len_decode (size_t *, uint32_t);
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 extern void xdc_asyn_send(void *send_buf, gaps_tag tag);
 extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
+extern void xdc_set_in(char *);
+extern void xdc_set_out(char *);
 
 #endif

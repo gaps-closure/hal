@@ -101,7 +101,7 @@ void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open,
 }
 
 /* Open IPC interfaces (specified in d) */
-void interface_open_ipc(device *d) {
+void interface_open_ipc(device *d, int hal_verbose) {
   int  read_pipe[2];    /* Read  pipes for parent-child (HAL-API) communication */
   int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
 
@@ -113,10 +113,10 @@ void interface_open_ipc(device *d) {
   }
 //  fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
 
-//  fprintf(stderr, "UUUUUUUUUUU %s %s %s %s\n", d->addr_in, HAL_IPC_SUB, d->addr_out, HAL_IPC_PUB);
+  if (hal_verbose == 1)  fprintf(stderr, "Openning API %s:%s %s:%s\n", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
   /* b) Fork HAL child processes (to read and write on ipc channels) */
-  ipc_open_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in,  HAL_IPC_SUB);
-  ipc_open_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, HAL_IPC_PUB);
+  ipc_open_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in, d->addr_in);
+  ipc_open_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, d->addr_out);
 
   /* c) Parent (HAL) process finishes up */
   close(CHILD_READ);
@@ -328,7 +328,7 @@ void devices_open(device *dev_linked_list_root, int hal_verbose) {
     if (d->enabled == 0) continue;
     if        (!strncmp(d->comms, "tty", 3))                                      interface_open_tty(d);
     else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
-    else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
+    else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d, hal_verbose);
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d, hal_verbose);
     else { fprintf(stderr, "Device %s [%s] unknown\n", d->id, d->path); exit(EXIT_FAILURE);}
 // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);

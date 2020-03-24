@@ -35,7 +35,7 @@ void halmap_print_one(halmap *hm) {
 
 /* Print list of HAL map entries for debugging */
 void halmap_print_all(halmap *map_root) {
-    fprintf(stderr, "HAL map list (%p):\n", (void *) map_root);
+    fprintf(stderr, "HAL map list:\n");
     for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
       halmap_print_one(hm);
     }

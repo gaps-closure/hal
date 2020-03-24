@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 
+# define IPC_ADDR_MAX 50
+
 /**********************************************************************/
 /* Get options */
 /*********t************************************************************/
@@ -22,6 +24,8 @@ int receive_first    = 0;
 int loop_pause_us    = 0;
 int loop_count       = 1;
 int experiment_num   = 0;
+char *xdc_addr_in    = NULL;
+char *xdc_addr_out   = NULL;
 
 /* Print options */
 void opts_print(void) {
@@ -63,19 +67,19 @@ void set_precanned_tags(int experiment_num) {
   switch (experiment_num) {
     /* Unidirectional flows for BE devices; xdd6 (mux=1) and xdd7 (mux=2) */
     /* Note: typ=1 sent by both enclaves; typ=2 is sent by one, typ=3 (maps from 101) for testing */
-    case 6111:
+    case 111:
       s_mux = 1; s_sec = 1; s_typ = 1;        /* Position data */
       break;
-    case 6113:
+    case 113:
       s_mux = 1; s_sec = 1; s_typ = 101;      /* PNT data */
       break;
-    case 6221:
+    case 221:
       s_mux = 2; s_sec = 2; s_typ = 1;        /* Position data */
       break;
-    case 6222:
+    case 222:
       s_mux = 2; s_sec = 2; s_typ = 2;        /* Distance data */
       break;
-    case 6233:
+    case 233:
       s_mux = 2; s_sec = 3; s_typ = 101;      /* PNT data */
       break;
     /* 3 unidirectional flows (same as above), but for device xdd3 (BW) - */
@@ -108,7 +112,7 @@ void set_precanned_tags(int experiment_num) {
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt;
-  while((opt =  getopt(argc, argv, "c:hp:rm:s:t:M:S:T:")) != EOF)
+  while((opt =  getopt(argc, argv, "c:hi:o:p:rm:s:t:M:S:T:")) != EOF)
   {
     switch (opt)
     {
@@ -118,6 +122,12 @@ void opts_get(int argc, char **argv) {
       case 'h':
         opts_print();
         exit(0);
+      case 'i':
+        xdc_addr_in = optarg;
+        break;
+      case 'o':
+        xdc_addr_out = optarg;
+        break;
       case 'p':
         loop_pause_us = atoi(optarg);
         break;
@@ -298,6 +308,10 @@ int main(int argc, char **argv) {
   
   /* A) Conigure API */
   opts_get (argc, argv);
+  printf("XX=%p\n", xdc_addr_in);
+  if (xdc_addr_in  != NULL) xdc_set_in(xdc_addr_in);
+  if (xdc_addr_out != NULL) xdc_set_out(xdc_addr_out);
+  
   tag_write(&s_tag, s_mux, s_sec, s_typ);  tag_write(&r_tag, r_mux, r_sec, r_typ);
   /* Low level API registers a manually created encode and decode function per */
   /* data type. This will be replaced by an xdc_generate function */

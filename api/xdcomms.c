@@ -11,7 +11,8 @@
 codec_map  cmap[DATA_TYP_MAX];
 
 int xdc_verbose=0;
-
+char *xdc_addr_in  = NULL;
+char *xdc_addr_out = NULL;
 /**********************************************************************/
 /* LIB Printing Functions */
 /**********************************************************************/
@@ -153,9 +154,12 @@ void xdc_asyn_send(void *adu, gaps_tag tag) {
   static void *socket;
   sdh_ha_v1    packet, *p=&packet;
   size_t       packet_len;
+  static char  addr[50];
   
   if (do_once == 1) {    /* a) Open connection with HAL ZMQ subscriber */
-    socket = z_connect(ZMQ_PUB, HAL_IPC_SUB);
+    if (xdc_addr_out == NULL) strcpy(addr, IPC_ADDR_DEFAULT_OUT);
+    else                      strcpy(addr, xdc_addr_out);
+    socket = z_connect(ZMQ_PUB, addr);
     do_once = 0;
   }
   size_t adu_len;         /* Size of ADU is calculated by encoder */
@@ -179,18 +183,22 @@ void xdc_blocking_recv(void *adu, gaps_tag *tag) {
   sdh_ha_v1    packet, *p=&packet;
   int          size;
   gaps_tag     tag4filter;
-  
+  static char  addr[50];
+
   /* a) Open connection with HAL ZMQ publisher */
   if (do_once == 1) {
-//    socket = z_connect(ZMQ_SUB, HAL_IPC_PUB);
+    if (xdc_addr_in == NULL)  strcpy(addr, IPC_ADDR_DEFAULT_IN);
+    else                      strcpy(addr, xdc_addr_in);
+    
+//    socket = z_connect(ZMQ_SUB, xdc_addr_in);
 // Why can't I replace next 7 lines with above call????
     void *ctx = zmq_ctx_new ();
     if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
     socket = zmq_socket(ctx, ZMQ_SUB);
     if(socket == NULL) exit_with_zmq_error("zmq_socket");
-    err = zmq_connect(socket, HAL_IPC_PUB);
+    err = zmq_connect(socket, addr);
     if(err) exit_with_zmq_error("zmq_connect");
-    if(xdc_verbose) fprintf(stderr,"API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, HAL_IPC_PUB);
+    if(xdc_verbose) fprintf(stderr,"API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, addr);
 
     tag_encode(&tag4filter, tag);
     err = zmq_setsockopt (socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
@@ -227,7 +235,6 @@ void xdc_maps_print(void) {
   }
   fprintf(stderr, "\n");
 }
-
 /*
  * Load Codec Table with ADU encode and decode functions
  */
@@ -248,3 +255,14 @@ void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
 // XXX: Additional Functions TBD
 //  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then uses register to load them into the table */
 // Also xdc_provision function(s)
+
+/*
+ * Load IPC Addresses
+ */
+void xdc_set_in(char *addr) {
+  if (xdc_addr_in != NULL)  xdc_addr_in = addr;
+}
+
+void xdc_set_out(char *addr) {
+  if (xdc_addr_out != NULL) xdc_addr_out = addr;
+}
