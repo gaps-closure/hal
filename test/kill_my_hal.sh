@@ -5,6 +5,7 @@ function list_all {
   ps aux | grep 'net2\.sh'
   ps aux | grep z[c]
   ps aux | grep [n]etcat
+  ip addr show | grep inet | grep tap0
 }
 
 function kill_all {
