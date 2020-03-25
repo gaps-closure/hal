@@ -8,8 +8,8 @@ This repository is maintained by Perspecta Labs.
 ## Contents
 
 
-- [HAL Components](#HAL-Components)
-- [HAL tag](#HAL-tag)
+- [HAL Components](#hal-components)
+- [HAL tag](#hal-tag)
 - [Build](#build)
 - [Run](#run)
 
@@ -57,13 +57,15 @@ Install the HAL pre-requisite libraries.
 sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
+See the [CLOSURE Dev Server Setup](https://github.com/gaps-closure/build/blob/master/environment_setup.md) for full listing of CLOSURE external dependencies (some of which may be required for HAL on a clean system).
 
 Run make in order to compile HAL, together with its libraries [API](api/) and [codecs](appgen/)) and test programs:
 ```
-cd ~/gaps/top-level/hal/
+git clone https://github.com/gaps-closure/hal
+cd hal
 make clean; make
 ```
-Some devices also require installation into the kernel.
+Some SDH devices also require installation of a device driver via an associated kernel module.
 
 ## Run
 
@@ -73,8 +75,8 @@ Starting the HAL daemon requires specifying a HAL configuration file. The [test 
 At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
 
 ```
-cd ~/gaps/top-level/hal/
-daemon/hal test/sample_loopback.cfg
+cd hal
+hal$ daemon/hal test/sample_loopback.cfg
 ```
 In this case, HAL receives packets on its application read interface and routes them back to its application write interface. This requires no network devices (or network access).
 
@@ -82,7 +84,7 @@ Below is an example of the output from the HAL daemon, showing the configuratin 
 - Single device called *xdd0*, using a pub/sub ipc connection (using connection mode sdh_ha_v1), with file descriptors 3 and 6 for reading and writing.
 - A single HAL map (*halmap*) routing entry, which forwards application data from the application *xdd0* device with a HAL tag *<mux, sec, typ> = <1,1,1>* back to the application *xdd0* device. It also translates that tag to *<mux, sec, typ> = <1,2309737967,1>*
 ```
-~/gaps/top-level/hal$ daemon/hal test/sample_loopback.cfg 
+hal$ daemon/hal test/sample_loopback.cfg 
 HAL device list:
  xdd0 [v=1 d=./zc/zc m=sdh_ha_v1 c=ipc mi=sub mo=pub fr=3 fw=6]
 HAL map list (0x5597a6af8150):
@@ -94,7 +96,7 @@ HAL Waiting for input on fds, 3
 ### HAL command options
 To see the HAL daemon command options, run with the -h option.  Below shows the current options:
 ```
-$~/gaps/top-level/hal$ daemon/hal -h
+hal$ daemon/hal -h
 Hardware Abstraction Layer (HAL) for gaps CLOSURE project
 Usage: hal [OPTIONS]... CONFIG-FILE
 OPTIONS: are one of the following:
