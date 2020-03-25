@@ -51,7 +51,7 @@ cd loopback/ilip
 # If using v0.2.0, edit line 426 in ilip_nl.c from #if 0  to  #if 1
 vi ilip_nl.c
 make clean; make install
-insmod gaps-ilip.ko
+insmod gaps_ilip.ko
 ```
 
 If using SDH-BW, an emulated network (e.g., `test/6MoDemo_BW.net.sh` as shown below) must be configured before starting HAL to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement. The `halperf` test application can then be invoked to send and receive the application traffic workload.
