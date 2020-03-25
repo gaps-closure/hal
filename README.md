@@ -43,7 +43,18 @@ Once the HAL daemon is started, we can run the mission application or a test app
 
 ### Quick Test of HAL with SDH-BE Loopback or SDH-BW Emulated Network
 
-During development, for testing HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run HAL instances for the different enclaves on the same physical machine using their respective configurations. If running this localized setup and if using SDH-BE, the loopback ILIP device driver kernel module `gaps_ilip.ko` must be built and installed using `insmod` before starting HAL. If using SDH-BW, an emulated network (e.g., `test/6MoDemo_BW.net.sh` as shown below) must be configured before starting HAL to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement. The `halperf` test application can then be invoked to send and receive the application traffic workload.
+During development, for testing HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run HAL instances for the different enclaves on the same physical machine using their respective configurations. If running this localized setup and if using SDH-BE, the loopback ILIP device driver kernel module `gaps_ilip.ko` must be built and installed using `insmod` before starting HAL. 
+
+```
+# Obtain and untar driver source package from SDh-BE developer
+cd loopback/ilip
+# If using v0.2.0, edit line 426 in ilip_nl.c from #if 0  to  #if 1
+vi ilip_nl.c
+make clean; make install
+insmod gaps-ilip.ko
+```
+
+If using SDH-BW, an emulated network (e.g., `test/6MoDemo_BW.net.sh` as shown below) must be configured before starting HAL to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement. The `halperf` test application can then be invoked to send and receive the application traffic workload.
 
 Steps for an end-to-end test for Apr '20 Demo testing on a single host are provided below.
 
