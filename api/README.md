@@ -44,7 +44,7 @@ extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
 
 In future versions of this API, we plan to support additional send and receive communication patterns including asynchronous receive calls using one-shot or repeated callbacks that can be registered by the application, sending a tagged request and receiving a reply matching the tag, suport for a stream of sequenced messages with in-order delivery, etc.
 
-In sumamry, the application links to the library, and upon startup initializes the URI for the 0MQ endpoints, registers codecs for the application datatypes, and can then send and receive data. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
+In summary, the application links to the HAL data-plane client API library (`libxdcomms.a`). Upon startup, the application initializes the URIs for the 0MQ endpoints, registers codecs for the application datatypes, and then sends and receives data using pointers to in-memory data structures and associated tags. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
 
 ### HAL Control-Plane API
 
