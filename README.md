@@ -10,12 +10,27 @@ This repository is maintained by Perspecta Labs.
 - [Quick Start Guide](#quick-start-guide)
 - [HAL Architecture](#hal-architecture)
 - [HAL Tag](#hal-tag)
-- [Build and Install](#build-and-install)
-- [Run HAL](#run-hal)
+- [HAL Installation and Usage](#hal-installation-and-usage)
 
 ## Quick Start Guide
 ### Download Sources, Build, and Install
-See [Build and Install](#build-and-install) for required steps.
+
+We have built and tested HAL on a Linux Ubuntu 19.10 system, and while HAL can run on other operating systems / versions, the package isntallation instructions are for that particualr OS and version.
+
+Install the HAL pre-requisite libraries.
+```
+sudo apt install -y libzmq3-dev
+sudo apt install -y libconfig-dev
+```
+See the [CLOSURE Dev Server Setup](https://github.com/gaps-closure/build/blob/master/environment_setup.md) for full listing of CLOSURE external dependencies (some of which may be required for HAL on a clean system).
+
+Run make in order to compile HAL, together with its libraries [API](api/) and [codecs](appgen/)) and test programs:
+```
+git clone https://github.com/gaps-closure/hal
+cd hal
+make clean; make
+```
+Some SDH devices also require installation of a device driver via an associated kernel module.
 
 ### Configure/Run HAL and Device Scaffolding
 
@@ -119,31 +134,16 @@ HAL uses the tag to know how to route data to the correct interface using its co
 - Sending HAL will map the Applicaiton tag into the Network tag using its *halmap* rules.
 - Receiving HAL will map the Network tag back into an Applicaiton tag using its *halmap* rules.
 
+## HAL Installation and Usage
 
-## Build and Install
+### Build HAL
 
-We have built and tested HAL on a Linux Ubuntu 19.10 system, and while HAL can run on other operating systems / versions, the package isntallation instructions are for that particualr OS and version.
+See [Download Sources, Build, and Install](#download-sources-build-and-install) for required steps.
 
-Install the HAL pre-requisite libraries.
-```
-sudo apt install -y libzmq3-dev
-sudo apt install -y libconfig-dev
-```
-See the [CLOSURE Dev Server Setup](https://github.com/gaps-closure/build/blob/master/environment_setup.md) for full listing of CLOSURE external dependencies (some of which may be required for HAL on a clean system).
-
-Run make in order to compile HAL, together with its libraries [API](api/) and [codecs](appgen/)) and test programs:
-```
-git clone https://github.com/gaps-closure/hal
-cd hal
-make clean; make
-```
-Some SDH devices also require installation of a device driver via an associated kernel module.
-
-## Run HAL
-
+### Run HAL
 Starting the HAL daemon requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
 
-### HAL Command Options
+#### HAL Command Options
 To see the HAL daemon command options, run with the -h option.  Below shows the current options:
 ```
 hal$ daemon/hal -h
@@ -156,7 +156,7 @@ OPTIONS: are one of the following:
 CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 ```
 
-### HAL Loopback Mode
+#### HAL Loopback Mode
 At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
 
 ```
@@ -177,7 +177,7 @@ HAL map list (0x5597a6af8150):
 
 HAL Waiting for input on fds, 3
 ```
-### HAL Test Driver (halperf.py)
+#### HAL Test Driver (halperf.py)
 We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
 ```
 usage: halperf.py [-h] [-s MUX SEC TYP RATE] [-r MUX SEC TYP] [-l PATH]
