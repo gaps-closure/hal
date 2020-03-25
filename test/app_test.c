@@ -99,6 +99,12 @@ void set_precanned_tags(int experiment_num) {
     case 4664:
       s_mux = 6; s_sec = 6; s_typ = 102;      /* XYZ data on xdd4 */
       break;
+    case 7111:
+      s_mux = 1; s_sec = 1; s_typ = 1; r_mux = 2; r_sec = 2; r_typ = 2;
+      break;
+    case 7222:
+      s_mux = 2; s_sec = 2; s_typ = 2; r_mux = 1; r_sec = 1; r_typ = 1;
+      break;
     case 0:
       break;
     default:
@@ -106,7 +112,9 @@ void set_precanned_tags(int experiment_num) {
       opts_print();
       exit(2);
   }
-  r_mux = s_mux; r_sec = s_sec; r_typ = s_typ;  /* test app acts as sender & receiver */
+  if (experiment_num < 7000) {
+    r_mux = s_mux; r_sec = s_sec; r_typ = s_typ;  /* test app acts as sender & receiver */
+  }
 }
 
 /* Parse the configuration file */
@@ -308,9 +316,8 @@ int main(int argc, char **argv) {
   
   /* A) Conigure API */
   opts_get (argc, argv);
-  printf("XX=%p\n", xdc_addr_in);
-  if (xdc_addr_in  != NULL) xdc_set_in(xdc_addr_in);
-  if (xdc_addr_out != NULL) xdc_set_out(xdc_addr_out);
+  xdc_set_in(xdc_addr_in);
+  xdc_set_out(xdc_addr_out);
   
   tag_write(&s_tag, s_mux, s_sec, s_typ);  tag_write(&r_tag, r_mux, r_sec, r_typ);
   /* Low level API registers a manually created encode and decode function per */
