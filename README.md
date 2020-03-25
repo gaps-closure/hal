@@ -11,7 +11,7 @@ This repository is maintained by Perspecta Labs.
 - [HAL Architecture](#hal-architecture)
 - [HAL Tag](#hal-tag)
 - [Build and Install](#build-and-install)
-- [Run HAL Daemon](#run-hal-daemon)
+- [Run HAL](#run-hal)
 
 ## Quick Start Guide
 ### Download Sources, Build, and Install
@@ -135,7 +135,7 @@ make clean; make
 ```
 Some SDH devices also require installation of a device driver via an associated kernel module.
 
-## Run HAL Daemon
+## Run HAL
 
 Starting the HAL daemon requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
 
