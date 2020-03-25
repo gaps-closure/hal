@@ -18,22 +18,26 @@ This repository is maintained by Perspecta Labs.
 See [Build and Install](#build-and-install) for required steps.
 
 ### Configure/Run HAL and Device Scaffolding
-An instance of HAL runs on each host or server that directly utilizes the SDH (cross-domain host). We provided sample configurations that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configuration does not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available.
 
-1. Perform the download, build, and install procedures on each cross-domain host.
-2. Invoke HAL with the desired configuration file. For Apr '20 Demo testing:
+An instance of HAL runs on each host or server that directly utilizes the SDH (cross-domain host). We provided sample configurations that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configurations do not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available.
+
+1. After performing the download, build, and install procedures on each cross-domain host, invoke HAL with the desired configuration file. For Apr '20 Demo testing:
 ```
 hal$ daemon/hal test/sample_6modemo_b{e|w}_{orange|green}.cfg # e.g. sample_6modemo_be_orange.cfg
 ```
 Note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and end-point IP addresses may differ from those used in current files).
 
-For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. If running this localized setup and using SDH-BW, additionally perform the following step <b>before starting HAL</b> to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement (<b>not needed for SDH-BE loopback testing</b>):
+For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. 
+
+If running this localized setup and using SDH-BW, additionally perform the following step <b>before starting HAL</b> to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement (<b>not needed for SDH-BE loopback testing</b>):
 ```
 hal$ cd test
 hal/test$ sudo ./6MoDemo_BW.net.sh
 ```
+
 For SDH-BE the loopback ILIP driver kernel module `gaps_ilip.ko` must be built and installed using `insmod`.
-3. Run the mission application or a test application such as [halperf](#hal-test-driver) on each encalve. An end-to-end test for Apr '20 Demo testing on a single host is described next.
+
+2. Run the mission application or a test application such as [halperf](#hal-test-driver) on each encalve. An end-to-end test for Apr '20 Demo testing on a single host is described next.
 
 ### Quick Test of HAL with SDH-BE Loopback or SDH-BW emulated network
 1. Open five terminals (terminal1, terminal2, ... terminal5).
