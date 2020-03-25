@@ -32,9 +32,17 @@ For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networki
 hal$ cd test
 hal$ ./6MoDemo_BW.net.sh
 ```
+For SDE-BE testing on a single host with both sides, the device driver module must be installed, and the HAL daemon that performs the initialization of the ILIP devices must be started first.
 
 ### Test Driver (halperf.py)
-We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
+We provide an easy-to-use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance. This utility can be used to mimic the application workload by sending different datatypes in the correct direction at their anticipated rates, and also simultaneously receiving data arriving from the other direction from a peer instance of this utility.
+
+For invocation options:
+
+```
+hal$ test/halperf.py -h
+```
+
 
 ## HAL Components
 HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
