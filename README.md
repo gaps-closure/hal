@@ -14,7 +14,7 @@ This repository is maintained by Perspecta Labs.
 ## Quick Start Guide
 ### Download Sources, Build, and Install
 
-We have built and tested HAL on a Linux Ubuntu 19.10 system, and while HAL can run on other operating systems / versions, the package isntallation instructions are for that particualr OS and version.
+We have built and tested HAL on a Linux Ubuntu 19.10 system, and while HAL can run on other operating systems / versions, the package isntallation instructions are for that particular OS and version.
 
 Install the HAL pre-requisite libraries.
 ```
@@ -37,7 +37,7 @@ An instance of HAL daemon runs on each host or server that directly utilizes the
 ```
 hal$ daemon/hal test/sample_6modemo_b{e|w}_{orange|green}.cfg # e.g. sample_6modemo_be_orange.cfg
 ```
-For this purpose, we have provided sample HAL daemon configuration files that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configurations do not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available. Also note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and SDh-BW end-point IP addresses may differ from those used in current files).
+For this purpose, we have provided sample HAL daemon configuration files that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configurations do not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available. Also note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and SDH-BW end-point IP addresses may differ from those used in current files).
 
 Once the HAL daemon is started, we can run the mission application or a test application such as [halperf](#hal-test-driver) on each enclave.
 
