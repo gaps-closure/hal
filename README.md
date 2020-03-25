@@ -89,8 +89,8 @@ sent: [2/2/1] -- (-74.574489,40.695545,102.400000)
 Ctrl-C can be used to kill most processes. Additional cleanup scripts are provided if needed:
 ```
 hal/test$ ./kill_my_hall.sh f
-hal/test$ pkill -f "nc -klu"
-hal/test$ pkill -f "nc -u"
+hal/test$ sudo pkill -f "nc -klu"
+hal/test$ sudo pkill -f "nc -u"
 ```
 
 ## HAL Architecture
