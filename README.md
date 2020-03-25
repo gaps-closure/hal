@@ -8,7 +8,7 @@ This repository is maintained by Perspecta Labs.
 ## Contents
 
 - [Quick Start Guide](#quick-start-guide)
-- [HAL Components](#hal-components)
+- [HAL Architecture](#hal-architecture)
 - [HAL tag](#hal-tag)
 - [Build and Install](#build-and-install)
 - [Run](#run)
@@ -101,7 +101,7 @@ hal/test$ pkill -f "nc -klu"
 hal/test$ pkill -f "nc -u"
 ```
 
-## HAL Components
+## HAL Architecture
 HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 
 ![HAL interfaces between applications and Network Interfaces.](hal_api.png)
