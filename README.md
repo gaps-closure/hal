@@ -7,11 +7,34 @@ This repository is maintained by Perspecta Labs.
 
 ## Contents
 
-
+- [Quick Start Guide](#quick-start-guide)
 - [HAL Components](#hal-components)
 - [HAL tag](#hal-tag)
-- [Build](#build)
+- [Build and Install](#build-and-install)
 - [Run](#run)
+
+## Quick Start Guide
+### Download Sources, Build, and Install
+See [Build and Install](#build-and-install) for required steps.
+
+### Configure/Run HAL and Device Scaffolding
+An instance of HAL runs on each host or server that directly utilizes the SDH (cross-domain host). We provided sample configurations that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configuration does not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available.
+
+1. Perform the download, build, and install procedures on each cross-domain host.
+2. Invoke HAL with the desired configuration file. For Apr '20 Demo testing:
+```
+hal$ daemon/hal test/sample_6modemo_b{e|w}_{orange|green}.cfg # e.g. sample_6modemo_be_orange.cfg
+```
+Note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and end-point IP addresses may differ from those used in current files).
+
+For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. If running this localized setup and using SDH-BW, additionally perform the following step to setup virtual ethernet devices and netcat processes to facilitate the packet movement (<b>not needed for SDH-BE loopback testing</b>):
+```
+hal$ cd test
+hal$ ./6MoDemo_BW.net.sh
+```
+
+### Test Driver (halperf.py)
+We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
 
 ## HAL Components
 HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
@@ -48,7 +71,7 @@ HAL uses the tag to know how to route data to the correct interface using its co
 - Receiving HAL will map the Network tag back into an Applicaiton tag using its *halmap* rules.
 
 
-## Build
+## Build and Install
 
 We have built and tested HAL on a Linux Ubuntu 19.10 system, and while HAL can run on other operating systems / versions, the package isntallation instructions are for that particualr OS and version.
 
