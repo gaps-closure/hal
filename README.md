@@ -23,13 +23,13 @@ sudo apt install -y libconfig-dev
 ```
 See the [CLOSURE Dev Server Setup](https://github.com/gaps-closure/build/blob/master/environment_setup.md) for full listing of CLOSURE external dependencies (some of which may be required for HAL on a newly installed system).
 
-Run make in order to compile HAL, together with its libraries [API](api/) and [codecs](appgen/)) and test programs:
+Clone the repository, then run make in order to compile HAL, together with its libraries ([API](api/) and [codecs](appgen/)) and test programs:
 ```
 git clone https://github.com/gaps-closure/hal
 cd hal
 make clean; make
 ```
-Some SDH devices also require installation of a device driver via an associated kernel module. 
+Some SDH devices also require installation of a device driver via an associated kernel module. Consult the GAPS Device provider's documentation.
 
 ### Configure/Run HAL on Target Hardware
 
