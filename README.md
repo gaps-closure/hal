@@ -159,6 +159,19 @@ Some SDH devices also require installation of a device driver via an associated 
 
 Starting the HAL daemon requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
 
+### HAL Command Options
+To see the HAL daemon command options, run with the -h option.  Below shows the current options:
+```
+hal$ daemon/hal -h
+Hardware Abstraction Layer (HAL) for gaps CLOSURE project
+Usage: hal [OPTIONS]... CONFIG-FILE
+OPTIONS: are one of the following:
+ -h --help : print this message
+ -v --hal_verbose : print debug messages to stderr
+ -w --hal_verbose : device not ready (EAGAIN) wait time (microseconds) - default 1000us (-1 exits if not ready)
+CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
+```
+
 ### HAL Loopback Mode
 At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
 
@@ -180,15 +193,3 @@ HAL map list (0x5597a6af8150):
 
 HAL Waiting for input on fds, 3
 ```
-
-### HAL command options
-To see the HAL daemon command options, run with the -h option.  Below shows the current options:
-```
-hal$ daemon/hal -h
-Hardware Abstraction Layer (HAL) for gaps CLOSURE project
-Usage: hal [OPTIONS]... CONFIG-FILE
-OPTIONS: are one of the following:
- -h --help : print this message
- -v --hal_verbose : print debug messages to stderr
- -w --hal_verbose : device not ready (EAGAIN) wait time (microseconds) - default 1000us (-1 exits if not ready)
-CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
