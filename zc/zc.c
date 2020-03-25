@@ -37,7 +37,9 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
   int    i, per_read_count=STDIN_READ_SIZE, delim_len=0;
   char*  s;
   char*  buffer = malloc(STDIN_READ_SIZE);
-    
+  
+//  freopen("", "rb", stdin);
+  
   // read from stdin
   if (delim != NULL)  {
     per_read_count = 1;
@@ -45,13 +47,16 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
   }
   if(verbose) fprintf(stderr, "zc waits for stdin (up to %d bytes/read) to send to %s\n", per_read_count, endpoint);
   while(1) {
-    size_t read = fread(buffer+total, 1, per_read_count, stdin);
-    if(verbose) fprintf(stderr, "Read %ld (total=%ld) bytes on stdin\n", read, total);
-    total += read;
+//    size_t read_cnt = fread(buffer+total, 1, per_read_count, stdin);
+      size_t read_cnt = read(STDIN_FILENO, buffer+total, STDIN_READ_SIZE);
+    if(verbose) fprintf(stderr, "zc Read %ld (total=%ld) bytes on stdin (%d)\n", read_cnt, total, STDIN_FILENO);
+//if (read_cnt == 0) exit (33);  /* continue */
+    total += read_cnt;
     if(ferror(stdin)) {
       fprintf(stderr,"fread error %d: %s\n",errno,strerror(errno));
       exit(-2);
     }
+
     // test for end of stdin input, based on: a) speciied delimiter, b) EOF signal
     if ( (delim != NULL) && (total >= delim_len) ) {
 //      if(verbose) fprintf(stderr,"zc testing for delimiter %s (len=%d): \n", delim, delim_len);
@@ -64,6 +69,15 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
       }
     }
     if(feof(stdin)) break;
+    if (read_cnt >= 1) {
+//      fprintf(stderr, "ZC Read_cnt = %ld: ", read_cnt);
+      for (int j = 0; j < read_cnt; j++) {
+//        if ((j%4)==0) fprintf(stderr, " ");
+//        fprintf(stderr, "%02X", (uint8_t) buffer[j]);
+      }
+//      fprintf(stderr, "\n");
+      break;
+    }
     buffer = realloc(buffer,total+STDIN_READ_SIZE);
   }
   // prepare and send zmq message
@@ -76,7 +90,8 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
 
   err = zmq_sendmsg(socket, &msg, 0);
   if(err==-1) exit_with_zmq_error("zmq_sendmsg");
-    
+  if(verbose) fprintf(stderr, "zc sends %ld bytes to %s\n", total, endpoint);
+
   clearerr(stdin);     /* clears stdin end-of-file and error indicators (prevent looping) */
   return total;
 }

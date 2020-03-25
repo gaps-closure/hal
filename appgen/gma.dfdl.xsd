@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  DFDL Description for the GAPS Mission Application for the April 2020 Integration Event 
+
+  Currently includes headers for SDH-BE and SDH-BW devices only
+  Other framing/encapsulation details such as Ethernet, IP, UDP, GFP, IPSEC, CALIPSO may be added in a future version
+  Defaults are derived from Daffodil DFDL Schema for PCAP
+  IEEE-754 encoding for double follows Daffodil DFDL Schema for shapeFile
+-->   
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:dfdl="http://www.ogf.org/dfdl/dfdl-1.0/"
+           xmlns:fn="http://www.w3.org/2005/xpath-functions"
+           xmlns:daf="urn:ogf:dfdl:2013:imp:daffodil.apache.org:2018:ext"
+           xmlns:gma="urn:gma:1.0"
+           targetNamespace="urn:gma:1.0">
+
+  <xs:annotation>
+    <xs:appinfo source="http://www.ogf.org/dfdl/">
+      <dfdl:defineVariable name="ByteOrder" type="xs:string" />
+      <dfdl:defineFormat name="defaults">
+        <dfdl:format alignment="1" alignmentUnits="bits"
+        binaryBooleanFalseRep="0" binaryBooleanTrueRep="1"
+        binaryCalendarEpoch="1970-01-01T00:00:00+00:00" binaryCalendarRep="bcd"
+        binaryDecimalVirtualPoint="0" binaryFloatRep="ieee"
+        binaryNumberCheckPolicy="lax" binaryNumberRep="binary"
+        binaryPackedSignCodes="C D F C" calendarCenturyStart="53"
+        calendarCheckPolicy="lax" calendarDaysInFirstWeek="4"
+        calendarFirstDayOfWeek="Monday" calendarLanguage="en-US"
+        calendarObserveDST="yes" calendarPatternKind="implicit"
+        calendarPattern="yyyy-MM-dd'T'HH:mm:ss" calendarTimeZone="UTC"
+        choiceLengthKind="implicit" decimalSigned="yes"
+        documentFinalTerminatorCanBeMissing="no" emptyValueDelimiterPolicy="none"
+        encoding="utf-8" encodingErrorPolicy="replace" escapeSchemeRef=""
+        fillByte="%NUL;" floating="no" ignoreCase="no" initiatedContent="no"
+        initiator="" leadingSkip="0" lengthKind="implicit" lengthUnits="bits"
+        nilKind="literalValue" nilValueDelimiterPolicy="none" nilValue="NIL"
+        occursCountKind="implicit" outputNewLine="%CR;%LF;"
+        prefixIncludesPrefixLength="no" representation="binary" separator=""
+        separatorPosition="infix" sequenceKind="ordered" terminator=""
+        textBidi="no" textBooleanFalseRep="false" textBooleanJustification="left"
+        textBooleanPadCharacter="%SP;" textBooleanTrueRep="true"
+        textCalendarJustification="left" textCalendarPadCharacter="%SP;"
+        textNumberCheckPolicy="lax" textNumberJustification="right"
+        textNumberPadCharacter="0" textNumberPattern="#0" textNumberRep="standard"
+        textNumberRoundingIncrement="0.0" textNumberRoundingMode="roundUp"
+        textNumberRounding="pattern" textOutputMinLength="0" textPadKind="none"
+        textStandardBase="10" textStandardDecimalSeparator="."
+        textStandardGroupingSeparator="," textStandardInfinityRep="Inf"
+        textStandardNaNRep="NaN" textStandardZeroRep=""
+        textStringJustification="left" textStringPadCharacter="%SP;"
+        textTrimKind="none" textZonedSignStyle="asciiStandard" trailingSkip="0"
+        truncateSpecifiedLengthString="no" useNilForDefault="no" utf16Width="fixed"
+        bitOrder="mostSignificantBitFirst"/>
+      </dfdl:defineFormat>
+      <dfdl:format ref="gma:defaults" byteOrder="bigEndian" />
+    </xs:appinfo>
+  </xs:annotation>
+
+  <xs:simpleType name="gapsdouble" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian">
+    <xs:restriction base="xs:double"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="gapsuint64" dfdl:lengthKind="explicit" dfdl:length="64" dfdl:lengthUnits="bits">
+    <xs:restriction base="xs:unsignedLong"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="gapsuint32" dfdl:lengthKind="explicit" dfdl:length="32" dfdl:lengthUnits="bits">
+    <xs:restriction base="xs:unsignedInt"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="gapsuint16" dfdl:lengthKind="explicit" dfdl:length="16" dfdl:lengthUnits="bits">
+    <xs:restriction base="xs:unsignedInt"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="gapsuint8" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bits">
+    <xs:restriction base="xs:unsignedInt"/>
+  </xs:simpleType>
+
+  <xs:element name="GapsPDU">
+    <xs:complexType>
+      <xs:choice> <!-- no easy way to discriminate SDHBW or SDHBE from binary, so uncomment only one choice -->
+        <xs:element ref="gma:SDHBEPDU" />
+        <!-- <xs:element ref="gma:SDHBWPDU" /> -->
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="SDHBWPDU">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="gma:SDHBWHeader" />
+        <xs:choice>
+          <xs:element ref="gma:Position">
+            <xs:annotation>
+              <xs:appinfo source="http://www.ogf.org/dfdl/">
+		<dfdl:discriminator test="{../gma:SDHBWHeader/tagt eq 1}" />
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element ref="gma:Distance">
+            <xs:annotation>
+              <xs:appinfo source="http://www.ogf.org/dfdl/">
+		<dfdl:discriminator test="{../gma:SDHBWHeader/tagt eq 2}" />
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+        </xs:choice>
+        <xs:element ref="gma:GapsTrailer" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="SDHBEPDU">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="gma:SDHBEHeader" />
+        <xs:choice>
+          <xs:element ref="gma:Position">
+            <xs:annotation>
+              <xs:appinfo source="http://www.ogf.org/dfdl/">
+                <dfdl:discriminator test="{../gma:SDHBEHeader/dtag eq 1 or ../gma:SDHBEHeader/dtag eq 3}" />
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element ref="gma:Distance">
+            <xs:annotation>
+              <xs:appinfo source="http://www.ogf.org/dfdl/">
+		<dfdl:discriminator test="{../gma:SDHBEHeader/dtag eq 2}" />
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+        </xs:choice>
+        <xs:element ref="gma:GapsTrailer" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="SDHBWHeader">
+    <xs:complexType>
+      <xs:sequence dfdl:byteOrder="bigEndian">
+        <xs:element name="tag0" type="gma:gapsuint8" /> <!-- Message_Tag_ID first byte is 0 -->
+        <xs:element name="tagm" type="gma:gapsuint8" /> <!-- Second byte is mux tag -->
+        <xs:element name="tags" type="gma:gapsuint8" /> <!-- Third byte is sec tag -->
+        <xs:element name="tagt" type="gma:gapsuint8" /> <!-- Fourth byte is typ tag -->
+        <xs:element name="len" type="gma:gapsuint16" /> <!-- Length in octets of ADU (data and GapsTrailer) -->
+        <xs:element name="crc" type="gma:gapsuint16" /> <!-- CRC-16-CCITT checksum covering header, data, and trailer -->
+                                                        <!-- Generator polynomial is x^16 + x^12 + x^5 + 1 -->
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="SDHBEHeader">
+    <xs:complexType>
+      <xs:sequence dfdl:byteOrder="bigEndian">
+        <xs:element name="stag" type="gma:gapsuint32" /> <!-- Session ID tag, maps to CLOSURE mux -->
+        <xs:element name="mtag" type="gma:gapsuint32" /> <!-- Message type tag, maps to CLOSURE sec -->
+        <xs:element name="cnt"  type="gma:gapsuint32" /> <!-- Message TLV count, number of data items, must be set to 1 -->
+        <xs:element name="dtag" type="gma:gapsuint32" /> <!-- Data type tag, maps to CLOSURE typ -->
+        <xs:element name="its"  type="gma:gapsuint64" /> <!-- ILIP timestamp (ns), overwritten by device -->
+        <xs:element name="hts"  type="gma:gapsuint64" /> <!-- Host timestamp (ns), Unix epoch time in UTC, set by CLOSURE  -->
+        <xs:element name="len"  type="gma:gapsuint32" /> <!-- Length in octets of ADU (data and GapsTrailer), max 220 -->
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- This 16-byte trailer is reserved for CLOSURE, to be ignored and passed through by SDH -->
+  <!-- Optional: all bytes must be zero if trailer is not used by CLOSURE -->
+  <xs:element name="GapsTrailer">
+    <xs:complexType>
+      <xs:sequence dfdl:byteOrder="bigEndian">
+        <xs:element name="seq" type="gma:gapsuint32" /> <!-- Message sequence number -->
+        <xs:element name="rqr" type="gma:gapsuint32" /> <!-- Reference to request seq if reply -->
+        <xs:element name="oid" type="gma:gapsuint32" /> <!-- RPC context: Object ID to call -->
+        <xs:element name="mid" type="gma:gapsuint16" /> <!-- RPC context: Method ID to call on oid -->
+        <xs:element name="crc" type="gma:gapsuint16" /> <!-- CRC-16-CCITT checksum covering header, data, and trailer -->
+                                                        <!-- Generator polynomial is x^16 + x^12 + x^5 + 1 -->
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Position">
+    <xs:complexType>
+      <xs:sequence dfdl:byteOrder="bigEndian">
+        <xs:element name="x" type="gma:gapsdouble" />
+        <xs:element name="y" type="gma:gapsdouble" />
+        <xs:element name="z" type="gma:gapsdouble" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Distance">
+    <xs:complexType>
+      <xs:sequence dfdl:byteOrder="bigEndian">
+        <xs:element name="x" type="gma:gapsdouble" />
+        <xs:element name="y" type="gma:gapsdouble" />
+        <xs:element name="z" type="gma:gapsdouble" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>
