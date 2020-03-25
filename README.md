@@ -31,7 +31,7 @@ make clean; make
 ```
 Some SDH devices also require installation of a device driver via an associated kernel module. 
 
-### Configure/Run HAL
+### Configure/Run HAL on Target Hardware
 
 An instance of HAL daemon runs on each host or server that directly utilizes the SDH (cross-domain host), and requires a configuration file. If GAPS devices are already configured on enclave hosts in the target environment, we can simply start HAL daemon with the appropriate configuration file in each enclave host:
 ```
@@ -41,9 +41,9 @@ For this purpose, we have provided sample HAL daemon configuration files that mo
 
 Once the HAL daemon is started, we can run the mission application or a test application such as [halperf](#hal-test-driver) on each enclave.
 
-### Quick Test of HAL with SDH-BE Loopback or SDH-BW emulated network
+### Quick Test of HAL with SDH-BE Loopback or SDH-BW Emulated Network
 
-During development, for testing HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. If running this localized setup and if using SDH-BE, the loopback ILIP device driver kernel module `gaps_ilip.ko` must be built and installed using `insmod` <b>before starting HAL</b>. If using SDH-BW, an emulated network (e.g., `test/6MoDemo_BW.net.sh` as shown below) must be configured <b>before starting HAL</b> to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement. 
+During development, for testing HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run HAL instances for the different enclaves on the same physical machine using their respective configurations. If running this localized setup and if using SDH-BE, the loopback ILIP device driver kernel module `gaps_ilip.ko` must be built and installed using `insmod` before starting HAL. If using SDH-BW, an emulated network (e.g., `test/6MoDemo_BW.net.sh` as shown below) must be configured before starting HAL to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement. The `halperf` test application can then be invoked to send and receive the application traffic workload.
 
 Steps for an end-to-end test for Apr '20 Demo testing on a single host are provided below.
 
