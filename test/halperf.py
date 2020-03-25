@@ -42,7 +42,7 @@ def send(m, s, t, r):
     while(float(r) != 0):
         tag = GapsTag(int(m),int(s),int(t))
         tailer = ClosureTrailer(0,0,0,0,0)
-        if int(t) == 1 or int(t) == 3:
+        if int(t) == 1:
             pos.z += 0.1
             adu = Position(pos.x, pos.y, pos.z, ClosureTrailer(0,0,0,0,0))
         elif int(t) == 2:
@@ -51,6 +51,7 @@ def send(m, s, t, r):
         else:
             raise Exception('unsupported data typ: ' + str(t))
         xdc_so.xdc_asyn_send(pointer(adu), tag)
+        print("sent: [%d/%d/%d] -- (%f,%f,%f)" % (tag.mux, tag.sec, tag.typ, adu.x, adu.y, adu.z))
         busy_sleep(1.0/float(r))
 
 def recv(m, s, t):
@@ -60,10 +61,11 @@ def recv(m, s, t):
         adu = Distance()
     else:
         raise Exception('data type %d not supported' % (int(t)))
+    print("Subscribed to [%s/%s/%s]" % (m,s,t))
     tag = GapsTag(int(m), int(s), int(t))
     while(1):
         xdc_so.xdc_blocking_recv(pointer(adu), pointer(tag))
-        print('RECV: [%s/%s/%s] -- (%f,%f,%f)' % (m,s,t,adu.x,adu.y,adu.z))
+        print('recv: [%d/%d/%d] -- (%f,%f,%f)' % (tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
         
 def busy_sleep(s):
     start = time.time()
@@ -76,10 +78,16 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--recv', nargs=3, action='append', metavar=('MUX', 'SEC', 'TYP'), help='recv cross-domain flow mapped to MUX/SEC/TYP')
     parser.add_argument('-l', metavar=('PATH'), help="path to mission app shared libraries (default=../appgen)", default='../appgen')
     parser.add_argument('-x', metavar=('PATH'), help="path to libxdcomms.so (default=../api)", default='../api')
+    parser.add_argument('-i', metavar=('URI'), help="in URI (default=ipc:///tmp/halpub1)", default='ipc:///tmp/halpub1')
+    parser.add_argument('-o', metavar=('URI'), help="out URI (default=ipc:///tmp/halsub1)", default='ipc:///tmp/halsub1')
     args = parser.parse_args()
 
     xdc_so = CDLL(args.x + '/libxdcomms.so')
     gma_so = CDLL(args.l + '/libgma.so')
+
+    # Set the URIs for ZMQ
+    xdc_so.xdc_set_in(c_char_p((args.i).encode('utf-8')))
+    xdc_so.xdc_set_out(c_char_p((args.o).encode('utf-8')))
 
     # Register encode/decode functions; TODO: make spec-driven
     xdc_so.xdc_register(gma_so.position_data_encode, gma_so.position_data_decode, DATA_TYP_POS)
@@ -93,3 +101,4 @@ if __name__ == '__main__':
         for r in args.recv:
             t = Thread(args=r, target=recv)
             t.start()
+            
