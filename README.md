@@ -9,7 +9,6 @@ This repository is maintained by Perspecta Labs.
 
 - [Quick Start Guide](#quick-start-guide)
 - [HAL Architecture](#hal-architecture)
-- [HAL Tag](#hal-tag)
 - [HAL Installation and Usage](#hal-installation-and-usage)
 
 ## Quick Start Guide
@@ -119,7 +118,7 @@ Also included in the HAL directory are [test](test/) programs, which includes:
 - **HAL configuration files**, which a) define the supported device configurations, and b) define the halmap forwarding rules.
 - **Simple network emulation**, which emulate the HAL devices and the remote HAL.
 
-## HAL Tag
+### HAL Tag
 HAL communication contains only the Application Data Unit (ADU) and a small HAL tag.
 The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
 - **mux** is a session multiplexing handle used to identify a unidirectional applicaiton flow.
