@@ -32,6 +32,7 @@ For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networki
 hal$ cd test
 hal/test$ sudo ./6MoDemo_BW.net.sh
 ```
+For SDH-BE the loopback ILIP driver kernel module `gaps_ilip.ko` must be built and installed (using `insmod`).
 
 ### Test Driver (halperf.py)
 We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
@@ -70,7 +71,7 @@ terminal1 (green):
 terminal2 (orange):
   hal$ daemon/hal test/sample_6modemo_bw_orange.cfg
 ```
-4. An instance of halperf.py can both send and receive messages. Run an instance on both green and orange sides and send the appropriate mux/sec/typ combinations that correspond to the Mission App Perspecta specification:
+4. An instance of halperf.py can both send and receive messages. Run an instance on both green and orange sides and send the appropriate mux/sec/typ combinations that correspond to the Perspecta tag specification for the Mission App datatypes:
 ```
 terminal4 (green):
   hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -s 1 1 1 1 -r 2 2 1 -r 2 2 2 -i ipc:///tmp/halsubbwgreen -o ipc:///tmp/halpubbwgreen
@@ -80,7 +81,7 @@ terminal5 (orange):
   ```
 Note the -i and -o arguments which correspond to input/ouptut ZMQ interfaces utilized by HAL. The example provided is for SDH-BW. If using SDH-BE, replace 'bw' with 'be' for each -i and -o argument (e.g. halpub<b>bw</b>orange --> halpub<b>be</b>orange)
 
-The sending rates in the above calls are 1 Hz for simplicity. Example output:
+The sending rates in the above calls are 1 Hz for simplicity. (For the representative mission application rates, you can send 1,1,1 at 100Hz, 2,2,1 at 10Hz, and 2,2,2 at 100Hz instead. Other rates and application mixes can be used for stress-testing or for testing policy rules.) Example output:
 ```
 terminal4 (green):
 sent: [1/1/1] -- (-74.574489,40.695545,102.100000)
