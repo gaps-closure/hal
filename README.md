@@ -21,7 +21,7 @@ Install the HAL pre-requisite libraries.
 sudo apt install -y libzmq3-dev
 sudo apt install -y libconfig-dev
 ```
-See the [CLOSURE Dev Server Setup](https://github.com/gaps-closure/build/blob/master/environment_setup.md) for full listing of CLOSURE external dependencies (some of which may be required for HAL on a clean system).
+See the [CLOSURE Dev Server Setup](https://github.com/gaps-closure/build/blob/master/environment_setup.md) for full listing of CLOSURE external dependencies (some of which may be required for HAL on a newly installed system).
 
 Run make in order to compile HAL, together with its libraries [API](api/) and [codecs](appgen/)) and test programs:
 ```
@@ -29,31 +29,24 @@ git clone https://github.com/gaps-closure/hal
 cd hal
 make clean; make
 ```
-Some SDH devices also require installation of a device driver via an associated kernel module.
+Some SDH devices also require installation of a device driver via an associated kernel module. 
 
-### Configure/Run HAL and Device Scaffolding
+### Configure/Run HAL
 
-An instance of HAL runs on each host or server that directly utilizes the SDH (cross-domain host). We provided sample configurations that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configurations do not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available.
-
-1. After performing the download, build, and install procedures on each cross-domain host, invoke HAL with the desired configuration file. For Apr '20 Demo testing:
+An instance of HAL daemon runs on each host or server that directly utilizes the SDH (cross-domain host), and requires a configuration file. If GAPS devices are already configured on enclave hosts in the target environment, we can simply start HAL daemon with the appropriate configuration file in each enclave host:
 ```
 hal$ daemon/hal test/sample_6modemo_b{e|w}_{orange|green}.cfg # e.g. sample_6modemo_be_orange.cfg
 ```
-Note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and end-point IP addresses may differ from those used in current files).
+For this purpose, we have provided sample HAL daemon configuration files that model the Apr '20 demo setup, i.e., green-side and orange-side HAL configurations for either SDH-BE or SDH-BW usage. Note that provided configurations do not mix SDH types for the forward and reverse directions; we will provide these once the hybrid setup becomes available. Also note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and SDh-BW end-point IP addresses may differ from those used in current files).
 
-For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. 
-
-If running this localized setup and using SDH-BW, additionally perform the following step <b>before starting HAL</b> to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement (<b>not needed for SDH-BE loopback testing</b>):
-```
-hal$ cd test
-hal/test$ sudo ./6MoDemo_BW.net.sh
-```
-
-For SDH-BE the loopback ILIP driver kernel module `gaps_ilip.ko` must be built and installed using `insmod`.
-
-2. Run the mission application or a test application such as [halperf](#hal-test-driver) on each encalve. An end-to-end test for Apr '20 Demo testing on a single host is described next.
+Once the HAL daemon is started, we can run the mission application or a test application such as [halperf](#hal-test-driver) on each enclave.
 
 ### Quick Test of HAL with SDH-BE Loopback or SDH-BW emulated network
+
+During development, for testing HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. If running this localized setup and if using SDH-BE, the loopback ILIP device driver kernel module `gaps_ilip.ko` must be built and installed using `insmod` <b>before starting HAL</b>. If using SDH-BW, an emulated network (e.g., `test/6MoDemo_BW.net.sh` as shown below) must be configured <b>before starting HAL</b> to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement. 
+
+Steps for an end-to-end test for Apr '20 Demo testing on a single host are provided below.
+
 1. Open five terminals (terminal1, terminal2, ... terminal5).
 2. Assuming SDH-BW for this example; start the emulated network in terminal3 (skip for SDH-BE):
 ```
@@ -91,6 +84,7 @@ recv: [1/1/1] -- (-74.574489,40.695545,102.100000)
 sent: [2/2/2] -- (-1.021000,2.334000,0.900000)
 sent: [2/2/1] -- (-74.574489,40.695545,102.400000)
 ```
+
 ### Cleanup of HAL Components
 Ctrl-C can be used to kill most processes. Additional cleanup scripts are provided if needed:
 ```
