@@ -20,14 +20,7 @@ Additionally, the application must register (de-)serialization codec functions f
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 ```
 
-Once the initialization steps are completed, the application can send and receive data. Although a number of communication patterns are envisioned, currently,  asynchronous send and a blocking receive (blocks until a message matching the specified tag is received) are supported. 
-
-```
-extern void xdc_asyn_send(void *send_buf, gaps_tag tag);
-extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
-```
-
-Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item shown below.
+Once the initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item to be sent or received.
 
 ```
 typedef struct _tag {
@@ -42,7 +35,16 @@ The `gaps_tag` structure provides three orthogonal identifiers:
 . b) CDG security (sec), selects which security policies will be used to processing sent data. It also gives the security rules that were used to process received data. 
 . c) ADU type (typ) describes the data (based on DFDL xsd definition). This tells HAL how to serialize the ADU. The CDG can also use this information to process (e.g., downgrade) the ADU contents.
 
-An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
+Although a number of communication patterns are envisioned, currently,  asynchronous send and a blocking receive (blocks until a message matching the specified tag is received) are supported. These client-side calls are mapped to the pub/sub endpoints that are supported by the HAL daemon.
+
+```
+extern void xdc_asyn_send(void *send_buf, gaps_tag tag);
+extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
+```
+
+In future versions of this API, we plan to support additional send and receive communication patterns including asynchronous receive calls using one-shot or repeated callbacks that can be registered by the application, sending a tagged request and receiving a reply matching the tag, suport for a stream of sequenced messages with in-order delivery, etc.
+
+In sumamry, the application links to the library, and upon startup initializes the URI for the 0MQ endpoints, registers codecs for the application datatypes, and can then send and receive data. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
 
 ### HAL Control-Plane API
 
