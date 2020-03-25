@@ -32,28 +32,8 @@ For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networki
 hal$ cd test
 hal/test$ sudo ./6MoDemo_BW.net.sh
 ```
-For SDH-BE the loopback ILIP driver kernel module `gaps_ilip.ko` must be built and installed (using `insmod`).
-
-### Test Driver (halperf.py)
-We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
-```
-usage: halperf.py [-h] [-s MUX SEC TYP RATE] [-r MUX SEC TYP] [-l PATH]
-                  [-x PATH] [-i URI] [-o URI]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -s MUX SEC TYP RATE, --send MUX SEC TYP RATE
-                        send cross-domain flow using MUX/SEC/TYP at RATE (Hz)
-  -r MUX SEC TYP, --recv MUX SEC TYP
-                        recv cross-domain flow mapped to MUX/SEC/TYP
-  -l PATH               path to mission app shared libraries
-                        (default=../appgen)
-  -x PATH               path to libxdcomms.so (default=../api)
-  -i URI                in URI (default=ipc:///tmp/halpub1)
-  -o URI                out URI (default=ipc:///tmp/halsub1)
-
-```
-Example usage of halperf is shown in the next section.
+For SDH-BE the loopback ILIP driver kernel module `gaps_ilip.ko` must be built and installed using `insmod`.
+3. Run the mission application or a test application such as [halperf](#hal-test-driver) on each encalve. An end-to-end test for Apr '20 Demo testing on a single host is described next.
 
 ### Quick Test of HAL with SDH-BE Loopback or SDH-BW emulated network
 1. Open five terminals (terminal1, terminal2, ... terminal5).
@@ -192,4 +172,23 @@ HAL map list (0x5597a6af8150):
  xdd0 [mux=01 sec=01 typ=01] ->  xdd0 [mux=01 sec=2309737967 typ=01] , codec=NULL
 
 HAL Waiting for input on fds, 3
+```
+### HAL Test Driver (halperf.py)
+We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
+```
+usage: halperf.py [-h] [-s MUX SEC TYP RATE] [-r MUX SEC TYP] [-l PATH]
+                  [-x PATH] [-i URI] [-o URI]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s MUX SEC TYP RATE, --send MUX SEC TYP RATE
+                        send cross-domain flow using MUX/SEC/TYP at RATE (Hz)
+  -r MUX SEC TYP, --recv MUX SEC TYP
+                        recv cross-domain flow mapped to MUX/SEC/TYP
+  -l PATH               path to mission app shared libraries
+                        (default=../appgen)
+  -x PATH               path to libxdcomms.so (default=../api)
+  -i URI                in URI (default=ipc:///tmp/halpub1)
+  -o URI                out URI (default=ipc:///tmp/halsub1)
+
 ```
