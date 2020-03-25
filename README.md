@@ -27,22 +27,78 @@ hal$ daemon/hal test/sample_6modemo_b{e|w}_{orange|green}.cfg # e.g. sample_6mod
 ```
 Note that contents of the config file may need to be changed depending on the target setup (i.e. SDH-BE device names and end-point IP addresses may differ from those used in current files).
 
-For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. If running this localized setup and using SDH-BW, additionally perform the following step to setup virtual ethernet devices and netcat processes to facilitate the packet movement (<b>not needed for SDH-BE loopback testing</b>):
+For unit testing of HAL with SDH-BE loopback drivers or SDH-BW emulated networking, it is possible to run both the orange and green side HAL instances on the same physical machine using their respective configurations from above. If running this localized setup and using SDH-BW, additionally perform the following step <b>before starting HAL</b> to instantiate virtual ethernet devices and netcat processes to facilitate the packet movement (<b>not needed for SDH-BE loopback testing</b>):
 ```
 hal$ cd test
-hal$ ./6MoDemo_BW.net.sh
+hal/test$ sudo ./6MoDemo_BW.net.sh
 ```
-For SDE-BE testing on a single host with both sides, the device driver module must be installed, and the HAL daemon that performs the initialization of the ILIP devices must be started first.
 
 ### Test Driver (halperf.py)
-We provide an easy-to-use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance. This utility can be used to mimic the application workload by sending different datatypes in the correct direction at their anticipated rates, and also simultaneously receiving data arriving from the other direction from a peer instance of this utility.
+We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
+```
+usage: halperf.py [-h] [-s MUX SEC TYP RATE] [-r MUX SEC TYP] [-l PATH]
+                  [-x PATH] [-i URI] [-o URI]
 
-For invocation options:
+optional arguments:
+  -h, --help            show this help message and exit
+  -s MUX SEC TYP RATE, --send MUX SEC TYP RATE
+                        send cross-domain flow using MUX/SEC/TYP at RATE (Hz)
+  -r MUX SEC TYP, --recv MUX SEC TYP
+                        recv cross-domain flow mapped to MUX/SEC/TYP
+  -l PATH               path to mission app shared libraries
+                        (default=../appgen)
+  -x PATH               path to libxdcomms.so (default=../api)
+  -i URI                in URI (default=ipc:///tmp/halpub1)
+  -o URI                out URI (default=ipc:///tmp/halsub1)
 
 ```
-hal$ test/halperf.py -h
-```
+Example usage of halperf is shown in the next section.
 
+### Quick Test of HAL with SDH-BE Loopback or SDH-BW emulated network
+1. Open two terminals (terminal1 and terminal2), designate one for green-side HAL, the other orange-side HAL.
+2. Assuming SDH-BW for this example; start the emulated network in terminal3 (skip for SDH-BE):
+```
+terminal3:
+  hal$ cd tests
+  hal/tests$: sudo ./6MoDemo_BW.net.sh
+```
+3. Start HAL (this example assumes SDH-BW)
+```
+terminal1 (green):
+  hal$ daemon/hal test/sample_6modemo_bw_green.cfg
+
+terminal2 (orange):
+  hal$ daemon/hal test/sample_6modemo_bw_orange.cfg
+```
+4. An instance of halperf.py can both send and receive messages. Run an instance on both green and orange sides and send the appropriate mux/sec/typ combinations that correspond to the Mission App Perspecta specification:
+```
+terminal4 (green):
+  hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -s 1 1 1 1 -r 2 2 1 -r 2 2 2 -i ipc:///tmp/halsubbwgreen -o ipc:///tmp/halpubbwgreen
+
+terminal5 (orange):
+  hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -s 2 2 1 1 -s 2 2 2 1 -r 1 1 1 -i ipc:///tmp/halsubbworange -o ipc:///tmp/halpubbworange
+  ```
+Note the -i and -o arguments which correspond to input/ouptut ZMQ interfaces utilized by HAL. The example provided is for SDH-BW. If using SDH-BE, replace 'bw' with 'be' for each -i and -o argument (e.g. halpub<b>bw</b>orange --> halpub<b>be</b>orange)
+
+The sending rates in the above calls are 1 Hz for simplicity. Example output:
+```
+terminal4 (green):
+sent: [1/1/1] -- (-74.574489,40.695545,102.100000)
+recv: [2/2/2] -- (-1.021000,2.334000,0.900000)
+recv: [2/2/1] -- (-74.574489,40.695545,102.400000)
+
+terminal5 (orange):
+recv: [1/1/1] -- (-74.574489,40.695545,102.100000)
+sent: [2/2/2] -- (-1.021000,2.334000,0.900000)
+sent: [2/2/1] -- (-74.574489,40.695545,102.400000)
+```
+### Cleanup of HAL Components
+Ctrl-C can be used to kill most processes. Additional cleanup scripts are provided if needed:
+```
+hal/test$ ./kill_my_hall.sh f
+hal/test$ pkill -f "nc -klu"
+hal/test$ pkill -f "nc -u"
+```
 
 ## HAL Components
 HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
