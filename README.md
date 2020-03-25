@@ -56,14 +56,14 @@ optional arguments:
 Example usage of halperf is shown in the next section.
 
 ### Quick Test of HAL with SDH-BE Loopback or SDH-BW emulated network
-1. Open two terminals (terminal1 and terminal2), designate one for green-side HAL, the other orange-side HAL.
+1. Open five terminals (terminal1, terminal2, ... terminal5).
 2. Assuming SDH-BW for this example; start the emulated network in terminal3 (skip for SDH-BE):
 ```
 terminal3:
   hal$ cd tests
   hal/tests$: sudo ./6MoDemo_BW.net.sh
 ```
-3. Start HAL (this example assumes SDH-BW)
+3. Start HAL (this example assumes SDH-BW) for green and orange enclaves
 ```
 terminal1 (green):
   hal$ daemon/hal test/sample_6modemo_bw_green.cfg
@@ -71,7 +71,7 @@ terminal1 (green):
 terminal2 (orange):
   hal$ daemon/hal test/sample_6modemo_bw_orange.cfg
 ```
-4. An instance of halperf.py can both send and receive messages. Run an instance on both green and orange sides and send the appropriate mux/sec/typ combinations that correspond to the Perspecta tag specification for the Mission App datatypes:
+4. An instance of halperf.py can both send and receive messages. Run an instance on both green and orange enclaves and send the appropriate mux/sec/typ combinations that correspond to the Perspecta tag specification for the Mission App datatypes:
 ```
 terminal4 (green):
   hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -s 1 1 1 1 -r 2 2 1 -r 2 2 2 -i ipc:///tmp/halsubbwgreen -o ipc:///tmp/halpubbwgreen
