@@ -59,7 +59,7 @@ extern void len_decode (size_t *, uint32_t);
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 extern void xdc_asyn_send(void *send_buf, gaps_tag tag);
 extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
-extern void xdc_set_in(char *);
-extern void xdc_set_out(char *);
+extern char *xdc_set_in(char *);  /* addr = NULL returns current value, non-NULL sets the value */
+extern char *xdc_set_out(char *);
 
 #endif
