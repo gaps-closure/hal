@@ -1,3 +1,5 @@
+sysctl -w net.ipv4.conf.eth0.rp_filter=0
+# May need to restart networking here
 ip addr del 10.0.2.2/24 dev eth0
 ip link set dev eth0 down 
 ip addr add 10.0.2.2/24 dev eth0
