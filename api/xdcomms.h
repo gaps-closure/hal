@@ -62,4 +62,7 @@ extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
 extern char *xdc_set_in(char *);  /* addr = NULL returns current value, non-NULL sets the value */
 extern char *xdc_set_out(char *);
 
+
+extern void *xdc_socket(gaps_tag tag);
+extern void xdc_close(gaps_tag tag);
 #endif
