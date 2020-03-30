@@ -168,6 +168,7 @@ void xdc_asyn_send(void *adu, gaps_tag tag) {
     fprintf(stderr, "len=%ld ", adu_len);
     data_print("Packet", (uint8_t *) p, packet_len);
   }
+
   zmq_send (socket, (void *) p, packet_len, 0);
 }
 
@@ -205,7 +206,7 @@ void xdc_blocking_recv(void *adu, gaps_tag *tag) {
     for (int i=0; i < RX_FILTER_LEN; i++) fprintf(stderr, "%.02x", *(f++));
     fprintf(stderr, ")\n");
   }
-  size = zmq_recv (socket, (uint8_t *) p, PACKET_MAX, 0);
+  size = zmq_recv (socket, (uint8_t *) p, sizeof(sdh_ha_v1), 0);
   if(xdc_verbose) data_print("API recv packet", (uint8_t *) p, size);
 
   /* c) Decode information from packet */
