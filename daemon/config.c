@@ -12,10 +12,14 @@ char ipc_addr_out[]  = "ipc:///tmp/halsub1";
 /*********t************************************************************/
 /* Read conifg file */
 void cfg_read (config_t *cfg, char  *file_name) {
+  if( access(file_name, R_OK ) == -1 ) {
+    log_fatal("Exiting: HAL Config file (%s) cannot be read", file_name);
+    exit(EXIT_FAILURE);
+  }
   config_init(cfg);
   if(! config_read_file(cfg, file_name))
   {
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
+    log_fatal("Exiting: HAL config error in file (%s), line (%d) text(%s)\n", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
     config_destroy(cfg);
     exit(EXIT_FAILURE);
   }
@@ -87,6 +91,8 @@ device *get_devices(config_t *cfg) {
 
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */
+      ret[i].count_r  =  0;
+      ret[i].count_w  =  0;
 
       ret[i].next     = i < count - 1 ? &ret[i+1] : (device *) NULL;
     }

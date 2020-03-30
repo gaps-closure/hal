@@ -1,10 +1,9 @@
 /*
  * Hardware Abstraction Layer (HAL) between Applicaitons and GAP XD Guards
- *   March 2020, Perspecta Labs
+ *   April 2020, Perspecta Labs
  *
  * TODO:
  *  XXX: Fix README.md and figure
- *  XXX: Log to specified logfile, not stderr
  *  XXX: Properly daemonize: close standard fds, trap signals, Exit only when needed (not to debug), etc.
  *  XXX: Dynamically change HAL daemon conifg file
  *  XXX: Add frag/defrag and other functionality.
@@ -22,77 +21,138 @@
 #include "map.h"
 #include "packetize.h"
 
-int hal_verbose=0;        /* print debug flag */
-int hal_wait_us=1000;     /* select (EAGAIN) wait loop (in microseconds) */
+/* Signal Handler for SIGINT - print statistics */
+device   *root_dev;
+void sigintHandler(int sig_num)
+{
+  char  s[256]="";
+  char  str_new[64];
+
+//  printf("\n %s d=%p \n", __func__, root_dev);
+  for(device *d = root_dev; d != NULL; d = d->next) {
+    if (d->enabled != 0) {
+      sprintf(str_new, "%s[r=%d w=%d] ", d->id, d->count_r, d->count_w);
+      strcat(s, str_new);
+    }
+  }
+  fprintf(stderr, "\nDevice read-write summary: %s\n", s);
+  exit(0);
+}
 
 /**********************************************************************/
-/* HAL get options */
+/* Initialize using confifguration file and user defined options     */
+/*********t************************************************************/
+void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats,
+              int log_level, int hal_quiet, int hal_wait_us) {
+  config_t  cfg;           /* Configuration */
+  device   *devs;          /* Linked list of enabled devices */
+  halmap   *map;           /* Linked list of selector mappings */
+  FILE     *fp=NULL;
+  
+  /* a) Logging */
+  log_set_quiet(hal_quiet);
+  if (log_level < LOG_TRACE) log_level = LOG_TRACE;
+  log_set_level(log_level);
+  if (file_name_log != NULL) {
+    log_trace("Openning Log file: %s", file_name_log);
+    fp = fopen(file_name_log, "w+");
+    log_set_fp(fp);
+  }
+  if (file_name_stats != NULL) {
+    log_trace("Openning Stats file: %s", file_name_stats);
+    fp = fopen(file_name_stats, "w+");
+    log_set_stats_fp(fp);
+  }
+  log_debug("HAL options: fc=%s fl=%s fs=%s lev=%d quiet=%d wait_us=%d", file_name_config, file_name_log, file_name_stats, log_level, hal_quiet, hal_wait_us);
+  
+  /* b) Load coniguration */
+  cfg_read(&cfg, file_name_config);
+  devs = get_devices(&cfg);
+  devices_print_all(devs, LOG_TRACE, __func__);
+  map  = get_mappings(&cfg);
+  halmap_print_all(map, LOG_DEBUG, __func__);
+  config_destroy(&cfg);
+
+  /* c) Open devices */
+  devices_open(devs);
+  devices_print_all(devs, LOG_DEBUG, __func__);
+  
+  /* d) Initialize signal handler, then Wait for input */
+  signal(SIGINT, sigintHandler);
+  root_dev = devs;
+  read_wait_loop(devs, map, hal_quiet, hal_wait_us);
+}
+
+/**********************************************************************/
+/* HAL Process User Defined options */
 /*********t************************************************************/
 void opts_print(void) {
-  printf("Hardware Abstraction Layer (HAL) for gaps CLOSURE project\n");
+  printf("Hardware Abstraction Layer (HAL) for GAPS CLOSURE project (version 0.11)\n");
   printf("Usage: hal [OPTIONS]... CONFIG-FILE\n");
   printf("OPTIONS: are one of the following:\n");
-  printf(" -h --help : print this message\n");
-  printf(" -v --hal_verbose : print debug messages to stderr\n");
-  printf(" -w --hal_verbose : device not ready (EAGAIN) wait time (microseconds) - default 1000us (-1 exits if not ready)\n");
+  printf(" -f : log file name (default = no log file)\n");
+  printf(" -h : print this message\n");
+  printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 0)\n");
+  printf(" -s : statistics file name (default = no log file)\n");
+  printf(" -v : verbose: output log to stderr (default = quiet)");
+  printf(" -w : device not ready (EAGAIN) wait time in microseconds (default = 1000us): -1 exits if not ready\n");
   printf("CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)\n");
 }
 
-/* Parse the configuration file */
-char *opts_get (int argc, char **argv) {
-  int opt;
-  char  *file_name= NULL;
-  
+/* Get user defined options */
+int main(int argc, char **argv) {
+  int    opt;
+  int    log_level=0, hal_quiet=1, hal_wait_us=1000;        /* option defaults */
+  char  *file_name_config = NULL;
+  char  *file_name_log    = NULL;
+  char  *file_name_stats  = NULL;
+
   if (argc < 2) {
     opts_print();
     exit(EXIT_FAILURE);
   }
-  while((opt =  getopt(argc, argv, "hvw:")) != EOF)
+  while((opt =  getopt(argc, argv, ":f:hl:s:vw:")) != EOF)
   {
     switch (opt)
     {
+      case 'f':
+        file_name_log = optarg;
+        break;
       case 'h':
         opts_print();
         exit(0);
+      case 'l':
+        log_level = atoi(optarg);
+        break;
+      case 's':
+        file_name_stats = optarg;
+        break;
       case 'v':
-        hal_verbose = 1;
+        hal_quiet = 0;
         break;
       case 'w':
         hal_wait_us = atoi(optarg);
         break;
+      case ':':
+        log_fatal("Option -%c needs a value\n", optopt);
+        opts_print();
+        exit(EXIT_FAILURE);
+        break;
       default:
-        printf("\nSkipping undefined Option (%d)\n", opt);
+        log_error("Skipping undefined Option (%d)\n", optopt);
         opts_print();
     }
   }
-  if(optind<argc) {
-     file_name = argv[optind++];
-  }
-  if(hal_verbose) fprintf(stderr, "Read script options: v=%d conifg-file=%s (optind=%d)\n", hal_verbose, file_name, optind);
-  return (file_name);
-}
 
-/**********************************************************************/
-/* get confifguration inofrmation                                     */
-/*********t************************************************************/
-/* Get coniguration, then call read_wait_loop */
-int main(int argc, char **argv) {
-  config_t  cfg;           /* Configuration */
-  char     *file_name;     /* Path to conifg file */
-  device   *devs;          /* Linked list of enabled devices */
-  halmap   *map;           /* Linked list of selector mappings */
+  if(optind<argc) {
+    file_name_config = argv[optind++];
+  }
+  else {
+    log_fatal("Must specify a CONFIG-FILE");
+    opts_print();
+    exit(EXIT_FAILURE);
+  }
   
-  file_name = opts_get(argc, argv);
-  cfg_read(&cfg, file_name);
-  if(hal_verbose) fprintf(stderr, "Config file %s exists\n", file_name);
-  devs = get_devices(&cfg);
-  if(hal_verbose) {fprintf(stderr, "Config file "); devices_print_all(devs);}
-  map  = get_mappings(&cfg);
-  if(hal_verbose) {fprintf(stderr, "Config file "); halmap_print_all(map);}
-  config_destroy(&cfg);
-  devices_open(devs, hal_verbose);
-  devices_print_all(devs);
-  halmap_print_all(map);
-  read_wait_loop(devs, map, hal_verbose, hal_wait_us);
-  return 0;
+  hal_init(file_name_config, file_name_log, file_name_stats, log_level, hal_quiet, hal_wait_us);
+  return (0);
 }
