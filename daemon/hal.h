@@ -13,8 +13,6 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <signal.h>
-#include "../log/log.h"
 
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */
@@ -40,8 +38,6 @@ typedef struct _dev {
   struct sockaddr_in socaddr_out;
   int         readfd;
   int         writefd;
-  int         count_r;
-  int         count_w;
   struct _dev *next;
 } device;
 

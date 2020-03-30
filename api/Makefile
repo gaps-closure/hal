@@ -5,14 +5,14 @@ CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
 all: libxdcomms.a libxdcomms.so
 
-libxdcomms.a: ../log/log.o xdcomms.o 
-	ar rcs $@ $^ 
-
-libxdcomms.so: ../log/log.o xdcomms.o
-	$(CC) $(CFLAGS) -shared -o $@ $^ -lzmq
+libxdcomms.a: xdcomms.o 
+	ar rcs $@ $< 
 
 xdcomms.o:  xdcomms.c
-	$(CC) $(CFLAGS) -fpic -c $<
+	$(CC) $(CFLAGS) -c $<
+
+libxdcomms.so: xdcomms.c
+	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< -lzmq
 
 libs: libxdcomms.a libxdcomms.so
 

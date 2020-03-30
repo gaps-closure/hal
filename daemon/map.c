@@ -9,55 +9,36 @@
 /* HAL Print (structure information) */
 /**********************************************************************/
 /* print halmap selector */
-void selector_print(selector *s, FILE *fd) {
-  if (fd == NULL) return;
-  fprintf(fd, "%s", s->dev);
-  if (s->ctag < 0) tag_print(&(s->tag), fd);
-  else             fprintf(fd, "[ctag=0x%08x]      ", s->ctag);
+void selector_print(selector *s) {
+  fprintf(stderr, " %s ", s->dev);
+  if (s->ctag < 0) tag_print(&(s->tag));
+  else             fprintf(stderr, "[ctag=0x%08x]      ", s->ctag);
 }
 
 /* Print a information from an internal PDU */
-void pdu_print(pdu *pdu, int level, const char *fn) {
-  FILE *fd[2];
-  int   i;
-  
-  log_get_fds(level, &fd[0], &fd[1]);
-  for (i=0; i<2; i++) {
-    if (fd[i] != NULL) {
-      if (pdu == NULL)  log_warn("Cannot print NULL PDU");
-      else {
-        fprintf(fd[i], "PDU dev=%s (from %s)", pdu->psel.dev, fn);
-        selector_print(&(pdu->psel), fd[i]);
-//TODO
-        data_print("Encoded-Data", pdu->data, pdu->data_len);
-      }
-    }
+void pdu_print(pdu *pdu) {
+  if (pdu == NULL)  fprintf(stderr, "Cannot print NULL PDU\n");
+  else {
+    fprintf(stderr, "PDU dev=%s ", pdu->psel.dev);
+    selector_print(&(pdu->psel));
+    data_print("Encoded-Data", pdu->data, pdu->data_len);
   }
 }
 
 /* Print a single HAL map entry for debugging */
-void halmap_print_one(halmap *hm, FILE *fd) {
-  if (fd == NULL) return;
-  fprintf(fd, "   ");
-  selector_print(&(hm->from), fd);
-  fprintf(fd, "-> ");
-  selector_print(&(hm->to), fd);
-  fprintf(fd, ", codec=%s\n", hm->codec);
+void halmap_print_one(halmap *hm) {
+  selector_print(&(hm->from));
+  fprintf(stderr, "-> ");
+  selector_print(&(hm->to));
+  fprintf(stderr, ", codec=%s\n", hm->codec);
 }
 
 /* Print list of HAL map entries for debugging */
-void halmap_print_all(halmap *map_root, int level, const char *fn) {
-  FILE *fd[2];
-  int   i;
-  
-  log_get_fds(level, &fd[0], &fd[1]);
-  for (i=0; i<2; i++) {
-    if (fd[i] != NULL) {
-      fprintf(fd[i], "  HAL map list (from %s):\n", fn);
-      for(halmap *hm = map_root; hm != NULL; hm = hm->next) halmap_print_one(hm, fd[i]);
-      fflush (fd[i]);
+void halmap_print_all(halmap *map_root) {
+    fprintf(stderr, "HAL map list:\n");
+    for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
+      halmap_print_one(hm);
     }
-  }
 }
 
 /**********************************************************************/
@@ -73,6 +54,7 @@ halmap *halmap_find(pdu *p, halmap *map_root) {
 
 //  fprintf(stderr, "%s", __func__); pdu_print(p);
   for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
+//    halmap_print_one(hm);
     if (strcmp(hm->from.dev, p->psel.dev) == 0) {
       hsel = &(hm->from);
       if (ctag < 0) {

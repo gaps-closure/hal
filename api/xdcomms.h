@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <assert.h>
-#include "../log/log.h"
 
 #define ADU_SIZE_MAX_C  200
 #define PACKET_MAX      2048
@@ -47,7 +46,7 @@ typedef struct _codec_map {
 extern codec_map  cmap[DATA_TYP_MAX];
 
 /* Minor exposed function prototypes */
-extern void tag_print (gaps_tag *, FILE *);
+extern void tag_print (gaps_tag *);
 extern void data_print(const char *, uint8_t *, size_t);
 extern void tag_write (gaps_tag *, uint32_t,   uint32_t,   uint32_t);
 extern void tag_read  (gaps_tag *, uint32_t *, uint32_t *, uint32_t *);

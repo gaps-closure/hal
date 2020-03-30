@@ -24,49 +24,37 @@ typedef struct _root_device {
 /* Print Device Deffinition */
 /*********t************************************************************/
 /* Print device definition element (if it exists) */
-void device_print_str(FILE *fd, char *name, const char *s) {
-  if (strlen(s) > 0) fprintf(fd, " %s=%s", name, s);
+void device_print_str(char *name, const char *s) {
+  if (strlen(s) > 0) fprintf(stderr, " %s=%s", name, s);
 }
 
 /* Print device definition element (if it exists) */
-void device_print_int(FILE *fd, char *name, int v) {
-  if (v >= 0) fprintf(fd, " %s=%d", name, v);
+void device_print_int(char *name, int v) {
+  if (v >= 0) fprintf(stderr, " %s=%d", name, v);
 }
 
 /* Print device definition */
-void devices_print_one(device *d, FILE *fd)  {
-  if (fd == NULL) return;
-  fprintf(fd, "   %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
-  device_print_int(fd, "ie", d->init_enable);
-  device_print_str(fd, "ai", d->addr_in);
-  device_print_str(fd, "ao", d->addr_out);
-  device_print_str(fd, "mi", d->mode_in);
-  device_print_str(fd, "mo", d->mode_out);
-  device_print_int(fd, "pi", d->port_in);
-  device_print_int(fd, "po", d->port_out);
-  device_print_int(fd, "fr", d->readfd);
-  device_print_int(fd, "fw", d->writefd);
-  device_print_str(fd, "dr", d->path_r);
-  device_print_str(fd, "dw", d->path_w);
-  device_print_int(fd, "mx", d->from_mux);
-  fprintf(fd, " cr=%d cw=%d", d->count_r, d->count_w);
-  fprintf(fd, "]\n");
+void devices_print_one(device *d)  {
+  fprintf(stderr, " %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
+  device_print_int("ie", d->init_enable);
+  device_print_str("ai", d->addr_in);
+  device_print_str("ao", d->addr_out);
+  device_print_str("mi", d->mode_in);
+  device_print_str("mo", d->mode_out);
+  device_print_int("pi", d->port_in);
+  device_print_int("po", d->port_out);
+  device_print_int("fr", d->readfd);
+  device_print_int("fw", d->writefd);
+  device_print_str("dr", d->path_r);
+  device_print_str("dw", d->path_w);
+  device_print_int("mx", d->from_mux);
+  fprintf(stderr, "]\n");
 }
   
 /* Print list of devices for debugging */
-void devices_print_all(device *root, int level, const char *fn)  {
-  FILE *fd[2];
-  int   i;
-  
-  log_get_fds(level, &fd[0], &fd[1]);
-  for (i=0; i<2; i++) {
-//    fprintf(stderr, "XXX fd=%p\n", fd[i]);
-    if (fd[i] != NULL) {
-      fprintf(fd[i], "  HAL device list (from %s):\n", fn);
-      for(device *d = root; d != NULL; d = d->next) devices_print_one(d, fd[i]);
-      fflush (fd[i]);
-    }
-  }
+void devices_print_all(device *root)  {
+  fprintf(stderr, "HAL device list:\n");
+  for(device *d = root; d != NULL; d = d->next) devices_print_one(d);
 }
 
 /**********************************************************************/
@@ -97,13 +85,8 @@ device *find_device_by_id(device *root, const char *id) {
 void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open, int pipe_close, int fd_open, const char *mode, const char *addr) {
   int  pid;
 
-  if( access(d->path, X_OK ) == -1 ) {
-    log_fatal("HAL API path (%s) from conig file is not executable", d->path);
-    exit(EXIT_FAILURE);
-  }
-    
   if ((pid = fork()) < 0) {
-    log_fatal("Fork failed");
+    fprintf(stderr, "Fork failed\n");
     exit(EXIT_FAILURE);
   } else if (pid == 0) {  /* child (API) process starts here */
     close(PARENT_READ);
@@ -119,19 +102,19 @@ void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open,
 }
 
 /* Open IPC interfaces (specified in d) */
-void interface_open_ipc(device *d) {
+void interface_open_ipc(device *d, int hal_verbose) {
   int  read_pipe[2];    /* Read  pipes for parent-child (HAL-API) communication */
   int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
 
   /* a) Open communication pipes for IPC reading and writing */
 // fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
   if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
-    log_fatal("Pipe creation failed");
+    fprintf(stderr, "Pipe creation failed\n");
     exit(EXIT_FAILURE);
   }
 //  fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
 
-  log_trace("Openning API %s:%s %s:%s", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
+  if (hal_verbose == 1)  fprintf(stderr, "Openning API %s:%s %s:%s\n", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
   /* b) Fork HAL child processes (to read and write on ipc channels) */
   ipc_open_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in, d->addr_in);
   ipc_open_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, d->addr_out);
@@ -155,7 +138,7 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
   serv_addr->sin_port = htons(port);
   if(inet_pton(AF_INET, addr, &(serv_addr->sin_addr))<=0)
   {
-    log_fatal("\nInvalid address or Address not supported for %s %s\n", d->id, d->path);
+    printf("\nInvalid address/ Address not supported for %s %s\n", d->id, d->path);
     exit(EXIT_FAILURE);
   }
   
@@ -164,7 +147,7 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
   else                               comm_type = SOCK_STREAM;
   if ((fd = socket(AF_INET, comm_type, 0)) < 0)
   {
-    log_fatal("\nSocket creation error for %s\n", d->id);
+    printf("\nSocket creation error for %s\n", d->id);
     exit(EXIT_FAILURE);
   }
 
@@ -199,7 +182,7 @@ void interface_open_inet(device *d) {
   if (strlen(d->addr_in)  > 0) fd_in  = inet_open_socket(d, d->addr_in,  d->port_in,  &(d->socaddr_in),  1);
 
   /* Save file descriptors */
-  if ( (fd_out == -1) && (fd_in == -1) ) {log_fatal("\nNo address speciffied for interface %s\n", d->id); exit(EXIT_FAILURE);}
+  if ( (fd_out == -1) && (fd_in == -1) ) {fprintf(stderr, "\n%s: No address speciffied for interface %s\n", __func__, d->id); exit(EXIT_FAILURE);}
   if ( (fd_out == -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_in;}
   if ( (fd_out != -1) && (fd_in == -1) ) {d->readfd = fd_out; d->writefd = fd_out;}
   if ( (fd_out != -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_out;}
@@ -212,7 +195,7 @@ void interface_open_inet(device *d) {
 void interface_open_tty(device *d) {
   int fd;
   if ((fd = open(d->path, O_RDWR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path);
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path);
     exit(EXIT_FAILURE);
   }
   d->readfd = fd;
@@ -231,20 +214,20 @@ void ilp_open_data_devices(device *d) {
   if (d->enabled == 0) return;
   
   if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path_r);
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_r);
     exit(EXIT_FAILURE);
   }
   d->readfd  = fd_read;
   
   if ((fd_write = open(d->path_w, O_WRONLY, S_IWUSR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path_w);
+    fprintf(stderr, "Error opening device %s: %s\n", d->id, d->path_w);
     exit(EXIT_FAILURE);
   }
   d->writefd = fd_write;
 }
 
 /* Get session information (to_mux) from root device */
-void ilp_root_check(int fd_root, root_device *rd) {
+void ilp_root_check(int fd_root, root_device *rd, int hal_verbose) {
   int      i, j, device_pair_count;
   ssize_t  write_bytes, read_bytes;
   uint32_t application_id[2] = { 1, 2 };
@@ -267,27 +250,27 @@ void ilp_root_check(int fd_root, root_device *rd) {
       exit(EXIT_FAILURE);
     }
     
-    log_trace("TODO %s: Write Session IDs from Root Device into halmap (from_mux=%u to_mux=%u)", __func__, application_id[i], session_id[i]);
+    if (hal_verbose == 1) fprintf(stderr, "TODO %s: Write Session IDs from Root Device into halmap (from_mux=%u to_mux=%u)\n", __func__, application_id[i], session_id[i]);
     
     if (session_id[i] != application_id[i]) {
-      log_fatal("Invalid session ID returned Application: %u, Session ID: %u", application_id[i], session_id[i] );
+      fprintf( stderr, "Invalid session ID returned Application: %u, Session ID: %u\n", application_id[i], session_id[i] );
       exit(EXIT_FAILURE);
     }
   }
 }
 
 /* Open root ILIP device */
-void ilp_root_device_open(root_device *rd) {
+void ilp_root_device_open(root_device *rd, int hal_verbose) {
   const char *root_path = rd->root_path;
   int  fd_root = -1;
   
   if (root_path != NULL) {
     if ((fd_root = open(root_path, O_RDWR, S_IRUSR | S_IWUSR)) < 0) {
-      log_fatal("Error opening device %s: fd=%d", root_path, fd_root);
+      fprintf(stderr, "%s: Error opening device %s: fd=%d\n", __func__, root_path, fd_root);
       exit(EXIT_FAILURE);
     }
-    log_trace("Successfully opened root device %s (fd=%d)", root_path, fd_root);
-    ilp_root_check(fd_root, rd);
+    if (hal_verbose == 1) fprintf(stderr, "%s: Successfully opened root device %s (fd=%d)\n", __func__, root_path, fd_root);
+    ilp_root_check(fd_root, rd, hal_verbose);
     close(fd_root);
   }
 }
@@ -319,7 +302,7 @@ void ilp_root_device_save_conig(device *d, int *root_count, root_device *root_li
 }
 
 /* Open ILIP interface */
-void interface_open_ilp(device *d) {
+void interface_open_ilp(device *d, int hal_verbose) {
   static int          root_count=0;
   static root_device  root_list[8], *rd;
   int                 i, j;
@@ -333,7 +316,7 @@ void interface_open_ilp(device *d) {
   for (j=0; j<root_count; j++) {
     rd = &(root_list[j]);
     if (((rd->data_dev_list)[0])->init_enable == 1) {
-      ilp_root_device_open(rd);
+      ilp_root_device_open(rd, hal_verbose);
     }
     for (i=0; i<(rd->data_dev_count); i++) {
       ilp_open_data_devices(rd->data_dev_list[i]);
@@ -345,15 +328,15 @@ void interface_open_ilp(device *d) {
 /* Open Devices */
 /*********t************************************************************/
 /* Open enabled devices (from linked-list of devices) and get their in/out handles */
-void devices_open(device *dev_linked_list_root) {
+void devices_open(device *dev_linked_list_root, int hal_verbose) {
   for(device *d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled == 0) continue;
     if        (!strncmp(d->comms, "tty", 3))                                      interface_open_tty(d);
     else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
-    else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
-    else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
-    else { log_fatal("Device %s [%s] unknown", d->id, d->path); exit(EXIT_FAILURE);}
+    else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d, hal_verbose);
+    else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d, hal_verbose);
+    else { fprintf(stderr, "Device %s [%s] unknown\n", d->id, d->path); exit(EXIT_FAILURE);}
 // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
   }
-  interface_open_ilp(NULL);
+  interface_open_ilp(NULL, hal_verbose);
 }
