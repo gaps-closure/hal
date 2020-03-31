@@ -36,9 +36,15 @@ class Distance(Structure):
                 ("t", ClosureTrailer)]
                   
 def send(m, s, t, r):
+    # Context/Socket setup
+    makesock = xdc_so.xdc_pub_socket
+    makesock.restype = c_void_p
+    sock = makesock()
+
     #initial values
     pos = Position(-74.574489, 40.695545, 101.9, ClosureTrailer(0,0,0,0,0))
     dis = Distance(-1.021, 2.334, 0.4)
+
     while(float(r) != 0):
         tag = GapsTag(int(m),int(s),int(t))
         tailer = ClosureTrailer(0,0,0,0,0)
@@ -50,8 +56,8 @@ def send(m, s, t, r):
             adu = Distance(dis.x, dis.y, dis.z, ClosureTrailer(0,0,0,0,0))
         else:
             raise Exception('unsupported data typ: ' + str(t))
-        xdc_so.xdc_asyn_send(pointer(adu), tag)
-        print("sent: [%d/%d/%d] -- (%f,%f,%f)" % (tag.mux, tag.sec, tag.typ, adu.x, adu.y, adu.z))
+        xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), tag)
+        print("%f sent: [%d/%d/%d] -- (%f,%f,%f)" % (time.time(), tag.mux, tag.sec, tag.typ, adu.x, adu.y, adu.z))
         busy_sleep(1.0/float(r))
 
 def recv(m, s, t):
@@ -63,9 +69,12 @@ def recv(m, s, t):
         raise Exception('data type %d not supported' % (int(t)))
     print("Subscribed to [%s/%s/%s]" % (m,s,t))
     tag = GapsTag(int(m), int(s), int(t))
+    makesock = xdc_so.xdc_sub_socket
+    makesock.restype = c_void_p
+    sock = makesock(tag)
     while(1):
-        xdc_so.xdc_blocking_recv(pointer(adu), pointer(tag))
-        print('recv: [%d/%d/%d] -- (%f,%f,%f)' % (tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
+        xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag))
+        print('%f recv: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
         
 def busy_sleep(s):
     start = time.time()
@@ -82,10 +91,11 @@ if __name__ == '__main__':
     parser.add_argument('-o', metavar=('URI'), help="out URI (default=ipc:///tmp/halsub1)", default='ipc:///tmp/halsub1')
     args = parser.parse_args()
 
-    xdc_so = CDLL(args.x + '/libxdcomms.so')
+    xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
     gma_so = CDLL(args.l + '/libgma.so')
 
     # Set the URIs for ZMQ
+    xdc_so.xdc_ctx() 
     xdc_so.xdc_set_in(c_char_p((args.i).encode('utf-8')))
     xdc_so.xdc_set_out(c_char_p((args.o).encode('utf-8')))
 
