@@ -12,7 +12,7 @@
 void selector_print(selector *s, FILE *fd) {
   if (fd == NULL) return;
   fprintf(fd, "%s", s->dev);
-  if (s->ctag < 0) tag_print(&(s->tag));
+  if (s->ctag < 0) tag_print(&(s->tag), fd);
   else             fprintf(fd, "[ctag=0x%08x]      ", s->ctag);
 }
 
