@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<gma:GapsPDU xmlns:gma="urn:gma:1.0">
+  <gma:SDHBWPDU>
+    <gma:SDHBWHeader>
+      <tag0>0</tag0>
+      <tagm>2</tagm>
+      <tags>2</tags>
+      <tagt>1</tagt>
+      <len>40</len>
+      <crc>12263</crc>
+    </gma:SDHBWHeader>
+    <gma:Position>
+      <x>-74.574489</x>
+      <y>40.695545</y>
+      <z>102.0</z>
+    </gma:Position>
+    <gma:GapsTrailer>
+      <seq>0</seq>
+      <rqr>0</rqr>
+      <oid>0</oid>
+      <mid>0</mid>
+      <crc>0</crc>
+    </gma:GapsTrailer>
+  </gma:SDHBWPDU>
+</gma:GapsPDU>
