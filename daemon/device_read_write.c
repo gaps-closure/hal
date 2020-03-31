@@ -219,17 +219,22 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   int         maxrfd;        /* Maximum file descriptor number for select */
   static int  do_once=1;
   int         i=0;
+  char        s[256]="", str_new[64];
   
   FD_ZERO(readfds);
   maxrfd = -1;
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       select_add(d->readfd, &maxrfd, readfds);
-//      if (do_once) fprintf(stderr, ", %d", d->readfd)
+      if (do_once) {
+        sprintf(str_new, "%s(fd=%d) ", d->id, d->readfd);
+        strcat(s, str_new);
+      }
       i++;
     }
   }
-  if (do_once) {log_debug("HAL Waiting for input on %d fds", i); do_once = 0;}
+  log_info("HAL Waiting for input from %d device(s): %s", i, s);
+  if (do_once) do_once = 0;
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 

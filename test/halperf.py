@@ -35,7 +35,7 @@ class Distance(Structure):
                 ("z", c_double),
                 ("t", ClosureTrailer)]
                   
-def send(m, s, t, r):
+def send(m, s, t, r, c):
     #initial values
     pos = Position(-74.574489, 40.695545, 101.9, ClosureTrailer(0,0,0,0,0))
     dis = Distance(-1.021, 2.334, 0.4)
@@ -53,8 +53,13 @@ def send(m, s, t, r):
         xdc_so.xdc_asyn_send(pointer(adu), tag)
         print("sent: [%d/%d/%d] -- (%f,%f,%f)" % (tag.mux, tag.sec, tag.typ, adu.x, adu.y, adu.z))
         busy_sleep(1.0/float(r))
+        if c > 0:
+          c -= 1
+          if c == 0:
+            break
 
 def recv(m, s, t):
+    c=0
     if int(t) == DATA_TYP_POS:
         adu = Position()
     elif int(t) == DATA_TYP_DIS:
@@ -65,7 +70,8 @@ def recv(m, s, t):
     tag = GapsTag(int(m), int(s), int(t))
     while(1):
         xdc_so.xdc_blocking_recv(pointer(adu), pointer(tag))
-        print('recv: [%d/%d/%d] -- (%f,%f,%f)' % (tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
+        c += 1
+        print('recv: [%d/%d/%d] -- (%f,%f,%f)' % (tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z), 'count =', c)
         
 def busy_sleep(s):
     start = time.time()
@@ -76,6 +82,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--send', nargs=4, action='append', metavar=('MUX', 'SEC', 'TYP', 'RATE'), help='send cross-domain flow using MUX/SEC/TYP at RATE (Hz)')
     parser.add_argument('-r', '--recv', nargs=3, action='append', metavar=('MUX', 'SEC', 'TYP'), help='recv cross-domain flow mapped to MUX/SEC/TYP')
+    parser.add_argument('-c', metavar=('COUNT'), help="packets to sent (default=no limit)", type=int, default=-1)
     parser.add_argument('-l', metavar=('PATH'), help="path to mission app shared libraries (default=../appgen)", default='../appgen')
     parser.add_argument('-x', metavar=('PATH'), help="path to libxdcomms.so (default=../api)", default='../api')
     parser.add_argument('-i', metavar=('URI'), help="in URI (default=ipc:///tmp/halpub1)", default='ipc:///tmp/halpub1')
@@ -95,6 +102,7 @@ if __name__ == '__main__':
 
     if args.send:
         for s in args.send:
+            s.append(args.c)
             t = Thread(args=s, target=send)
             t.start()
     if args.recv:

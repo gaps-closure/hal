@@ -25,10 +25,8 @@
 device   *root_dev;
 void sigintHandler(int sig_num)
 {
-  char  s[256]="";
-  char  str_new[64];
+  char        s[256]="", str_new[64];
 
-//  printf("\n %s d=%p \n", __func__, root_dev);
   for(device *d = root_dev; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       sprintf(str_new, "%s[r=%d w=%d] ", d->id, d->count_r, d->count_w);
@@ -93,8 +91,8 @@ void opts_print(void) {
   printf(" -f : log file name (default = no log file)\n");
   printf(" -h : print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 0)\n");
+  printf(" -q : quiet: disable logging on stderr (default = enabled)");
   printf(" -s : statistics file name (default = no log file)\n");
-  printf(" -v : verbose: output log to stderr (default = quiet)");
   printf(" -w : device not ready (EAGAIN) wait time in microseconds (default = 1000us): -1 exits if not ready\n");
   printf("CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)\n");
 }
@@ -102,7 +100,7 @@ void opts_print(void) {
 /* Get user defined options */
 int main(int argc, char **argv) {
   int    opt;
-  int    log_level=0, hal_quiet=1, hal_wait_us=1000;        /* option defaults */
+  int    log_level=3, hal_quiet=0, hal_wait_us=1000;        /* option defaults */
   char  *file_name_config = NULL;
   char  *file_name_log    = NULL;
   char  *file_name_stats  = NULL;
@@ -124,11 +122,11 @@ int main(int argc, char **argv) {
       case 'l':
         log_level = atoi(optarg);
         break;
+      case 'q':
+        hal_quiet = 1;
+        break;
       case 's':
         file_name_stats = optarg;
-        break;
-      case 'v':
-        hal_quiet = 0;
         break;
       case 'w':
         hal_wait_us = atoi(optarg);
