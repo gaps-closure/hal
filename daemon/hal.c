@@ -59,19 +59,19 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   if (file_name_stats != NULL) {
     log_trace("TODO: Openning Stats file: %s", file_name_stats);
   }
-  log_debug("HAL options: fc=%s fl=%s fs=%s lev=%d quiet=%d wait_us=%d", file_name_config, file_name_log, file_name_stats, log_level, hal_quiet, hal_wait_us);
+  log_debug("HAL options: config=%s log=(file=%s lev=%d [limit=%d] quiet=%d) wait_us=%d", file_name_config, file_name_log, log_level, LOG_LEVEL_MIN, hal_quiet, hal_wait_us);
   
   /* b) Load coniguration */
   cfg_read(&cfg, file_name_config);
   devs = get_devices(&cfg);
-  devices_print_all(devs, LOG_TRACE, __func__);
+//  log_devs_debug(devs, __func__);
   map  = get_mappings(&cfg);
-  halmap_print_all(map, LOG_DEBUG, __func__);
+  log_halmap_debug(map, __func__);
   config_destroy(&cfg);
 
   /* c) Open devices */
   devices_open(devs);
-  devices_print_all(devs, LOG_DEBUG, __func__);
+  log_devs_debug(devs, __func__);
   
   /* d) Initialize signal handler, then Wait for input */
   signal(SIGINT, sigintHandler);
@@ -89,8 +89,8 @@ void opts_print(void) {
   printf(" -f : log file name (default = no log file)\n");
   printf(" -h : print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 0)\n");
-  printf(" -q : quiet: disable logging on stderr (default = enabled)");
-  printf(" -s : statistics file name (default = no log file)\n");
+  printf(" -q : quiet: disable logging on stderr (default = enabled)\n");
+//  printf(" -s : statistics file name (default = no log file)\n");
   printf(" -w : device not ready (EAGAIN) wait time in microseconds (default = 1000us): -1 exits if not ready\n");
   printf("CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)\n");
 }

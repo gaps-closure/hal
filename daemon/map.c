@@ -1,6 +1,6 @@
 /*
  * HAL Map Lookup
- *   March 2020, Perspecta Labs
+ *   April 2020, Perspecta Labs
  */
 
 #include "hal.h"
@@ -46,7 +46,7 @@ void halmap_print_one(halmap *hm, FILE *fd) {
 }
 
 /* Print list of HAL map entries for debugging */
-void halmap_print_all(halmap *map_root, int level, const char *fn) {
+void log_log_halmap(int level, halmap *map_root, const char *fn) {
   FILE *fd[2];
   int   i;
   

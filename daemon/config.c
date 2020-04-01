@@ -1,6 +1,6 @@
 /*
 * Read configuration information into HAL from (libconfig) file
-*   March 2020, Perspecta Labs
+*   April 2020, Perspecta Labs
 */
 
 #include "hal.h"
@@ -29,7 +29,7 @@ void cfg_read (config_t *cfg, char  *file_name) {
 char *cfg_get_top_str(config_t *cfg, char *fld) {
   const char *ret;
   if(!config_lookup_string(cfg, fld, &ret)) {
-    fprintf(stderr, "No '%s' setting in configuration file.\n", fld);
+    log_fatal("No '%s' setting in configuration file", fld);
     exit(EXIT_FAILURE);
   }
   return strdup(ret);
@@ -41,7 +41,7 @@ const char * get_param_str(config_setting_t *dev, const char *name, int optional
 
 //  fprintf(stderr, "%s %s\n", __func__, name);
   if( (!config_setting_lookup_string(dev, name, &val)) && (!optional) ) {
-    fprintf(stderr, "Missing a non-optional field '%s' (for device %d)\n", name, field_num);
+    log_fatal("Missing a non-optional field '%s' (for device %d)", name, field_num);
     exit(EXIT_FAILURE);
   }
   return (strdup(val));
@@ -52,7 +52,7 @@ int get_param_int(config_setting_t *dev, const char *name, int optional, int fie
   int  val = -1;
   
   if ( (!config_setting_lookup_int(dev, name, &val)) && (!optional) ) {
-    fprintf(stderr, "Missing a non-optional field '%s' (for device %d)\n", name, field_num);
+    log_fatal("Missing a non-optional field '%s' (for device %d)", name, field_num);
     exit(EXIT_FAILURE);
   }
   return (val);
@@ -66,7 +66,7 @@ device *get_devices(config_t *cfg) {
     int count = config_setting_length(devs);
     ret = malloc(count * sizeof(device));
     if (ret == NULL) {
-      fprintf(stderr, "Memory allocation failed");
+      log_fatal("Memory allocation failed");
       exit(EXIT_FAILURE);
     }
     for(int i = 0; i < count; i++) {
@@ -109,7 +109,7 @@ halmap *get_mappings(config_t *cfg) {
     int count = config_setting_length(hmaps);
     ret = malloc(count * sizeof(halmap));
     if (ret == NULL) {
-      fprintf(stderr, "Memory allocation failed");
+      log_fatal("Memory allocation failed");
       exit(EXIT_FAILURE);
     }
     for(int i = 0; i < count; i++) {

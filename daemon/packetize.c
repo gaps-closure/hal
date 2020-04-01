@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and any external packet
- *   March 2020, Perspecta Labs
+ *   April 2020, Perspecta Labs
  */
 
 #include "hal.h"
@@ -22,7 +22,6 @@ void c_print(sdh_ha_v1 *p) {
 void pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) in;
   
-  // fprintf(stderr, "%s: ", __func__); c_print(pkt);
   tag_decode(&(out->psel.tag), &(pkt->tag));
   len_decode(&(out->data_len), pkt->data_len);
 //  fprintf(stderr, "LEN=%ld\n", out->data_len);
@@ -59,5 +58,8 @@ void pdu_into_packet(uint8_t *out, pdu *in, int *pkt_len, selector *osel, const 
   else if (strcmp(dev_model, "sdh_be_v1") == 0)  *pkt_len = pdu_into_sdh_be_v1 (out, in, &(osel->tag));
   else if (strcmp(dev_model, "sdh_be_v2") == 0)  *pkt_len = pdu_into_sdh_be_v2 (out, in, &(osel->tag));
   else if (strcmp(dev_model, "sdh_bw_v1") == 0)  *pkt_len = pdu_into_sdh_bw_v1 (out, in, osel->ctag);
-  else {fprintf(stderr, "%s unknown interface model %s", __func__, dev_model); exit(EXIT_FAILURE);}
+  else {
+    log_fatal("%s unknown interface model %s", __func__, dev_model);
+    exit(EXIT_FAILURE);
+  }
 }

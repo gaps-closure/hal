@@ -1,4 +1,7 @@
-/* Open, Find and Print Devices (based on config file info):
+/*
+ * HAL device Open, Find and Print
+ *   April 2020, Perspecta Labs
+ *
  *     a) IPC (ZMQ pub/sub)
  *     b) INET device (tcp or udp)
  *     c) Bidirectional Serial Device (tty)
@@ -54,7 +57,7 @@ void devices_print_one(device *d, FILE *fd)  {
 }
   
 /* Print list of devices for debugging */
-void devices_print_all(device *root, int level, const char *fn)  {
+void log_log_devs(int level, device *root, const char *fn)  {
   FILE *fd[2];
   int   i;
   
@@ -114,7 +117,7 @@ void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open,
     if(execvp(argv2[0], argv2) < 0) perror("execvp()");
     exit(EXIT_FAILURE);                                      /* child process should not reach here */
   } else {                /* parent (HAL) process */
-    // fprintf(stderr, "Spawned %s subscriber pid=%d\n", d->path, pid);
+    log_trace("Spawned %s subscriber pid=%d", d->path, pid);
   }
 }
 

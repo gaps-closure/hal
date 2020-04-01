@@ -1,6 +1,6 @@
 /*
- * HAL device read and write
- *   March 2020, Perspecta Labs
+ * HAL device read and write (loop)
+ *   April 2020, Perspecta Labs
  */
 
 /**********************************************************************/
@@ -155,7 +155,7 @@ int process_input(int ifd, halmap *map, device *devs) {
   
   idev = find_device_by_readfd(devs, ifd);
   if(idev == NULL) { 
-    fprintf(stderr, "%s: Device not found for input fd\n", __func__);
+    log_warn("%s: Device not found for input fd\n", __func__);
     return (0);
   } 
 
@@ -175,7 +175,7 @@ int process_input(int ifd, halmap *map, device *devs) {
   
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
-    fprintf(stderr, "%s: Device %s not found for output\n", __func__,  h->to.dev);
+    log_warn("%s: Device %s not found for output\n", __func__,  h->to.dev);
     return (0);
   }
 
