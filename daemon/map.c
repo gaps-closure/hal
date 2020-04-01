@@ -17,7 +17,7 @@ void selector_print(selector *s, FILE *fd) {
 }
 
 /* Print a information from an internal PDU */
-void pdu_print(pdu *pdu, int level, const char *fn) {
+void log_log_pdu(int level, pdu *pdu, const char *fn) {
   FILE *fd[2];
   int   i;
   
@@ -71,7 +71,7 @@ halmap *halmap_find(pdu *p, halmap *map_root) {
   gaps_tag *tag  = &(psel->tag);
   int       ctag = psel->ctag;
 
-//  fprintf(stderr, "%s", __func__); pdu_print(p);
+//  fprintf(stderr, "%s", __func__);
   for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
     if (strcmp(hm->from.dev, p->psel.dev) == 0) {
       hsel = &(hm->from);

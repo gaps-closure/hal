@@ -17,17 +17,35 @@ typedef void (*log_LockFn)(void *udata, int lock);
 
 enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
-#define LOG_LEVEL_MIN   0       /* Increase to improve performance */
+//#define LOG_LEVEL_MIN   0       /* Allow all logging messages */
+#define LOG_LEVEL_MIN   3       /* Increase to improve performance */
 
 #if LOG_TRACE >= LOG_LEVEL_MIN
   #define log_trace(...) log_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
+  #define log_buf_trace(str, data, data_len) log_log_buf(LOG_TRACE, str, data, data_len)
 #else
   #define log_trace(...)
+  #define log_buf_trace(str, data, data_len)
 #endif
 
-#define log_debug(...) log_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
-#define log_info(...)  log_log(LOG_INFO,  __FILE__, __LINE__, __VA_ARGS__)
-#define log_warn(...)  log_log(LOG_WARN,  __FILE__, __LINE__, __VA_ARGS__)
+#if LOG_DEBUG >= LOG_LEVEL_MIN
+  #define log_debug(...) log_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
+#else
+  #define log_debug(...)
+#endif
+
+#if LOG_INFO >= LOG_LEVEL_MIN
+  #define log_info(...)  log_log(LOG_INFO,  __FILE__, __LINE__, __VA_ARGS__)
+#else
+  #define log_info(...)
+#endif
+
+#if LOG_WARN >= LOG_LEVEL_MIN
+  #define log_warn(...)  log_log(LOG_WARN,  __FILE__, __LINE__, __VA_ARGS__)
+#else
+  #define log_warn(...)
+#endif
+
 #define log_error(...) log_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 #define log_fatal(...) log_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
 
@@ -39,11 +57,7 @@ void log_set_quiet(int enable);
 
 void log_log(int level, const char *file, int line, const char *fmt, ...);
 
-#define log_stats(...)  log_log_stats(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
-
 void log_get_fds(int level, FILE **fd_std, FILE **fd_file);
-void log_buf(int level, char *str, void *data, size_t data_len);
-void log_set_stats_fp(FILE *fp);
-FILE *log_get_stats_fp(void);
+void log_log_buf(int level, char *str, void *data, size_t data_len);
 
 #endif

@@ -32,9 +32,7 @@ static struct {
   void *udata;
   log_LockFn lock;
   FILE *fp;
-  FILE *stats_fp;     /* Added to support logging statistics - AJM March, 2020 */
   int level;
-  int stats_level;
   int quiet;
 } L;
 
@@ -152,7 +150,7 @@ void log_get_fds(int level, FILE **fd_std, FILE **fd_file) {
 
 
 /* Log data of specified length to stderr/logfile (if enabled) */
-void log_buf(int level, char *str, void *data, size_t data_len) {
+void log_log_buf(int level, char *str, void *data, size_t data_len) {
   FILE      *fd[2];
   int        i, j;
   u_int8_t  *d = (u_int8_t *) data;
@@ -172,45 +170,5 @@ void log_buf(int level, char *str, void *data, size_t data_len) {
       }
       fprintf(fd[i], "\n");
     }
-  }
-}
-
-
-/* Set statistics file pointer */
-void log_set_stats_fp(FILE *fp) {
-  L.stats_fp = fp;
-}
-
-
-/* Set statistics level */
-void log_set_stats_level(int level) {
-  L.stats_level = level;
-}
-
-
-/* Get statistics file pointer */
-void log_log_stats(int level, const char *file, int line, const char *fmt, ...) {
-  if (level < L.stats_level) {
-    return;
-  }
-
-  /* Acquire lock */
-  lock();
-
-  /* Get current time */
-  time_t t = time(NULL);
-  struct tm *lt = localtime(&t);
-  
-  /* Log to file */
-  if (L.stats_fp) {
-    va_list args;
-    char buf[32];
-    buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", lt)] = '\0';
-    fprintf(L.fp, "%s %-5s %s:%d: ", buf, level_names[level], file, line);
-    va_start(args, fmt);
-    vfprintf(L.fp, fmt, args);
-    va_end(args);
-    fprintf(L.fp, "\n");
-    fflush(L.fp);
   }
 }

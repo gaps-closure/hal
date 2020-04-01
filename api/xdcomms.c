@@ -87,8 +87,8 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len
   /* a) serialize data into packet */
   type_check(typ);
   cmap[typ].encode (p->data, buff_in, len_out);
-  log_buf(LOG_TRACE, "API <- raw app data:", buff_in, *len_out);
-  log_buf(LOG_TRACE, "    -> encoded data:", p->data, *len_out);
+  log_buf_trace("API <- raw app data:", buff_in, *len_out);
+  log_buf_trace("    -> encoded data:", p->data, *len_out);
 
   /* b) Create CLOSURE packet header */
   tag_encode(&(p->tag), tag);
@@ -107,8 +107,8 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
   tag_decode(tag, &(p->tag));
   len_decode(len_out, p->data_len);
   cmap[typ].decode (buff_out, p->data, &p_len);
-  log_buf(LOG_TRACE, "API -> raw app data:", p->data,  *len_out);
-  log_buf(LOG_TRACE, "    <- decoded data:", buff_out, *len_out);
+  log_buf_trace("API -> raw app data:", p->data,  *len_out);
+  log_buf_trace("    <- decoded data:", buff_out, *len_out);
 //    tag_print(tag, stderr);
 //    fprintf(stderr, "data_len=%lu\n", *len_out);
 }
@@ -162,7 +162,7 @@ void xdc_asyn_sendX(void *adu, gaps_tag tag) {
   // fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
   // tag_print(&tag, stderr);
   // fprintf(stderr, "len=%ld ", adu_len);
-  log_buf(LOG_DEBUG, "API sends Packet", (uint8_t *) p, packet_len);
+  log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
   zmq_send (socket, (void *) p, packet_len, 0);
 }
 
@@ -175,7 +175,7 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag tag) {
   // fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
   // tag_print(&tag, stderr);
   // fprintf(stderr, "len=%ld ", adu_len);
-  log_buf(LOG_DEBUG, "API sends Packet", (uint8_t *) p, packet_len);
+  log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
   int bytes = zmq_send (socket, (void *) p, packet_len, 0);
   if (bytes <= 0) fprintf(stderr, "send error %s %d ", zmq_strerror(errno), bytes);
 }
@@ -232,7 +232,7 @@ void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
     void *p = &packet;
 
     int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
-    log_buf(LOG_DEBUG, "API recv packet", (uint8_t *) p, size);
+    log_buf_trace("API recv packet", (uint8_t *) p, size);
 
     size_t adu_len;
     gaps_data_decode(p, size, adu, &adu_len, tag);
@@ -276,7 +276,7 @@ printf("4 -- %d\n", tag->typ);
  printf("4.5 -- %d\n", tag->typ);
  size = zmq_recv (socket, (uint8_t *) p, sizeof(sdh_ha_v1), 0);
 printf("4.7 -- %d\n", tag->typ);
-  log_buf(LOG_DEBUG, "API recv packet", (uint8_t *) p, size);
+  log_buf_trace("API recv packet", (uint8_t *) p, size);
 
 printf("5 -- %d\n", tag->typ);
   /* c) Decode information from packet */

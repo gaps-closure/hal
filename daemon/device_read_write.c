@@ -48,13 +48,11 @@ pdu *read_pdu(device *idev) {
   pdu            *ret = NULL;
   static uint8_t  buf[PACKET_MAX];
   int             fd;
-  const char     *dev_id;
   const char     *com_type;
   socklen_t       sock_len;
   struct sockaddr_in socaddr_in;
   
   /* a) read input into buf and get its length (with input dev_id and fd) */
-  dev_id = idev->id;
   fd = idev->readfd;
   com_type = idev->comms;
 //exit (21);
@@ -86,14 +84,14 @@ pdu *read_pdu(device *idev) {
   
   (idev->count_r)++;
 
-  log_info("HAL reads %s from %s, fd=%02d:", idev->model, dev_id, fd);
-  log_buf(LOG_INFO, "Packet", buf, pkt_len);
+  log_info("HAL reads %s from %s, fd=%02d:", idev->model, idev->id, fd);
+  log_buf_trace("Packet", buf, pkt_len);
 
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));
   pdu_from_packet(ret, buf, pkt_len, idev);
   log_trace("HAL created new PDU");
-  pdu_print(ret, LOG_TRACE, __func__);
+  log_pdu_trace(ret, __func__);
   return(ret);
 }
 
@@ -109,9 +107,9 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 
   log_trace("HAL writting to %s", odev->id);
   /* a) Convert into packet based on interface packet model  */
-  pdu_print(p, LOG_TRACE, __func__);
+  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
-  log_buf(LOG_TRACE, "Packet", buf, pkt_len);
+  log_buf_trace("Packet", buf, pkt_len);
   
   /* b) Write to interface based on interface comms type */
   fd = odev->writefd;
@@ -136,9 +134,9 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   }
   (odev->count_w)++;
   
-  log_trace("%s rv=%d", __func__, rv);
-  log_info("HAL writes %s onto %s (fd=%02d)", odev->model, odev->id, fd);
-  log_buf(LOG_INFO, "Packet", buf, pkt_len);
+  (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
+  log_info("HAL writes %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
+  log_buf_trace("Packet", buf, pkt_len);
 }
 
 /**********************************************************************/
@@ -170,7 +168,7 @@ int process_input(int ifd, halmap *map, device *devs) {
   h = halmap_find(ipdu, map);
   if(h == NULL) { 
     log_warn("%s: No matching HAL map entry for: ", __func__);
-    pdu_print(ipdu, LOG_WARN, __func__);
+    log_pdu_trace(ipdu, __func__);
     pdu_delete(ipdu);
     return (0);
   }
