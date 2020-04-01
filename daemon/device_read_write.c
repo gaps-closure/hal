@@ -84,7 +84,7 @@ pdu *read_pdu(device *idev) {
   
   (idev->count_r)++;
 
-  log_info("HAL reads %s from %s, fd=%02d:", idev->model, idev->id, fd);
+  log_debug("HAL reads %s from %s, fd=%02d:", idev->model, idev->id, fd);
   log_buf_trace("Packet", buf, pkt_len);
 
   /* b) Write input into internal PDU */
@@ -135,7 +135,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   (odev->count_w)++;
   
   (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
-  log_info("HAL writes %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
+  log_debug("HAL writes %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
   log_buf_trace("Packet", buf, pkt_len);
 }
 
@@ -195,8 +195,6 @@ int process_input(int ifd, halmap *map, device *devs) {
       strcat(s, str_new);
     }
   }
-  log_info("%s", s);
-
   pdu_delete(ipdu);
   return (0);
 }
@@ -228,7 +226,7 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
       i++;
     }
   }
-  log_info("HAL Waiting for input from %d device(s): %s", i, s);
+  log_debug("HAL Waiting for input from %d device(s): %s", i, s);
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 

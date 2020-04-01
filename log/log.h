@@ -18,7 +18,7 @@ typedef void (*log_LockFn)(void *udata, int lock);
 enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
 //#define LOG_LEVEL_MIN   0       /* Allow all logging messages */
-#define LOG_LEVEL_MIN   3       /* Increase to 3 removes any non warning messages for better performance  */
+#define LOG_LEVEL_MIN   2       /* Increase to removes non-warning messages for better performance  */
 
 #if LOG_TRACE >= LOG_LEVEL_MIN
   #define log_trace(...) log_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
@@ -35,7 +35,7 @@ enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 #endif
 
 #if LOG_INFO >= LOG_LEVEL_MIN
-  #define log_info(...)  log_log(LOG_INFO,  __FILE__, __LINE__, __VA_ARGS__)
+  #define log_info(...) log_log(LOG_INFO,  __FILE__, __LINE__, __VA_ARGS__)
 #else
   #define log_info(...)
 #endif

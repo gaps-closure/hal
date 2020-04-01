@@ -5,7 +5,7 @@
 #endif
 
 #if LOG_DEBUG >= LOG_LEVEL_MIN
-  #define log_halmap_debug(root, fn) log_log_halmap(LOG_DEBUG, halmap *map_root, const char *fn)
+  #define log_halmap_debug(root, fn) log_log_halmap(LOG_DEBUG, root, fn)
 #else
   #define log_halmap_debug(root, fn)
 #endif
