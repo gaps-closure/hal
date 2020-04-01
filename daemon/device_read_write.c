@@ -217,7 +217,6 @@ void select_add(int fd, int *maxrfd, fd_set *readfds){
 int select_init(device *dev_linked_list_root, fd_set *readfds) {
   device     *d;             /* Temporary device pointer */
   int         maxrfd;        /* Maximum file descriptor number for select */
-  static int  do_once=1;
   int         i=0;
   char        s[256]="", str_new[64];
   
@@ -226,26 +225,25 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if (d->enabled != 0) {
       select_add(d->readfd, &maxrfd, readfds);
-      if (do_once) {
-        sprintf(str_new, "%s(fd=%d) ", d->id, d->readfd);
-        strcat(s, str_new);
-      }
+      sprintf(str_new, "%s(fd=%d) ", d->id, d->readfd);
+      strcat(s, str_new);
       i++;
     }
   }
   log_info("HAL Waiting for input from %d device(s): %s", i, s);
-  if (do_once) do_once = 0;
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 
 /* Wait for input from any read interface */
 void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   int       nunready, nready;
-  int       maxrfd;        /* Maximum file descriptor number for select */
-  fd_set    readfds;       /* File descriptor set for select */
+  int       maxrfd;                   /* Maximum file descriptor number for select */
+  fd_set    readfds, readfds_saved;   /* File descriptor set for select */
 
+  maxrfd = select_init(devs,  &readfds_saved);
   while (1) {
-    maxrfd = select_init(devs,  &readfds);
+//    maxrfd = select_init(devs,  &readfds);
+    readfds = readfds_saved;
     nunready=0;
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
     if (sel_verbose) log_trace("Select found n=%d ready (max=%d)\n", nready, maxrfd);

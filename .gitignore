@@ -2,3 +2,4 @@
 *.a
 *.so
 *_log*
+*.DS_Store
