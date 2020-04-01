@@ -57,9 +57,7 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
     log_set_fp(fp);
   }
   if (file_name_stats != NULL) {
-    log_trace("Openning Stats file: %s", file_name_stats);
-    fp = fopen(file_name_stats, "w+");
-    log_set_stats_fp(fp);
+    log_trace("TODO: Openning Stats file: %s", file_name_stats);
   }
   log_debug("HAL options: fc=%s fl=%s fs=%s lev=%d quiet=%d wait_us=%d", file_name_config, file_name_log, file_name_stats, log_level, hal_quiet, hal_wait_us);
   
@@ -78,7 +76,7 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   /* d) Initialize signal handler, then Wait for input */
   signal(SIGINT, sigintHandler);
   root_dev = devs;
-  read_wait_loop(devs, map, hal_quiet, hal_wait_us);
+  read_wait_loop(devs, map, hal_wait_us);
 }
 
 /**********************************************************************/

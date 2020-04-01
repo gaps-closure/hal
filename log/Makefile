@@ -1,5 +1,5 @@
 CC          = gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes
+CFLAGS      = -O2 -Wall -Wstrict-prototypes -g -pg
 
 all:  log.o
 

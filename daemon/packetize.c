@@ -38,8 +38,7 @@ void pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
   else if (strcmp(idev->model, "sdh_be_v1") == 0) pdu_from_sdh_be_v1 (out, in, len_in);
   else if (strcmp(idev->model, "sdh_be_v2") == 0) pdu_from_sdh_be_v2 (out, in, len_in);
   else if (strcmp(idev->model, "sdh_bw_v1") == 0) pdu_from_sdh_bw_v1 (out, in, len_in);
-  else {fprintf(stderr, "%s: unknown interface model: %s\n", __func__, idev->model); exit(EXIT_FAILURE);}
-//  return (out);
+  else {log_fatal("%s: unknown interface model: %s", __func__, idev->model); exit(EXIT_FAILURE);}
 }
 
 /* Put internal PDU into closure packet (in buf) */
