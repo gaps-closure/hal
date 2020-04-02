@@ -53,6 +53,10 @@ class Stats():
         self.totcnt = 0
         self.totsec = 0
 
+global_stats = {}
+def get_key(d,m,s,t):
+    return '%s-%d-%d-%d' % (d, int(m), int(s), int(t))
+
 def send(m, s, t, r, interval):
     # Context/Socket setup
     makesock = xdc_so.xdc_pub_socket
@@ -63,7 +67,8 @@ def send(m, s, t, r, interval):
     pos = Position(-74.574489, 40.695545, 101.9, ClosureTrailer(0,0,0,0,0))
     dis = Distance(-1.021, 2.334, 0.4)
     tag = GapsTag(int(m),int(s),int(t))
-    stats = Stats()
+    key = get_key('s', m, s, t)
+    global_stats[key] = Stats()
     slock = Lock()
     
     if int(t) == 1:
@@ -78,22 +83,22 @@ def send(m, s, t, r, interval):
         xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), tag)
         slock.acquire()
         stats.wincnt += 1
-        stats.totcnt += 1
         slock.release()
 
     def print_stats(stats,tag,slock):
         stats.totsec += interval
         mst = "%d/%d/%d" % (tag.mux, tag.sec, tag.typ)
         plock.acquire()
-        print("{:5.2f} | send | {:8s} | {:5d} {:7.2f} Hz | {:8d} {:8.2f} Hz".format(stats.totsec, mst, stats.wincnt, stats.wincnt/interval, stats.totcnt, stats.totcnt / stats.totsec))
+        print("{:5.2f}s | send | {:8s} | {:5d} {:7.2f} Hz | {:8d} {:8.2f} Hz".format(stats.totsec, mst, stats.wincnt, stats.wincnt/interval, stats.totcnt + stats.wincnt, (stats.totcnt + stats.wincnt) / stats.totsec))
         plock.release()
         slock.acquire()
+        stats.totcnt += stats.wincnt
         stats.wincnt = 0
         slock.release()
         
-    rtmr = RptTimer(1.0/float(r),task,[stats, slock])
+    rtmr = RptTimer(1.0/float(r),task,[global_stats[key], slock])
     rtmr.start()
-    stmr = RptTimer(interval, print_stats, [stats,tag, slock])
+    stmr = RptTimer(interval, print_stats, [global_stats[key], tag, slock])
     stmr.start()
         
 def recv(m, s, t, interval):
@@ -108,27 +113,28 @@ def recv(m, s, t, interval):
     makesock = xdc_so.xdc_sub_socket
     makesock.restype = c_void_p
     sock = makesock(tag)
-    stats = Stats()
+    key = get_key('r', m, s, t)
+    global_stats[key] = Stats()
     rlock = Lock()
 
     def print_stats(stats,tag,rlock):
         stats.totsec += interval
         mst = "%d/%d/%d" % (tag.mux, tag.sec, tag.typ)
         plock.acquire()
-        print("{:5.2f} | recv | {:8s} | {:5d} {:7.2f} Hz | {:8d} {:8.2f} Hz".format(stats.totsec, mst, stats.wincnt, stats.wincnt/interval, stats.totcnt, stats.totcnt / stats.totsec))
+        print("{:5.2f}s | recv | {:8s} | {:5d} {:7.2f} Hz | {:8d} {:8.2f} Hz".format(stats.totsec, mst, stats.wincnt, stats.wincnt/interval, stats.totcnt + stats.wincnt, (stats.totcnt + stats.wincnt) / stats.totsec))
         plock.release()
         rlock.acquire()
+        stats.totcnt += stats.wincnt
         stats.wincnt = 0
         rlock.release()
 
-    stmr = RptTimer(interval,print_stats,[stats,tag,rlock])
+    stmr = RptTimer(interval,print_stats,[global_stats[key],tag,rlock])
     stmr.start()
 
     while True:
         xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag))
         rlock.acquire()
-        stats.wincnt += 1
-        stats.totcnt += 1
+        global_stats[key].wincnt += 1
         rlock.release()
 
         
@@ -156,32 +162,39 @@ if __name__ == '__main__':
     xdc_so.xdc_register(gma_so.position_data_encode, gma_so.position_data_decode, DATA_TYP_POS)
     xdc_so.xdc_register(gma_so.distance_data_encode, gma_so.distance_data_decode, DATA_TYP_DIS)
 
-    threads = []
+    start = time.time()
     if args.send:
         for s in args.send:
             s.append(float(args.interval))
             t = Thread(args=s, target=send)
-            threads.append(t)
             t.start()
 
     if args.recv:
         for r in args.recv:
             r.append(float(args.interval))
             t = Thread(args=r, target=recv)
-            threads.append(t)
             t.start()
 
+
+    def print_totals():
+        end = time.time()
+        print("\n\nMESSAGE TOTALS\n------")
+        for key in global_stats:
+            (d,m,s,t) = key.split('-')
+            d = 'sent' if d == 's' else 'received'
+            print('%s/%s/%s - %s %d messages' % (m,s,t,d,global_stats[key].totcnt + global_stats[key].wincnt))
+        print('elapsed time: %.2fs' % (end - start))
+
     def self_kill():
+        print_totals()
         os.kill(os.getpid(), signal.SIGKILL)
 
     if float(args.t) != 0:
         tm = Timer(float(args.t), self_kill)
         tm.start()
 
-
     while True:        
         try:
             time.sleep(99999)
         except KeyboardInterrupt:
             self_kill()
-            
