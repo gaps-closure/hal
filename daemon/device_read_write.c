@@ -42,7 +42,7 @@ pdu *codec(halmap *h, pdu *ipdu) {
 /* HAL Device Read and Write  */
 /**********************************************************************/
 void devs_stat_print(device *devs) {
-  char   s[256]="", char  str_new[64];
+  char   s[256]=""; char  str_new[64];
   
   for(device *d = devs; d != NULL; d = d->next) {
     if (d->enabled != 0) {
