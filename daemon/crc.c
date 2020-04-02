@@ -70,7 +70,7 @@ void tryfcs16(uint16_t *fcstab) {
 
   /* check on input */
   trialfcs = pppfcs16(fcstab, PPPINITFCS16, cp, len + 2 );
-  if ( trialfcs == 0x0f47 ) printf("Good FCS\n");
+//  if ( trialfcs == 0x0f47 ) printf("Good FCS\n");
   else printf("Bad FCS %04x\n", trialfcs);
 }
 
