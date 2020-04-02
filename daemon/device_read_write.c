@@ -242,6 +242,17 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
     readfds = readfds_saved;
     nunready=0;
     if((nready = select(maxrfd, &readfds, NULL, NULL, NULL)) == -1) perror("select()");
+    if (nready < 0) {
+      log_error("Select error rv=%d errno=%d\n", nready, errno);
+      if (errno == EINTR) log_error("EINTR: A signal was caught");
+      // fprintf(stderr, "Other error codes: %d %d %d", ENOMEM, EINVAL, EBADF);
+      // EBADF invalid file descriptor in the set. (closed, or errored)
+      // EINVAL  nfds is negative or the value contained withintimeout is invalid.
+      // ENOMEM  unable to allocate memory for internal tables
+      // exit(EXIT_FAILURE);
+      break;
+    }
+    
     if (sel_verbose) log_trace("Select found n=%d ready (max=%d)\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {

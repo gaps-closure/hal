@@ -1,5 +1,5 @@
 CC          = gcc    # GMON_OUT_PREFIX=mygmon; gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes -g -pg
+CFLAGS      = -O2 -Wall -Wstrict-prototypes # -g -pg
 
 LDFLAGS     = -lconfig
 LDLIBS      = -lzmq   # -L../codecs -lpnt
