@@ -94,6 +94,12 @@ device *get_devices(config_t *cfg) {
       ret[i].count_r  =  0;
       ret[i].count_w  =  0;
 
+      /*
+      for(int j = 0; j < SN_LIST_WINDOW_SIZE; j++) {
+        ret[i].sn_list_r[j]=-1;
+        ret[i].sn_list_w[j]=-1;
+      }
+      */
       ret[i].next     = i < count - 1 ? &ret[i+1] : (device *) NULL;
     }
   }

@@ -41,6 +41,18 @@ pdu *codec(halmap *h, pdu *ipdu) {
 /**********************************************************************/
 /* HAL Device Read and Write  */
 /**********************************************************************/
+void devs_stat_print(device *devs) {
+  char   s[256]="", char  str_new[64];
+  
+  for(device *d = devs; d != NULL; d = d->next) {
+    if (d->enabled != 0) {
+      sprintf(str_new, "[%s r=%d w=%d] ", d->id, d->count_r, d->count_w);
+      strcat(s, str_new);
+    }
+  }
+  log_debug("%s", s);
+}
+
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
@@ -133,7 +145,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
     exit(EXIT_FAILURE);
   }
   (odev->count_w)++;
-  
+
   (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
   log_debug("HAL writes %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
   log_buf_trace("Packet", buf, pkt_len);
@@ -186,15 +198,6 @@ int process_input(int ifd, halmap *map, device *devs) {
   }
   
   write_pdu(odev, &(h->to), ipdu);
-
-  char  s[256]="";
-  char  str_new[64];
-  for(device *d = devs; d != NULL; d = d->next) {
-    if (d->enabled != 0) {
-      sprintf(str_new, "[%s r=%d w=%d] ", d->id, d->count_r, d->count_w);
-      strcat(s, str_new);
-    }
-  }
   pdu_delete(ipdu);
   return (0);
 }
@@ -250,7 +253,6 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
       // EINVAL  nfds is negative or the value contained withintimeout is invalid.
       // ENOMEM  unable to allocate memory for internal tables
       // exit(EXIT_FAILURE);
-      break;
     }
     
     if (sel_verbose) log_trace("Select found n=%d ready (max=%d)\n", nready, maxrfd);

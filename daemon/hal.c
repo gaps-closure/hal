@@ -25,7 +25,7 @@
 device   *root_dev;
 void sigintHandler(int sig_num)
 {
-  char        s[256]="", str_new[64];
+  char   s[256]="", str_new[64];
 
   for(device *d = root_dev; d != NULL; d = d->next) {
     if (d->enabled != 0) {

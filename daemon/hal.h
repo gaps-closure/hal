@@ -19,6 +19,8 @@
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */
 /*********t************************************************************/
+// #define SN_LIST_WINDOW_SIZE 1000
+
 /* HAL Interface parameters (linked list) */
 typedef struct _dev {
   int         enabled;
@@ -42,6 +44,8 @@ typedef struct _dev {
   int         writefd;
   int         count_r;
   int         count_w;
+//  int         sn_list_r[SN_LIST_WINDOW_SIZE];
+//  int         sn_list_w[SN_LIST_WINDOW_SIZE];
   struct _dev *next;
 } device;
 
