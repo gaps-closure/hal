@@ -51,8 +51,8 @@ typedef struct _dev {
 
 /* HAL Selector (used in HAL map entries and PDUs) */
 typedef struct _sel {
-  const char *dev;
-  int         ctag;     /* Compressed (combined) message tag (0 = use daps_tag ) */
+  const char *dev;      /* points to ID of device */
+  int         ctag;     /* Compressed message tag (0 = use gaps_tag ) */
   gaps_tag    tag;
 } selector;
 

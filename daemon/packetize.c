@@ -30,7 +30,7 @@ void pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in) {
 
 /* Write packet into internal PDU */
 void pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
-  out->psel.dev = strdup(idev->id);
+  out->psel.dev  = strdup(idev->id);
   out->psel.ctag = -1;
     
   if      (strcmp(idev->model, "sdh_ha_v1") == 0) pdu_from_sdh_ha_v1 (out, in);

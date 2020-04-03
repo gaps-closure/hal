@@ -156,6 +156,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 /**********************************************************************/
 /* Free memory allocated for PDU */
 void pdu_delete(pdu *pdu) {
+  free((char *) pdu->psel.dev);  /* Device ID string (from strdup in 'pdu_from_packet')*/
   free(pdu);
 }
 
