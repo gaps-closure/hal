@@ -189,6 +189,7 @@ int process_input(int ifd, halmap *map, device *devs) {
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
     log_warn("%s: Device %s not found for output\n", __func__,  h->to.dev);
+    pdu_delete(ipdu);
     return (0);
   }
 
