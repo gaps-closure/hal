@@ -56,14 +56,14 @@ void devs_stat_print(device *devs) {
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
-  int             pkt_len=0;
-  pdu            *ret = NULL;
-  static uint8_t  buf[PACKET_MAX];
-  int             fd;
-  const char     *com_type;
-  socklen_t       sock_len;
-  struct sockaddr_in socaddr_in;
-  
+  int                 pkt_len=0;
+  pdu                *ret = NULL;
+  static uint8_t      buf[PACKET_MAX];
+  int                 fd;
+  const char         *com_type;
+  struct sockaddr_in  socaddr_in;
+  socklen_t           sock_len = sizeof(socaddr_in);
+
   /* a) read input into buf and get its length (with input dev_id and fd) */
   fd = idev->readfd;
   com_type = idev->comms;
