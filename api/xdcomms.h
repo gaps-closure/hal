@@ -58,8 +58,6 @@ extern void len_decode (size_t *, uint32_t);
 
 // Main HAL API functions
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
-extern void xdc_asyn_sendX(void *send_buf, gaps_tag tag);
-extern void xdc_blocking_recvX(void *recv_buf, gaps_tag *tag);
 extern char *xdc_set_in(char *);  /* addr = NULL returns current value, non-NULL sets the value */
 extern char *xdc_set_out(char *);
 
@@ -67,7 +65,7 @@ extern void *xdc_ctx(void);
 extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket(gaps_tag tag);
 
-extern void xdc_asyn_send(void *socket, void *adu, gaps_tag tag);
+extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);
 extern void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag);
 
 #endif

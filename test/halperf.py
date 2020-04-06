@@ -82,7 +82,7 @@ def send(m, s, t, r, interval):
     
     def task(stats,slock):
         adu.z += 0.1
-        xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), tag)
+        xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag))
         slock.acquire()
         stats.wincnt += 1
         slock.release()

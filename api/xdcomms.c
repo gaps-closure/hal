@@ -144,34 +144,12 @@ void * z_connect(int type, const char *dest) {
 /*
  * Send ADU to HAL (which should be listening on the ZMQ subscriber socket)
  */
-void xdc_asyn_sendX(void *adu, gaps_tag tag) {
-  static int   do_once = 1;
-  static void *socket;
-  sdh_ha_v1    packet, *p=&packet;
-  size_t       packet_len;
-  static char  addr[50];
-  
-  if (do_once == 1) {    /* a) Open connection with HAL ZMQ subscriber */
-    strcpy(addr, xdc_set_out(NULL));
-    socket = z_connect(ZMQ_PUB, addr);
-    do_once = 0;
-  }
-
-  size_t adu_len;         /* Size of ADU is calculated by encoder */
-  gaps_data_encode(p, &packet_len, adu, &adu_len, &tag);
-  // fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
-  // tag_print(&tag, stderr);
-  // fprintf(stderr, "len=%ld ", adu_len);
-  log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
-  zmq_send (socket, (void *) p, packet_len, 0);
-}
-
-void xdc_asyn_send(void *socket, void *adu, gaps_tag tag) {
+void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   sdh_ha_v1    packet, *p=&packet;
   size_t       packet_len;
   
   size_t adu_len;         /* Size of ADU is calculated by encoder */
-  gaps_data_encode(p, &packet_len, adu, &adu_len, &tag);
+  gaps_data_encode(p, &packet_len, adu, &adu_len, tag);
   // fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
   // tag_print(&tag, stderr);
   // fprintf(stderr, "len=%ld ", adu_len);
@@ -236,57 +214,6 @@ void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
 
     size_t adu_len;
     gaps_data_decode(p, size, adu, &adu_len, tag);
-}
-
-void xdc_blocking_recvX(void *adu, gaps_tag *tag) {
-  void *socket;
-  int          err;
-  sdh_ha_v1    packet, *p=&packet;
-  int          size;
-  gaps_tag     tag4filter;
-  char  addr[50];
-  void *ctx;
-
-  /* a) Open connection with HAL ZMQ publisher */
-  strcpy(addr, xdc_set_in(NULL));
-
-  ctx = zmq_ctx_new ();
-printf("1 -- %d\n", tag->typ);
-  if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
-printf("1.1 -- %d\n", tag->typ);
-  socket = zmq_socket(ctx, ZMQ_SUB);
-printf("1.2 -- %d\n", tag->typ);
- if(socket == NULL) exit_with_zmq_error("zmq_socket");
-printf("1.2 -- %d\n", tag->typ);
- err = zmq_connect(socket, addr);
-printf("2 -- %d\n", tag->typ);
-  if(err) exit_with_zmq_error("zmq_connect");
-  log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, addr);
-
-  tag_encode(&tag4filter, tag);
-printf("3 -- %d\n", tag->typ);
-  err = zmq_setsockopt (socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
-  assert (err == 0);
-printf("4 -- %d\n", tag->typ);
-  /* b) Get a packet from HAL ZMQ publisher */
-  log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
-  // uint8_t *f = (uint8_t *) &tag4filter;
-  // for (int i=0; i < RX_FILTER_LEN; i++) fprintf(stderr, "%.02x", *(f++));
-  // fprintf(stderr, ")\n");
- printf("4.5 -- %d\n", tag->typ);
- size = zmq_recv (socket, (uint8_t *) p, sizeof(sdh_ha_v1), 0);
-printf("4.7 -- %d\n", tag->typ);
-  log_buf_trace("API recv packet", (uint8_t *) p, size);
-
-printf("5 -- %d\n", tag->typ);
-  /* c) Decode information from packet */
-  size_t adu_len;  // TODO: remove
-printf("6 -- %d\n", tag->typ);
-  gaps_data_decode(p, size, adu, &adu_len, tag);
-
-  /* Housekeep */
-  zmq_close(socket);
-  zmq_ctx_destroy(ctx);
 }
 
 /*
