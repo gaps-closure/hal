@@ -31,6 +31,21 @@ make clean; make
 ```
 Some SDH devices also require installation of a device driver via an associated kernel module. Consult the GAPS Device provider's documentation.
 
+#### Static Binaries ####
+
+To build a static version of you may need the additional packages for the included minimized static build of zmq
+```
+sudo apt install -y liblzma-dev
+sudo apt install -y libunwind-dev
+sudo apt install -y libsodium-dev
+```
+
+Once you have these dependencies you should simply need to run
+
+```
+make clean; make static
+```
+
 ### Configure/Run HAL on Target Hardware
 
 An instance of HAL daemon runs on each host or server that directly utilizes the SDH (cross-domain host), and requires a configuration file. If GAPS devices are already configured on enclave hosts in the target environment, we can simply start HAL daemon with the appropriate configuration file in each enclave host:
