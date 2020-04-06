@@ -7,6 +7,8 @@ import time
 from ctypes import *
 from threading import Thread, Timer, Lock
 
+verbose = False
+
 # Open C shared libs to the datatypes; TODO: make spec-driven
 xdc_so = None
 gma_so = None
@@ -84,6 +86,10 @@ def send(m, s, t, r, interval):
         slock.acquire()
         stats.wincnt += 1
         slock.release()
+        if verbose:
+            plock.acquire()
+            print('%f sent_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
+            plock.release()
 
     def print_stats(stats,tag,slock):
         stats.totsec += interval
@@ -136,6 +142,10 @@ def recv(m, s, t, interval):
         rlock.acquire()
         global_stats[key].wincnt += 1
         rlock.release()
+        if verbose:
+            plock.acquire()
+            print('%f recv_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
+            plock.release()
 
         
 if __name__ == '__main__':
@@ -148,10 +158,14 @@ if __name__ == '__main__':
     parser.add_argument('-o', metavar=('URI'), help="out URI (default=ipc:///tmp/halsub1)", default='ipc:///tmp/halsub1')
     parser.add_argument('--interval', help="reporting interval, default=10s", default=10)
     parser.add_argument('-t', help="duration of test in seconds, if not specified, runs indefinitely", default=0)
+    parser.add_argument('-v', help="verbose mode, logs every message", action='store_true', default=False)
     args = parser.parse_args()
 
     xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
     gma_so = CDLL(args.l + '/libgma.so')
+
+    # Check verbose mode
+    verbose = True if args.v == True else False
 
     # Set the URIs for ZMQ
     xdc_so.xdc_ctx() 
