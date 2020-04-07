@@ -6,15 +6,11 @@ Based on its conifguration file, the HAL daemon will:
 - Translate HAL tags in packet headers, based on the configured interface packet model.
 
 ## HAL Architecture
-The HAL Service runs as a daemon, typically started by a systemd script at boot time, supporting multiple applications and Cross Domain Gaurd (CDG).  Each application communicates with the application or guard through on of its high-level interaces (e.g., xdd0 and xdd1), which can include one or more: 
-- Serial devices carrying TCP/IP packets (e.g., tty0).
-- Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
-- ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
-In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
+The HAL Service runs as a daemon, typically started by a systemd script at boot time, supporting multiple applications and Cross Domain Gaurds (CDGs).  
 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
-The HAL daemon has the following major components:
+The HAL daemon, shown in the figure above, has three major components:
 - **Device Manager** which opens, configures and manages multiple types of interfaces (real or emualted):
 - Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
   - Reading and writing packets, waiting for received packets on all the opened read interfaces and transmitting packets back out onto a write interface.
@@ -22,8 +18,13 @@ The HAL daemon has the following major components:
 - **Message Functions**, which transform and control packets passing through HAL. Currenlty supported function include:
   - Conversion to and from the internal HAL format (containing tag and ADU) and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding.
 
-
 HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
+
+HAL communicates with the application or guard through on of its high-level interaces (e.g., xdd0 and xdd1), which can include one or more: 
+- Serial devices carrying TCP/IP packets (e.g., tty0).
+- Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
+- ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
+In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 
 
 #### HAL Command Options
