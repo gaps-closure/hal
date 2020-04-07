@@ -7,12 +7,15 @@ Based on its configuration file, the HAL daemon will:
 
 To start the HAL daemon look at the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
 
+
 ## Contents
 
 - [HAL Architecture](#hal-architecture)
 - [HAL Interface](#hal-interfaces)
 - [HAL tag](#HAL-tag)
 - [HAL Daemon Command Options](#HAL-Daemon-Command-Options)
+- [HAL Configuration file](HAL-Configuration-file)
+
 
 ## HAL Architecture
 The HAL Service runs as a daemon, whicn can be [started manually](../README.md#configurerun-hal-on-target-hardware) or started by a systemd script at boot time.  
@@ -72,10 +75,10 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 
 ## HAL Configuration file
 The HAL configuration files have two main sections:
-- the halmap routing rules, where each rule specifies a unidirectional link with a *from_* and *to_*
-field with the HAL Interface ID and the packet's tag value.
-- the device configuration specifies the addresses, communication modes and device paths
-for each HAL interface.
+- The map section has the halmap routing rules, where each rule specifies a unidirectional link 
+with a *from_* and *to_* field with the HAL Interface ID and the packet's tag value.
+- The device section, which  specifies the addresses, communication modes and device paths
+configuration for each HAL interface.
 The [test directory](../test/) has examples of configuration files (with a .cfg) extension.  
 
 ## Notes
