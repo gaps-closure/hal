@@ -7,13 +7,12 @@ Based on its conifguration file, the HAL daemon will:
 
 To start the HAL daemon look at the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
 
-
 ## HAL Architecture
-The HAL Service runs as a daemon, typically started by a systemd script at boot time, supporting multiple applications and Cross Domain Gaurds (CDGs).  
+The HAL Service runs as a daemon, whicn can be [started manually](../README.md#configurerun-hal-on-target-hardware) or started by a systemd script at boot time.  
 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
-The HAL daemon, shown in the figure above, has three major components:
+The HAL daemon is shown in the figure above. It supports multiple applications and Cross Domain Gaurds (CDGs) using three major components:
 - **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
 - **Device Manager**, which opens, configures and manages the different types of interfaces (real or emualted):
   - Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
