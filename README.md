@@ -126,7 +126,7 @@ HAL runs as a single daemon on the host, supporting multiple applications and GA
 
 The HAL daemon has the following major components:
 - [API](api/) to applications (*xdcomms C library*), which provide the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
-- [Data Plane Switch](daemon/), which forwards data to the correct interface based based on the arriving packet's [**tag**](#HAL-tag) and the HAL configuration file mapping (**halmap**) rules.
+- [Data Plane Switch](daemon/), which forwards data to the correct interface based on the arriving packet's [**tag**](#HAL-tag) and the HAL configuration file mapping (**halmap**) rules.
 - [Packetizer](daemon/), which converts between the internal HAL format (containing [tag](#HAL-tag) and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
 - [Device read and write](daemon/), which wait for packets on all the opened read devices and forward them based on the halmap forwarding table specified in the configuration file.
 - [Device Manager](daemon/), which opens the devices specified in the configuration file. It also provisions the CDGs with security policies. 
