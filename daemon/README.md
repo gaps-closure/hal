@@ -2,7 +2,7 @@
 This README describes the Hardware Abstraction Layer (HAL) daemon that will:
 - Open, configure and manage interfaces, based on the *devices-spec* in the configuration file.
 - Route packets between interfaces, based on the configured *halmap* in the configuration file.
-- Translate HAL [*tags*](#HAL-tag) in packet headers
+- Provide messaging functions, including translating between different packet formats.
 
 To run the HAL daemon, see the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
 
