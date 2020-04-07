@@ -11,20 +11,20 @@ The HAL Service runs as a daemon, typically started by a systemd script at boot 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
 The HAL daemon, shown in the figure above, has three major components:
-- **Device Manager** which opens, configures and manages multiple types of interfaces (real or emualted):
-- Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
-  - Reading and writing packets, waiting for received packets on all the opened read interfaces and transmitting packets back out onto a write interface.
-- **Data Plane Switch**, which forwards data to the correct interface (e.g., from xdd0 to xdd1) based based on the arriving packet's tag and the HAL configuration file unidirectional mapping rules (**halmap**).
+- **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's tag value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
+- **Device Manager**, which opens, configures and manages the different types of interfaces (real or emualted):
+  - Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
+  - Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
 - **Message Functions**, which transform and control packets passing through HAL. Currenlty supported function include:
-  - Conversion to and from the internal HAL format (containing tag and ADU) and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding.
-
-HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
-
+  - Tag translation between the internal HAL format and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c) and [packetize_sdh_bw_v1.h](packetize_sdh_bw_v1.h).
+  
 HAL communicates with the application or guard through on of its high-level interaces (e.g., xdd0 and xdd1), which can include one or more: 
 - Serial devices carrying TCP/IP packets (e.g., tty0).
 - Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
 - ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
-In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
+In the figure above, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
+
+HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
 
 
 #### HAL Command Options
@@ -44,7 +44,6 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 
 Note that:
 - If there are multiple HAL daemon instances on a node, then they must use different interaces.
-- Packet formats and their encoding and decoding functions are spefcified in daemon files: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c)  and [packetize_sdh_bw_v1.h]](packetize_sdh_bw_v1.h).
 
 Planned HAL extensions include:
 - Configuring the cross domain guards.
