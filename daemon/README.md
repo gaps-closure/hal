@@ -5,7 +5,8 @@ Based on its conifguration file, the HAL daemon will:
 - Route packets between interfaces, based on the configured *halmap*.
 - Translate HAL [*tags*](#HAL-tag) in packet headers, based on the configured interface packet model.
 
-To start the HAL daemon look at the [Quick Start Guide](..#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
+To start the HAL daemon look at the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
+
 
 ## HAL Architecture
 The HAL Service runs as a daemon, typically started by a systemd script at boot time, supporting multiple applications and Cross Domain Gaurds (CDGs).  
@@ -63,6 +64,6 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 If there are multiple HAL daemon instances on a node, then they must use different interaces.
 
 Planned HAL extensions include:
-- Configuring the cross domain guards.
-- Performing ADU encoding/decoding.
 - Mediating  exchange between the application and the guard devices, handling the multiplexing/demultiplexing, segmentation/reassembly and rate control, as applicable.
+- Configuring the cross domain guards.
+- Performing device-speciic ADU encoding/decoding.
