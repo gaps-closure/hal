@@ -1,11 +1,12 @@
 ## HAL Daemon
-This daemon directory contains the Hardware Abstraction Layer (HAL) Service.
+The daemon directory contains the Hardware Abstraction Layer (HAL) Service components.
 The HAL Service runs as a daemon 
 (typically started by a systemd script at boot time).  
-Based on its conifguration file HAL:
-. Opens, configures and manages multiple types of interfaces (real or emualted).
-. Routes packets between any pair or interfaces, based on the configured *halmap*.
-. Translates the HAL tags (packet headers), based on the configured interface packet model.
+
+Based on its conifguration file, the HAL daemon will:
+- Open, configure and manages multiple types of interfaces.
+- Routes packets between interfaces, based on the configured *halmap*.
+- Translates the HAL tags (in packet headers), based on the configured interface packet model.
 
 ## HAL Architecture
 HAL runs as one or more daemon on a host machine. Each daemon supports multiple applications and GAPS devices, through its interfaces. If there are multiple HAL instances on a node, each must use a unique set of interaces.
@@ -16,15 +17,16 @@ the HAL coniguratin file speciies the high-level interaces (e.g., xdd0 and xdd1)
 
 In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 
-![HAL interfaces between applications and Network Interfaces.](../hal_api.png)
+![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
 The HAL daemon has the following major components:
+- **Device Manager** which opens, configures and manages multiple types of interfaces  (real or emualted):
+- Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
+  - Reading and writing packets, waiting for received packets on all the opened read interfaces and transmitting packets back out onto a write interface.
 - **Data Plane Switch**, which forwards data to the correct interface (e.g., from xdd0 to xdd1) based based on the arriving packet's tag and the HAL configuration file mapping rules (**halmap**).
 - **Message Functions**, which transform and control packets passing through HAL. Currenlty supported function include:
   - Conversion to and from the internal HAL format (containing tag and ADU) and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding.
-- **Device Manager** which opens, configures and manages multiple types of interfaces:
-- Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
-  - Reading and writing packets, waiting for received packets on all the opened read interfaces and transmitting packets back out onto a write interface.
+
 
 HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
 
