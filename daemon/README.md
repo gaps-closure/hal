@@ -42,8 +42,8 @@ OPTIONS: are one of the following:
 CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 ```
 
-Note that:
-- If there are multiple HAL daemon instances on a node, then they must use different interaces.
+## Notes
+If there are multiple HAL daemon instances on a node, then they must use different interaces.
 
 Planned HAL extensions include:
 - Configuring the cross domain guards.
