@@ -3,7 +3,7 @@ The daemon directory contains the Hardware Abstraction Layer (HAL) Service compo
 Based on its configuration file, the HAL daemon will:
 - Open, configure and manage multiple interfaces.
 - Route packets between interfaces, based on the configured *halmap*.
-- Translate HAL [*tags*](#HAL-tag) in packet headers, based on the configured interface packet model.
+- Translate HAL [*tags*](#HAL-tag) in packet headers, based on the configured *devices-spec*.
 
 To start the HAL daemon look at the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
 
@@ -24,7 +24,7 @@ The HAL Service runs as a daemon, whicn can be [started manually](../README.md#c
 
 The HAL daemon is shown in the figure above supports multiple applications and Cross Domain Guards (CDGs). It provides three major functions:
 - **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
-- **Device Manager**, which opens, configures and manages the different types of interfaces (real or emulated):
+- **Device Manager**, which opens, configures and manages the different types of interfaces (real or emulated) based on the configuration file's device specification (**devices-spec**):
   - Opening the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
   - Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
 - **Message Functions**, which transform and control packets passing through HAL. Currently supported function include:
@@ -75,10 +75,10 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 
 ## HAL Configuration file
 The HAL configuration files have two main sections:
-- The device section, which  specifies the addresses, communication modes and device paths
-configuration for each HAL interface.
-- The map section has the halmap routing rules, where each rule specifies a unidirectional link 
-with a *from_* and *to_* field with the HAL Interface ID and the packet's tag value.
+
+- **devices-spec**, which specifies the addresses, communication modes and device paths configuration for each HAL interface.
+- **halmap** routing rules for each allowed unidirectional link, 
+with *from_* and *to_* fields for the HAL Interface ID and the packet's tag value.
 
 The [test directory](../test/) has examples of configuration files (with a .cfg) extension.  
 
