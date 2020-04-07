@@ -1,29 +1,24 @@
 ## HAL Daemon
 The daemon directory contains the Hardware Abstraction Layer (HAL) Service components.
-The HAL Service runs as a daemon 
-(typically started by a systemd script at boot time).  
-
 Based on its conifguration file, the HAL daemon will:
-- Open, configure and manages multiple types of interfaces.
-- Routes packets between interfaces, based on the configured *halmap*.
-- Translates the HAL tags (in packet headers), based on the configured interface packet model.
+- Open, configure and manage multiple interfaces.
+- Route packets between interfaces, based on the configured *halmap*.
+- Translate HAL tags in packet headers, based on the configured interface packet model.
 
 ## HAL Architecture
-HAL runs as one or more daemon on a host machine. Each daemon supports multiple applications and GAPS devices, through its interfaces. If there are multiple HAL instances on a node, each must use a unique set of interaces.
-the HAL coniguratin file speciies the high-level interaces (e.g., xdd0 and xdd1), which can include one or more:
-. Serial devices carrying TCP/IP packets (e.g., tty0).
-. Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
-. ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
-
+The HAL Service runs as a daemon, typically started by a systemd script at boot time, supporting multiple applications and Cross Domain Gaurd (CDG).  Each application communicates with the application or guard through on of its high-level interaces (e.g., xdd0 and xdd1), which can include one or more: 
+- Serial devices carrying TCP/IP packets (e.g., tty0).
+- Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
+- ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
 In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
 The HAL daemon has the following major components:
-- **Device Manager** which opens, configures and manages multiple types of interfaces  (real or emualted):
+- **Device Manager** which opens, configures and manages multiple types of interfaces (real or emualted):
 - Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
   - Reading and writing packets, waiting for received packets on all the opened read interfaces and transmitting packets back out onto a write interface.
-- **Data Plane Switch**, which forwards data to the correct interface (e.g., from xdd0 to xdd1) based based on the arriving packet's tag and the HAL configuration file mapping rules (**halmap**).
+- **Data Plane Switch**, which forwards data to the correct interface (e.g., from xdd0 to xdd1) based based on the arriving packet's tag and the HAL configuration file unidirectional mapping rules (**halmap**).
 - **Message Functions**, which transform and control packets passing through HAL. Currenlty supported function include:
   - Conversion to and from the internal HAL format (containing tag and ADU) and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding.
 
@@ -46,15 +41,11 @@ OPTIONS: are one of the following:
 CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 ```
 
-
-Packet formats can be spefcified per device instance (in the conifg file). 
-The packet format and translation programs are contained in separate files
-(packetize_XXX.c and packetize_XXX.h).
+Note that:
+- If there are multiple HAL daemon instances on a node, then they must use different interaces.
+- Packet formats and their encoding and decoding functions are spefcified in daemon files: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c)  and [packetize_sdh_bw_v1.h]](packetize_sdh_bw_v1.h).
 
 Planned HAL extensions include:
-. Configuring the cross domain guards.
-. Performing any ADU encoding/decoding.
-. Mediating  exchange between the application and the guard devices, handling the multiplexing/demultiplexing, segmentation/reassembly and rate control, as applicable.
-
-
-
+- Configuring the cross domain guards.
+- Performing ADU encoding/decoding.
+- Mediating  exchange between the application and the guard devices, handling the multiplexing/demultiplexing, segmentation/reassembly and rate control, as applicable.
