@@ -3,7 +3,7 @@ The daemon directory contains the Hardware Abstraction Layer (HAL) Service compo
 Based on its conifguration file, the HAL daemon will:
 - Open, configure and manage multiple interfaces.
 - Route packets between interfaces, based on the configured *halmap*.
-- Translate HAL tags in packet headers, based on the configured interface packet model.
+- Translate HAL [*tags*](#HAL-tag) in packet headers, based on the configured interface packet model.
 
 ## HAL Architecture
 The HAL Service runs as a daemon, typically started by a systemd script at boot time, supporting multiple applications and Cross Domain Gaurds (CDGs).  
@@ -11,7 +11,7 @@ The HAL Service runs as a daemon, typically started by a systemd script at boot 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
 The HAL daemon, shown in the figure above, has three major components:
-- **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's tag value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
+- **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
 - **Device Manager**, which opens, configures and manages the different types of interfaces (real or emualted):
   - Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
   - Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
@@ -26,8 +26,23 @@ In the figure above, HAL's left interface connects to the applications, while it
 
 HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
 
+## HAL Tag
+HAL packets from the applicaiton contain only the Application Data Unit (ADU) and a small HAL tag in the packet header.
+The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
+- **mux** is a session multiplexing handle used to identify a unidirectional applicaiton flow.
+- **sec** identifies a CDG security policy used to processing an ADU. 
+- **typ** identifies the type of ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
 
-#### HAL Command Options
+HAL encodes the application tags into the format used by the network (GAPS device):
+- The **Application tag**, which is used by the applicaitons (on the left side of HAL).
+- The **Network tag**, which is used by the CDG components in the network, and contained in the network packets (on the right side of HAL).
+
+HAL uses the tag to know how to route data to the correct interface using its configuration file mapping (**halmap**) rules. Also, the:
+- Sending HAL will map the Applicaiton tag into the Network tag using its *halmap* rules.
+- Receiving HAL will map the Network tag back into an Applicaiton tag using its *halmap* rules.
+
+
+## HAL Daemon Command Options
 To see the HAL daemon command options, run with the -h option.  Below shows the current options:
 ```
 amcauley@jaga:~/gaps/hal$ daemon/hal -h
