@@ -20,17 +20,16 @@ The HAL daemon is shown in the figure above supports multiple applications and C
 - **Message Functions**, which transform and control packets passing through HAL. Currenlty supported function include:
   - Tag translation between the internal HAL format and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c) and [packetize_sdh_bw_v1.h](packetize_sdh_bw_v1.h).
   
-In the figure above, HAL's left interface connects to the applications, while its right interfaces connect 
-(through the host's devices) to the CDGs (residing either as a 
-*bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
-HAL communicates with the application or guard through on of its high-level interaces (e.g., xdd0 and xdd1), 
-which can include one or more: 
+In the figure above, HAL's left interface (xdd0) connects to the applications, while its right interfaces 
+(e.g., xdd1) connect (through the host's devices) to the CDGs 
+(residing either as a  *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
+HAL communicates with the application or guard using its host interaces, which include: 
 - Serial devices carrying TCP/IP packets (e.g., tty0).
 - Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
 - ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
 
 
-HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
+HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
 
 ## HAL Tag
 HAL packets from the applicaiton contain only the Application Data Unit (ADU) and a small HAL tag in the packet header.
