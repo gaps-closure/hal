@@ -77,8 +77,7 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 The HAL configuration files have two main sections:
 
 - **devices-spec**, which specifies the addresses, communication modes and device paths configuration for each HAL interface.
-- **halmap** routing rules for each allowed unidirectional link, 
-with *from_* and *to_* fields for the HAL Interface ID and the packet's tag value.
+- **halmap** routing rules for each allowed unidirectional link. Each rule has *from_* and *to_* fields for the: a) HAL Interface ID and b) packet's tag value.
 
 The [test directory](../test/) has examples of configuration files (with a .cfg) extension.  
 
