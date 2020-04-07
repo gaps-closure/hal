@@ -9,7 +9,6 @@ This repository is maintained by Perspecta Labs.
 ## Contents
 
 - [Quick Start Guide](#quick-start-guide)
-- [HAL Architecture](#hal-architecture)
 - [HAL Installation and Usage](#hal-installation-and-usage)
 
 ## Quick Start Guide
@@ -120,39 +119,6 @@ hal/test$ sudo pkill -f "nc -klu"
 hal/test$ sudo pkill -f "nc -u"
 ```
 
-## HAL Architecture
-HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
-
-![HAL interfaces between applications and Network Interfaces.](hal_api.png)
-
-The HAL daemon has the following major components:
-- [API](api/) to applications (*xdcomms C library*), which provide the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
-- [Data Plane Switch](daemon/), which forwards data to the correct interface based on the arriving packet's [**tag**](#HAL-tag) and the HAL configuration file mapping (**halmap**) rules.
-- [Packetizer](daemon/), which converts between the internal HAL format (containing [tag](#HAL-tag) and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
-- [Device read and write](daemon/), which wait for packets on all the opened read devices and forward them based on the halmap forwarding table specified in the configuration file.
-- [Device Manager](daemon/), which opens the devices specified in the configuration file. It also provisions the CDGs with security policies. 
-
-
-Also included in the HAL directory are [test](test/) programs, which includes:
-- **Application test**, which provides an example of sending and receiving different data types through HAL.
-- **Halperf**, which emulates an application sending and receiving data through HAL at a specified rate. It also collects performance statistics.
-- **HAL configuration files**, which a) define the supported device configurations, and b) define the halmap forwarding rules.
-- **Simple network emulation**, which emulate the HAL devices and the remote HAL.
-
-### HAL Tag
-HAL communication contains only the Application Data Unit (ADU) and a small HAL tag.
-The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
-- **mux** is a session multiplexing handle used to identify a unidirectional applicaiton flow.
-- **sec** identifies a CDG security policy used to processing an ADU. 
-- **typ** identifies the type of ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
-
-There are tags on the application side and tags on the network (GAPS device) side:
-- The **Application tag**, which is used by the applicaitons and contained in the application packets (on the left side of HAL).
-- The **Network tag**, which is used by the CDG components in the network, and contained in the network packets (on the right side of HAL).
-
-HAL uses the tag to know how to route data to the correct interface using its configuration file mapping (**halmap**) rules. Also, the:
-- Sending HAL will map the Applicaiton tag into the Network tag using its *halmap* rules.
-- Receiving HAL will map the Network tag back into an Applicaiton tag using its *halmap* rules.
 
 ## HAL Installation and Usage
 
