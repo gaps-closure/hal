@@ -14,7 +14,7 @@ To start the HAL daemon look at the [Quick Start Guide](../README.md#quick-start
 - [HAL Interface](#hal-interfaces)
 - [HAL tag](#HAL-tag)
 - [HAL Daemon Command Options](#HAL-Daemon-Command-Options)
-- [HAL Configuration file](HAL-Configuration-file)
+- [HAL Configuration file](#HAL-Configuration-file)
 
 
 ## HAL Architecture
