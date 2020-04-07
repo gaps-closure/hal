@@ -1,28 +1,27 @@
 ## HAL Daemon
-The daemon directory contains the Hardware Abstraction Layer (HAL) Service components.
-Based on its configuration file, the HAL daemon will:
-- Open, configure and manage multiple interfaces.
-- Route packets between interfaces, based on the configured *halmap*.
-- Translate HAL [*tags*](#HAL-tag) in packet headers, based on the configured *devices-spec*.
+This README describes the Hardware Abstraction Layer (HAL) daemon that will:
+- Open, configure and manage interfaces, based on the *devices-spec* in the configuration file.
+- Route packets between interfaces, based on the configured *halmap* in the configuration file.
+- Translate HAL [*tags*](#HAL-tag) in packet headers
 
-To start the HAL daemon look at the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
+To run the HAL daemon, see the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
 
 
 ## Contents
 
-- [HAL Architecture](#hal-architecture)
+- [HAL Daemon Architecture](#hal-daemon-architecture)
 - [HAL Interface](#hal-interfaces)
 - [HAL tag](#HAL-tag)
 - [HAL Daemon Command Options](#HAL-Daemon-Command-Options)
 - [HAL Configuration file](#HAL-Configuration-file)
 
 
-## HAL Architecture
+## HAL Daemon Architecture
 The HAL Service runs as a daemon, whicn can be [started manually](../README.md#configurerun-hal-on-target-hardware) or started by a systemd script at boot time.  
 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
-The HAL daemon is shown in the figure above supports multiple applications and Cross Domain Guards (CDGs). It provides three major functions:
+The HAL daemon shown in the figure above supports multiple applications and Cross Domain Guards (CDGs). It provides three major functions:
 - **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
 - **Device Manager**, which opens, configures and manages the different types of interfaces (real or emulated) based on the configuration file's device specification (**devices-spec**):
   - Opening the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
