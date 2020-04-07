@@ -127,7 +127,7 @@ hal/test$ sudo pkill -f "nc -u"
 See [Download Sources, Build, and Install](#download-sources-build-and-install) for required steps.
 
 ### Run HAL
-Starting the HAL daemon (see  [Command Options](daemon#HAL-Daemon-Command-Options)) requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
+Starting the HAL daemon requires specifying a HAL configuration file and any [options](daemon#HAL-Daemon-Command-Options). The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
 
 #### HAL Loopback Mode
 At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
