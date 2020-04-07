@@ -1,28 +1,30 @@
 ## HAL Daemon
 This daemon directory contains the Hardware Abstraction Layer (HAL) Service.
 The HAL Service runs as a daemon 
-(typically will be started by a systemd script at boot time).  
+(typically started by a systemd script at boot time).  
 Based on its conifguration file HAL:
 . Opens, configures and manages multiple types of interfaces (real or emualted).
-. Routes packets between any pair or interfaces (based on the configured route map).
-. Translates the HAL packet headers (based on the interface packet model).
+. Routes packets between any pair or interfaces, based on the configured *halmap*.
+. Translates the HAL tags (packet headers), based on the configured interface packet model.
 
 ## HAL Architecture
-HAL runs as one or more daemon on the host. Each daemon supports multiple applications and GAPS devices, which we refer to as network interfaces in this document. If there are multiple HAL instances, they must use diferent devices.
-The devices can be:
- Serial devices (e.g., tty0) carrying TCP/IP packets.
-. Network devices (e.g., eth0) carrying either UDP or TCP packets (in client and/or server mode).
-. ZeroMQ pub/sub with the applications.
+HAL runs as one or more daemon on a host machine. Each daemon supports multiple applications and GAPS devices, through its interfaces. If there are multiple HAL instances on a node, each must use a unique set of interaces.
+the HAL coniguratin file speciies the high-level interaces (e.g., xdd0 and xdd1), which can include one or more:
+. Serial devices carrying TCP/IP packets (e.g., tty0).
+. Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
+. ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
 
 In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's devices) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 
 ![HAL interfaces between applications and Network Interfaces.](../hal_api.png)
 
 The HAL daemon has the following major components:
-- **Data Plane Switch**, which forwards data to the correct interface based based on the arriving packet's tag and the HAL configuration file mapping (**halmap**) rules.
-- **Packetizer**, which converts between the internal HAL format (containing tag and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
-- **Device read and write**, which wait for packets on all the opened read devices and forward them based on the halmap forwarding table specified in the configuration file.
-- **Device Manager**, which opens the devices specified in the configuration file. It also provisions the CDGs with security policies. 
+- **Data Plane Switch**, which forwards data to the correct interface (e.g., from xdd0 to xdd1) based based on the arriving packet's tag and the HAL configuration file mapping rules (**halmap**).
+- **Message Functions**, which transform and control packets passing through HAL. Currenlty supported function include:
+  - Conversion to and from the internal HAL format (containing tag and ADU) and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding.
+- **Device Manager** which opens, configures and manages multiple types of interfaces:
+- Openning the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
+  - Reading and writing packets, waiting for received packets on all the opened read interfaces and transmitting packets back out onto a write interface.
 
 HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
 
