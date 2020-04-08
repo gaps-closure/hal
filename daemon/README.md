@@ -13,7 +13,7 @@ To run the HAL daemon, see the [Quick Start Guide](../README.md#quick-start-guid
 - [HAL Interface](#hal-interfaces)
 - [HAL tag](#HAL-tag)
 - [HAL Daemon Command Options](#HAL-Daemon-Command-Options)
-- [HAL Configuration file](#HAL-Configuration-file)
+- [HAL Configuration](#HAL-Configuration)
 
 
 ## HAL Daemon Architecture
@@ -75,7 +75,7 @@ OPTIONS: are one of the following:
 CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 ```
 
-## HAL Configuration file
+## HAL Configuration
 The HAL daemon configuration uses a libconfig File, which contains:
 - **devices-spec**, which specifies the device configuration for each HAL interface, including:
   - Device IDs (e.g., xdd1), 

@@ -70,7 +70,7 @@ In summary, the application links to the HAL data-plane client API library (`lib
 
 Eventually we will provide a number of additional API calls to: (i) generate configuration for HAL daemon and the GAPS Devices (CDG) at provision-time; (ii) apply these configurations to HAL and the GAPS Devices. Currently these are configured offline by the system administrator, however, future versions will support auto-generation of CDG configurations, and dynamic provisioning of these configurations into the CDG. 
 
-The [HAL daemon configuration](../daemon#HAL-Configuration-file) uses a libconfig File, which contains HAL maps (routes) and Device configurations.
+The [HAL daemon configuration](../daemon#HAL-Configuration) uses a libconfig File, which contains HAL maps (routes) and Device configurations.
 
 The Cross Domain Guard (CDG) provision-time configuration will include:
 * DFDL schema file describing the framing for each GAPS Device including headers, application datatypes, and trailers.
