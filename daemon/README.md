@@ -37,9 +37,12 @@ In the figure above, HAL's left interface (xdd0) connects to the applications, w
 HAL communicates with the application or guard using its host interfaces, which include: 
 - Serial devices carrying TCP/IP packets (e.g., tty0).
 - Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
-- ZeroMQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
+- 0MQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
 
-HAL's interface to applications is through the [HAL-API](../api/). This *xdcomms C library* provides the high-level interface used by applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](../appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
+HAL's interface to applications is through the [HAL-API](../api/) *xdcomms C library*,
+which currently supports a 0MQ pub/sub interface.
+HAL provides two listening 0MQ sokets: a publish and subscribe sockets.
+
 
 ## HAL Tag
 HAL packets from the application contain only the Application Data Unit (ADU) and a small HAL tag in the packet header.

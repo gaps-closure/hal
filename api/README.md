@@ -1,6 +1,11 @@
 ## HAL API
 Partitioned application programs use the HAL API to communicate data through the GAPS Devices, which we call Cross-Domain Gateways (CDGs), as well as to configure their control planes. The data-plane client API (currently implemented) is primarily of interest to cross-domain application developers, whereas the control-plane API (to be implemented) will pertain to GAPS device developers.
 
+### Contents
+
+- [HAL Data-Plane Client API](#HAL-Data-Plane-Client-API)
+- [HAL Control-Plane API](#HAL-Control-Plane-API)
+
 ### HAL Data-Plane Client API
 
 The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, providing a single high-level interace to support all cross-domain communication (xdc) between security enclaves. The client API is available as a library that cross-domain applications can link to. We describe the high level API here, and several lower-level calls are available (see `xdcomms.h`).
@@ -15,22 +20,31 @@ extern char *xdc_set_in(char * address);
 extern char *xdc_set_out(char *address);
 ```
 
-Additionally, the application must register (de-)serialization codec functions for all the datatypes that can be sent over the CDG. The `hal/appgen` directory will include a number of such codec functions, which are generated from the application. Once registered, the correct codec will be selected and invoked when data is sent or received by HAL.
+Additionally, the application must register (de-)serialization codec functions for all the datatypes that can be sent over the CDG. The [hal/appgen](../appgen/) directory will include a number of such codec functions, which are generated from the application. Once registered, the correct codec will be selected and invoked when data is sent or received by HAL.
 
 ```
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 ```
 
-Currently, the HAL API supports two codecs, which allow sending poistion and distance information. These codecs are available by linking with the [appgen/libgma.a](appgen/libgma.a) (or libgma.so) library and including [appgen/gma.h](appgen/gma.h).
+Currently, the HAL API supports two codecs, which allow sending poistion and distance information. These codecs are available by linking the application with the appgen/libgma.a (or appgen/libgma.so) library and including [appgen/gma.h](../appgen/gma.h).
 ```
 xdc_register(position_data_encode, position_data_decode, DATA_TYP_POSITION);
 xdc_register(distance_data_encode, distance_data_decode, DATA_TYP_DISTANCE);
 ```
 #### Initialize Send and Recv Sockets
+The 0MQ pub/sub sockets must be initialized before sending and receiving cross-domain data. The application client API provides the following functions to initialize the sockets:
+
+```
+extern void *xdc_ctx(void);
+extern void *xdc_pub_socket(void);
+extern void *xdc_sub_socket(gaps_tag tag);
+```
+
+The first function creates the 0MQ context, while the latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the pub socket) and  receive (on the sub socket) data. With the sub scoket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
 
 
 #### Send and Recv ADUs
-Once the configuration and initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item to be sent or received.
+Once the configuration and socket initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item to be sent or received.
 
 ```
 typedef struct _tag {
