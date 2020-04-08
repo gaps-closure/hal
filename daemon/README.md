@@ -49,7 +49,7 @@ HAL packets from the application contain only the Application Data Unit (ADU) an
 The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
 - **mux** is a session multiplexing handle used to identify a unidirectional application flow.
 - **sec** identifies a CDG security policy used to processing an ADU. 
-- **typ** identifies the type of ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
+- **typ** identifies the type of ADU (based on DFDL xsd definition). This tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
 
 HAL encodes the application tags into the format used by the network (GAPS device):
 - The **Application tag**, which is used by the applications (on the left side of HAL).

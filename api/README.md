@@ -40,11 +40,11 @@ extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket(gaps_tag tag);
 ```
 
-The first function creates the 0MQ context, while the latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the pub socket) and  receive (on the sub socket) data. With the sub scoket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
+The first function creates the 0MQ context, while the latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) and  receive (on the API sub socket) data. With the sub scoket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
 
 
 #### Send and Recv ADUs
-Once the configuration and socket initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item to be sent or received.
+Once the configuration and socket initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the [HAL application tag](../daemon#hal-tag) for the data item to be sent or received.
 
 ```
 typedef struct _tag {
@@ -53,11 +53,6 @@ typedef struct _tag {
   uint32_t    typ;      /* data type */
 } gaps_tag;
 ```
-
-The `gaps_tag` structure provides three orthogonal identifiers:
-. a) Session multiplexing (mux), which acts as a local handle to identify the applicaiton. The mux value is the same for the send and recv calls.
-. b) CDG security (sec), selects which security policies will be used to processing sent data. It also gives the security rules that were used to process received data. 
-. c) ADU type (typ) describes the data (based on DFDL xsd definition). This tells HAL how to serialize the ADU. The CDG can also use this information to process (e.g., downgrade) the ADU contents.
 
 Although a number of communication patterns are envisioned, currently,  asynchronous send and a blocking receive (blocks until a message matching the specified tag is received) are supported. These client-side calls are mapped to the pub/sub endpoints that are supported by the HAL daemon.
 
