@@ -4,17 +4,12 @@ This README describes the Hardware Abstraction Layer (HAL) daemon that will:
 - Route packets between interfaces.
 - Provide messaging functions, including translating between packet formats.
 
-HAL Configuration is currently done using a configuration file,
-specified when starting the HAL daemon (see the 
-[Quick Start Guide](../README.md#quick-start-guide) and 
-[HAL Installation and Usage](../README.md#hal-installation-and-usage)).
-
 
 ## Contents
 
 - [HAL Daemon Architecture](#hal-daemon-architecture)
 - [HAL Interface](#hal-interfaces)
-- [HAL tag](#HAL-tag)
+- [HAL Tag](#HAL-tag)
 - [HAL Daemon Command Options](#HAL-Daemon-Command-Options)
 - [HAL Configuration](#HAL-Configuration)
 
@@ -85,18 +80,24 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 ```
 
 ## HAL Configuration
-The HAL daemon configuration uses a libconfig File, which contains:
+HAL Configuration currently uses a a libconfig file specified when starting the HAL daemon
+(see the [Quick Start Guide](../README.md#quick-start-guide) and 
+[HAL Installation and Usage](../README.md#hal-installation-and-usage)).
+
+The HAL daemon configuration file contains two sections:
 - **devices-spec**, which specifies the device configuration for each HAL interface, including:
-  - Device IDs (e.g., xdd1), 
-  - addresses and ports
-  - communication modes 
-  - device paths configuration 
-  - Max packet size (HAL may perform Segment and Reassemble (SAR)).
-  - Max rate (bits/second).
+  - device IDs (e.g., xdd1), 
+  - enable flag,
+  - packet format,
+  - communication mode,
+  - device paths,
+  - [optional] addresses and ports,
+  - [optional] max packet size (HAL may perform Segment and Reassemble (SAR)),
+  - [optional] max rate (bits/second).
 - **halmap** routing rules and message functions applied to each allowed unidirectional link.
-  - *from_* fields specifying the inbound HAL Interface ID and packet tag values.
-  - *to_* fields specifying the outbound HAL Interface ID and packet tag values.
-  - Message functions specific to this path (e.g., ADU codec).
+  - *from_* fields specifying the inbound HAL Interface ID and packet tag values,
+  - *to_* fields specifying the outbound HAL Interface ID and packet tag values,
+  - message functions specific to this path (e.g., ADU codec).
 
 
 The [test directory](../test/) has examples of configuration files (with a .cfg) extension. Note that, if there are multiple HAL daemon instances on a node (e.g., for testing), then they must be configured with different interfaces.
