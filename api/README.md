@@ -7,11 +7,12 @@ The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, provi
 
 The application needs to perform some initialization steps before it can send and receive data.
 
+#### Configure Socket Addresses and Register ADU coders
 The HAL architecture will support a multitude of application communication patterns. The current version of HAL implements the 0MQ pub/sub pattern, and there are URIs associated for the 0MQ publish and subscribe endpoints bound by the HAL daemon. The application client API provides the following functions to set these endpoint URIs that the HAL daemon is configured with, so that they can be used to send and receive data.
 
 ```
-extern char *xdc_set_in(char *);
-extern char *xdc_set_out(char *);
+extern char *xdc_set_in(char * address);
+extern char *xdc_set_out(char *address);
 ```
 
 Additionally, the application must register (de-)serialization codec functions for all the datatypes that can be sent over the CDG. The `hal/appgen` directory will include a number of such codec functions, which are generated from the application. Once registered, the correct codec will be selected and invoked when data is sent or received by HAL.
@@ -20,7 +21,16 @@ Additionally, the application must register (de-)serialization codec functions f
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 ```
 
-Once the initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item to be sent or received.
+Currently, the HAL API supports two codecs, which allow sending poistion and distance information. These codecs are available by linking with the [appgen/libgma.a](appgen/libgma.a) (or libgma.so) library and including [appgen/gma.h](appgen/gma.h).
+```
+xdc_register(position_data_encode, position_data_decode, DATA_TYP_POSITION);
+xdc_register(distance_data_encode, distance_data_decode, DATA_TYP_DISTANCE);
+```
+#### Initialize Send and Recv Sockets
+
+
+#### Send and Recv ADUs
+Once the configuration and initialization steps are completed, the application can send and receive data. Since the codecs handle the (de-)serialization, applications can conveniently send and receive data using pointers to in-memory data structures. However, the application must provide the HAL application tag (`gaps_tag`) for the data item to be sent or received.
 
 ```
 typedef struct _tag {
@@ -44,7 +54,8 @@ extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
 
 In future versions of this API, we plan to support additional send and receive communication patterns including asynchronous receive calls using one-shot or repeated callbacks that can be registered by the application, sending a tagged request and receiving a reply matching the tag, suport for a stream of sequenced messages with in-order delivery, etc.
 
-In summary, the application links to the HAL data-plane client API library (`libxdcomms.a`). Upon startup, the application initializes the URIs for the 0MQ endpoints, registers codecs for the application datatypes, and then sends and receives data using pointers to in-memory data structures and associated tags. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
+#### Data API Summary
+In summary, the application links to the HAL data-plane client API library (`libxdcomms.a`). Upon startup, the application initializes the URIs for the 0MQ endpoints, registers codecs for the application datatypes, and initializes the send and recv sockets. The applicaiton can then sends and receives data using pointers to in-memory data structures and associated tags. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
 
 ### HAL Control-Plane API
 

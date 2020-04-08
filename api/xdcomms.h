@@ -48,23 +48,23 @@ extern codec_map  cmap[DATA_TYP_MAX];
 
 /* Minor exposed function prototypes */
 extern void tag_print (gaps_tag *, FILE *);
-extern void data_print(const char *, uint8_t *, size_t);
-extern void tag_write (gaps_tag *, uint32_t,   uint32_t,   uint32_t);
-extern void tag_read  (gaps_tag *, uint32_t *, uint32_t *, uint32_t *);
+extern void data_print (const char *, uint8_t *, size_t);
+extern void tag_write  (gaps_tag *, uint32_t,   uint32_t,   uint32_t);
+extern void tag_read   (gaps_tag *, uint32_t *, uint32_t *, uint32_t *);
 extern void tag_encode (gaps_tag *, gaps_tag *);
 extern void tag_decode (gaps_tag *, gaps_tag *);
 extern void len_encode (uint32_t *, size_t);
 extern void len_decode (size_t *, uint32_t);
 
-// Main HAL API functions
+// 1) Configure the ADU coders and addresses
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
-extern char *xdc_set_in(char *);  /* addr = NULL returns current value, non-NULL sets the value */
-extern char *xdc_set_out(char *);
-
+extern char *xdc_set_in (char *addr);  /* addr = non-NULL sets value, NULL returns value */
+extern char *xdc_set_out(char *addr);
+// 2) Initialize send and recv sockets
 extern void *xdc_ctx(void);
 extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket(gaps_tag tag);
-
+// 3) Send and recv ADUs
 extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);
 extern void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag);
 
