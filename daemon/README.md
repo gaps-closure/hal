@@ -91,11 +91,12 @@ The HAL daemon configuration uses a libconfig File, which contains:
   - addresses and ports
   - communication modes 
   - device paths configuration 
-- **halmap** routing rules and message functions applied to each allowed unidirectional link.
-  - Routing rules use the halmap *from_* and *to_* fields for the: a) HAL Interface ID and b) packet's tag value.
-  -  Message functions  determine any any packet data control and transformations (e.g., ADU codec).
-  - Max packet size (HAL may perform Segment and Reassemble (SAR)), 
+  - Max packet size (HAL may perform Segment and Reassemble (SAR)).
   - Max rate (bits/second).
+- **halmap** routing rules and message functions applied to each allowed unidirectional link.
+  - *from_* fields specifying the inbound HAL Interface ID and packet tag values.
+  - *to_* fields specifying the outbound HAL Interface ID and packet tag values.
+  - Message functions specific to this path (e.g., ADU codec).
 
-The [test directory](../test/) has examples of configuration files (with a .cfg) extension.  
-Note that, if there are multiple HAL daemon instances on a node (e.g., for testing), then they must be configured with different interfaces.
+
+The [test directory](../test/) has examples of configuration files (with a .cfg) extension. Note that, if there are multiple HAL daemon instances on a node (e.g., for testing), then they must be configured with different interfaces.
