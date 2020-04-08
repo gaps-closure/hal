@@ -40,7 +40,7 @@ extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket(gaps_tag tag);
 ```
 
-The first function creates the 0MQ context, while the latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) and  receive (on the API sub socket) data. With the sub scoket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
+The first function creates the 0MQ context. The latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) and  receive (on the API sub socket) data. With the sub scoket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
 
 
 #### Send and Recv ADUs
@@ -70,20 +70,7 @@ In summary, the application links to the HAL data-plane client API library (`lib
 
 Eventually we will provide a number of additional API calls to: (i) generate configuration for HAL daemon and the GAPS Devices (CDG) at provision-time; (ii) apply these configurations to HAL and the GAPS Devices. Currently these are configured offline by the system administrator, however, future versions will support auto-generation of CDG configurations, and dynamic provisioning of these configurations into the CDG. 
 
-The HAL daemon configuration uses a libconfig File, which contains:
-* HAL maps (routes):
-  [fromdev, frommux, fromsec, fromtyp, todev, tomux, tosec, totyp, codec]
-  
-  * Determine how packets are routed from arriving device to a departing device (based on tag information).  
-  Devices include hardware interfaces (e.g., serial or ethernet) and the CLOSURE API.
-  * Determine packet data transformations (codec), based on data-type DFDL schema file name.
-
-* Device configurations:
-  * Device IDs (e.g., /dev/gaps1), 
-  * Devices configuration (e.g., addresses, ports).
-  * GAPS packet header DFDL schema file name.
-  * Max packet size (HAL may perform Segment and Reassemble (SAR)), 
-  * Max rate (bits/second).
+The [HAL daemon configuration](../daemon#HAL-Configuration-file) uses a libconfig File, which contains HAL maps (routes) and Device configurations.
 
 The Cross Domain Guard (CDG) provision-time configuration will include:
 * DFDL schema file describing the framing for each GAPS Device including headers, application datatypes, and trailers.

@@ -76,10 +76,17 @@ CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
 ```
 
 ## HAL Configuration file
-The HAL configuration files have two main sections:
-
-- **devices-spec**, which specifies the addresses, communication modes and device paths configuration for each HAL interface.
-- **halmap** routing rules for each allowed unidirectional link. Each rule has *from_* and *to_* fields for the: a) HAL Interface ID and b) packet's tag value.
+The HAL daemon configuration uses a libconfig File, which contains:
+- **devices-spec**, which specifies the device configuration for each HAL interface, including:
+  - Device IDs (e.g., xdd1), 
+  - addresses and ports
+  - communication modes 
+  - device paths configuration 
+- **halmap** routing rules and message functions applied to each allowed unidirectional link.
+  - Routing rules use the halmap *from_* and *to_* fields for the: a) HAL Interface ID and b) packet's tag value.
+  -  Message functions  determine any any packet data control and transformations (e.g., ADU codec).
+  - Max packet size (HAL may perform Segment and Reassemble (SAR)), 
+  - Max rate (bits/second).
 
 The [test directory](../test/) has examples of configuration files (with a .cfg) extension.  
 
