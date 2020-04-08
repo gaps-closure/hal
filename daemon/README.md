@@ -1,10 +1,13 @@
 ## HAL Daemon
 This README describes the Hardware Abstraction Layer (HAL) daemon that will:
-- Open, configure and manage interfaces, based on the *devices-spec* in the configuration file.
-- Route packets between interfaces, based on the configured *halmap* in the configuration file.
-- Provide messaging functions, including translating between different packet formats.
+- Open, configure and manage interfaces.
+- Route packets between interfaces.
+- Provide messaging functions, including translating between packet formats.
 
-To run the HAL daemon, see the [Quick Start Guide](../README.md#quick-start-guide) and [HAL Installation and Usage](../README.md#hal-installation-and-usage).
+[HAL Configuration](#HAL-Configuration) is done through a configuration file,
+specified when starting the HAL daemon (see the 
+[Quick Start Guide](../README.md#quick-start-guide) and 
+[HAL Installation and Usage](../README.md#hal-installation-and-usage)).
 
 
 ## Contents
@@ -31,8 +34,8 @@ The HAL daemon shown in the figure above supports multiple applications and Cros
   
 ## HAL Interfaces
 
-In the figure above, HAL's left interface (xdd0) connects to the applications, while its right interfaces 
-(e.g., xdd1) connect (through the host's devices) to the CDGs 
+In the figure above, HAL's left interface (xdd0) connects to the applications, 
+while its right interfaces  (e.g., xdd1) connect (through the host's devices) to the CDGs 
 (residing either as a  *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 HAL communicates with the application or guard using its host interfaces, which include: 
 - Serial devices carrying TCP/IP packets (e.g., tty0).
