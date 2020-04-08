@@ -4,7 +4,7 @@ This README describes the Hardware Abstraction Layer (HAL) daemon that will:
 - Route packets between interfaces.
 - Provide messaging functions, including translating between packet formats.
 
-[HAL Configuration](#HAL-Configuration) is done through a configuration file,
+HAL Configuration is currently done using a configuration file,
 specified when starting the HAL daemon (see the 
 [Quick Start Guide](../README.md#quick-start-guide) and 
 [HAL Installation and Usage](../README.md#hal-installation-and-usage)).
@@ -25,12 +25,20 @@ The HAL Service runs as a daemon, whicn can be [started manually](../README.md#c
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
 The HAL daemon shown in the figure above supports multiple applications and Cross Domain Guards (CDGs). It provides three major functions:
-- **Data Plane Switch**, which forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
-- **Device Manager**, which opens, configures and manages the different types of interfaces (real or emulated) based on the configuration file's device specification (**devices-spec**):
-  - Opening the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
-  - Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
-- **Message Functions**, which transform and control packets passing through HAL. Currently supported function include:
-  - Tag translation between the internal HAL format and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c) and [packetize_sdh_bw_v1.h](packetize_sdh_bw_v1.h).
+
+
+### Data Plane Switch
+The **Data Plane Switch** forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
+
+### Device Manager
+The **Device Manager** opens, configures and manages the different types of interfaces (real or emulated) based on the configuration file's device specification (**devices-spec**):
+- Opening the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
+- Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
+  
+### Message Functions
+The  **Message Functions**, which transform and control packets exchanged between the applications and guard devices: 
+- *Tag translation* between the internal HAL format and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c) and [packetize_sdh_bw_v1.h](packetize_sdh_bw_v1.h).
+- *Message mediation* is not currently supported, but may include multiplexing/demultiplexing, segmentation/reassembly and rate control.
   
 ## HAL Interfaces
 
@@ -40,27 +48,25 @@ while its right interfaces  (e.g., xdd1) connect (through the host's devices) to
 HAL communicates with the application or guard using its host interfaces, which include: 
 - Serial devices carrying TCP/IP packets (e.g., tty0).
 - Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
-- 0MQ using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
+- ZeroMQ (0MQ) sockets using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
 
 HAL's interface to applications is through the [HAL-API](../api/) *xdcomms C library*,
 which currently supports a 0MQ pub/sub interface.
-HAL provides two listening 0MQ sokets: a publish and subscribe sockets.
+The HAL API connects to the two (a publish and a subscribe) HAL listening 0MQ sockets.
 
 
 ## HAL Tag
-HAL packets from the application contain only the Application Data Unit (ADU) and a small HAL tag in the packet header.
-The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
+HAL packets from the application contain only the Application Data Unit (ADU) and a 
+HAL packet header. The packet header contains the HAL tag, with three orthogonal 
+32-bit unsigned identifiers: *<mux, sec, typ>*, where:
 - **mux** is a session multiplexing handle used to identify a unidirectional application flow.
 - **sec** identifies a CDG security policy used to processing an ADU. 
 - **typ** identifies the type of ADU (based on DFDL xsd definition). This tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
 
-HAL encodes the application tags into the format used by the network (GAPS device):
-- The **Application tag**, which is used by the applications (on the left side of HAL).
-- The **Network tag**, which is used by the CDG components in the network, and contained in the network packets (on the right side of HAL).
-
-HAL uses the tag to know how to route data to the correct interface using its configuration file mapping (**halmap**) rules. Also, the:
-- Sending HAL will map the Application tag into the Network tag using its *halmap* rules.
-- Receiving HAL will map the Network tag back into an Application tag using its *halmap* rules.
+HAL uses the tag information in the HAL packet header to know how to route data 
+to the correct interface, based on its configuration file mapping (**halmap**) rules.
+- When sending data from the applications (on the left side of HAL in the figure above) into the network (on the right side of HAL), HAL [Message Functions](#Message-Functions) will encode (and possibly translate) the **Application tag** into a **Network tag**.
+- When receiving data from the network, HAL will decode (and possibly translate) the **Network tag** back into an **Application tag** based on its *halmap* rules.
 
 
 ## HAL Daemon Command Options
