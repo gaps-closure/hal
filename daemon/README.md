@@ -20,13 +20,12 @@ specified when starting the HAL daemon (see the
 
 
 ## HAL Daemon Architecture
-The HAL Service runs as a daemon, whicn can be [started manually](../README.md#configurerun-hal-on-target-hardware) or started by a systemd script at boot time.  
+The HAL Service runs as a daemon, whicn can be [started manually](../README.md#configurerun-hal-on-target-hardware) or started by a systemd script at boot time. 
+The figure below shows an example of the HAL daemon supporting multiple applications and Cross Domain Guards (CDGs).
 
 ![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
 
-The HAL daemon shown in the figure above supports multiple applications and Cross Domain Guards (CDGs). It provides three major functions:
-
-
+The figure highlights the three major HAL daemon components:
 ### Data Plane Switch
 The **Data Plane Switch** forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
 
@@ -36,9 +35,10 @@ The **Device Manager** opens, configures and manages the different types of inte
 - Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
   
 ### Message Functions
-The  **Message Functions**, which transform and control packets exchanged between the applications and guard devices: 
+The  **Message Functions** transform and control packets exchanged between the applications and guard devices: 
 - *Tag translation* between the internal HAL format and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c) and [packetize_sdh_bw_v1.h](packetize_sdh_bw_v1.h).
-- *Message mediation* is not currently supported, but may include multiplexing/demultiplexing, segmentation/reassembly and rate control.
+- *Message mediation* is not currently supported, but may include functions such as multiplexing/demultiplexing, segmentation/reassembly and rate control.
+  
   
 ## HAL Interfaces
 
@@ -66,7 +66,7 @@ HAL packet header. The packet header contains the HAL tag, with three orthogonal
 HAL uses the tag information in the HAL packet header to know how to route data 
 to the correct interface, based on its configuration file mapping (**halmap**) rules.
 - When sending data from the applications (on the left side of HAL in the figure above) into the network (on the right side of HAL), HAL [Message Functions](#Message-Functions) will encode (and possibly translate) the **Application tag** into a **Network tag**.
-- When receiving data from the network, HAL will decode (and possibly translate) the **Network tag** back into an **Application tag** based on its *halmap* rules.
+- When receiving data from the network, HAL will decode (and possibly translate) the **Network tag** back into an **Application tag**.
 
 
 ## HAL Daemon Command Options
@@ -98,11 +98,4 @@ The HAL daemon configuration uses a libconfig File, which contains:
   - Max rate (bits/second).
 
 The [test directory](../test/) has examples of configuration files (with a .cfg) extension.  
-
-## Notes
-If there are multiple HAL daemon instances on a node, then they must use different interfaces.
-
-Planned HAL extensions include:
-- Mediating  exchange between the application and the guard devices, handling the multiplexing/demultiplexing, segmentation/reassembly and rate control, as applicable.
-- Configuring the cross domain guards.
-- Performing device-specific ADU encoding/decoding.
+Note that, if there are multiple HAL daemon instances on a node (e.g., for testing), then they must be configured with different interfaces.
