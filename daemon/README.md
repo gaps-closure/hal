@@ -42,7 +42,7 @@ while its right interfaces  (e.g., xdd1) connect (through the host's devices) to
 (residing either as a  *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
 HAL communicates with the application or guard using its host interfaces, which include: 
 - Serial devices carrying TCP/IP packets (e.g., tty0).
-- Network devices carrying either UDP or TCP packets (e.g., eth0) in client and/or server mode).
+- Network devices carrying either UDP or TCP packets (e.g., eth0) in client or server mode).
 - ZeroMQ (0MQ) sockets using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
 
 HAL's interface to applications is through the [HAL-API](../api/) *xdcomms C library*,
