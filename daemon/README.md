@@ -86,7 +86,7 @@ HAL Configuration currently uses a a libconfig file specified when starting the 
 
 The HAL daemon configuration file contains two sections:
 - **devices-spec**, which specifies the device configuration for each HAL interface, including:
-  - device IDs (e.g., xdd1), 
+  - Interface ID (e.g., xdd1), 
   - enable flag,
   - packet format,
   - communication mode,
