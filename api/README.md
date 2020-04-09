@@ -13,7 +13,7 @@ The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, provi
 The application needs to perform some initialization steps before it can send and receive data.
 
 #### Configure Socket Addresses and Register ADU coders
-The HAL architecture will support a multitude of application communication patterns. The current version of HAL implements the 0MQ pub/sub pattern, and there are URIs associated for the 0MQ publish and subscribe endpoints bound by the HAL daemon. The application client API provides the following functions to set these endpoint URIs that the HAL daemon is configured with, so that they can be used to send and receive data.
+The HAL architecture will support a multitude of application communication patterns. The current version of HAL implements the 0MQ pub/sub pattern, which has URIs associated with the 0MQ publish and subscribe endpoints bound to the HAL daemon. The application client API provides the following functions to set these endpoint URIs that the HAL daemon is configured with, so that they can be used to send and receive data.
 
 ```
 extern char *xdc_set_in(char * address);
@@ -26,7 +26,7 @@ Additionally, the application must register (de-)serialization codec functions f
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 ```
 
-Currently, the HAL API supports two codecs, which allow sending poistion and distance information. These codecs are available by linking the application with the appgen/libgma.a (or appgen/libgma.so) library and including [appgen/gma.h](../appgen/gma.h).
+Currently, the HAL API supports two codecs, which allow sending position and distance information. These codecs are available by linking the application with the appgen/libgma.a (or appgen/libgma.so) library and including [appgen/gma.h](../appgen/gma.h).
 ```
 xdc_register(position_data_encode, position_data_decode, DATA_TYP_POSITION);
 xdc_register(distance_data_encode, distance_data_decode, DATA_TYP_DISTANCE);
@@ -40,7 +40,7 @@ extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket(gaps_tag tag);
 ```
 
-The first function creates the 0MQ context. The latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) and  receive (on the API sub socket) data. With the sub scoket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
+The first function creates the 0MQ context. The latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) and  receive (on the API sub socket) data. With the sub socket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
 
 
 #### Send and Recv ADUs
