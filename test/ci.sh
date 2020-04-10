@@ -7,8 +7,7 @@ echo $PWD
 HAL=$PWD
 APP=/home/tchen/build/apps/simple
 
-sudo bash ${HAL}/test/kill_hal_uncond.sh
-
+sudo bash ${HAL}/test/kill_my_hal.sh
 
 ####################################
 # The nc processes at the end of this scrript cause
@@ -66,7 +65,7 @@ disown
 
 popd
 
-sleep 20
+sleep 180
 
 sudo bash ${HAL}/test/kill_my_hal.sh
 
