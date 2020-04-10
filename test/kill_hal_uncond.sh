@@ -44,7 +44,7 @@ function kill_mine {
 }
 
 # LIST
-HAL_USER=$(ps aux | grep 'daemon\/hal' | awk '{print $1}' | sort -u )
+HAL_USER=$(ps aux | grep 'daemon\/hal' | awk '{print $1}' )
 if [ "$1" == "n" ] || [ "$1" == "-n" ]; then
   list_all
   exit
@@ -63,12 +63,13 @@ if [ "$1" == "i" ] || [ "$1" == "-i" ]; then
 fi
 
 # Warn that someone else is using
-if [ -n "$HAL_USER" ] && [ "$HAL_USER" != "$USER" ]; then
-    echo ="$USER"= ="$HAL_USER"=
-  echo "Exiting - Can only have one HAL daemon (and network emulator) per machine: HAL already being run by $HAL_USER"
-  list_all
-  exit
-fi
+#if [ -n "$HAL_USER" ] && [ "$HAL_USER" != "$USER" ]; then
+#  echo "Exiting - Can only have one HAL daemon (and network emulator) per machine: HAL already being run by $HAL_USER"
+#  list_all
+#  exit
+#fi
 
 # Kill my OWN
 kill_mine
+pkill -f "nc -klu"
+pkill -f "nc -u"
