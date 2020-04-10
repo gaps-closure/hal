@@ -14,6 +14,9 @@ ip addr add 10.3.1.1/24 dev eth1
 ip link set eth1 address 00:00:10:03:01:01
 ip link set dev eth1 up 
 
+ip neigh add 10.3.1.1 lladdr 00:00:10:03:01:01 dev eth1
+ip neigh add 10.3.2.1 lladdr 00:00:10:03:02:01 dev eth1
+ip neigh add 10.2.1.1 lladdr 00:00:10:02:01:01 dev eth0
 ip neigh add 10.2.2.1 lladdr 00:00:10:02:02:01 dev eth0
 ip route add 10.2.2.1/32 dev eth0
 
