@@ -13,10 +13,14 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <signal.h>
+#include "../log/log.h"
 
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */
 /*********t************************************************************/
+// #define SN_LIST_WINDOW_SIZE 1000
+
 /* HAL Interface parameters (linked list) */
 typedef struct _dev {
   int         enabled;
@@ -38,13 +42,17 @@ typedef struct _dev {
   struct sockaddr_in socaddr_out;
   int         readfd;
   int         writefd;
+  int         count_r;
+  int         count_w;
+//  int         sn_list_r[SN_LIST_WINDOW_SIZE];
+//  int         sn_list_w[SN_LIST_WINDOW_SIZE];
   struct _dev *next;
 } device;
 
 /* HAL Selector (used in HAL map entries and PDUs) */
 typedef struct _sel {
-  const char *dev;
-  int         ctag;     /* Compressed (combined) message tag (0 = use daps_tag ) */
+  const char *dev;      /* points to ID of device */
+  int         ctag;     /* Compressed message tag (0 = use gaps_tag ) */
   gaps_tag    tag;
 } selector;
 

@@ -8,6 +8,16 @@ function list_all {
   ip addr show | grep inet | grep tap0
 }
 
+function kill_ip {
+  sudo ip link set dev grtap0 down
+  sudo ip link set dev cdgrtap0 down
+  sudo ip link set dev cdortap0 down
+  sudo ip link set dev ortap0 down
+  sudo ip link delete grtap0
+  sudo ip link delete cdgrtap0
+  sudo ip link delete cdortap0
+  sudo ip link delete ortap0
+}
 function kill_all {
   ps aux | grep 'daemon\/hal' | awk '{print $2}' | paste -sd" "  | xargs sudo kill -9 2> /dev/null
   ps aux | grep z[c] | awk '{print $2}' | paste -sd" "  | xargs sudo kill -9 2> /dev/null
@@ -43,6 +53,12 @@ fi
 # KILL ALL
 if [ "$1" == "f" ] || [ "$1" == "-f" ]; then
   kill_all
+  exit
+fi
+
+# KILL IP
+if [ "$1" == "i" ] || [ "$1" == "-i" ]; then
+  kill_ip
   exit
 fi
 

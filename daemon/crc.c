@@ -32,8 +32,8 @@ void table_create(uint16_t *fcstab) {
       v = v & 1 ? (v >> 1) ^ P : v >> 1;
     fcstab[LookupIndex]=v;
   }
-  fprintf(stderr, "creating static uint16_t fcstab[256]: ");
-  fprintf(stderr, "0=%04x 1=%04x 2=%04x ... 255=%04x\n", fcstab[0], fcstab[1], fcstab[2], fcstab[255]);
+//  fprintf(stderr, "CRC: creating table fcstab[256]: ");
+//  fprintf(stderr, "0=%04x 1=%04x 2=%04x ... 255=%04x\n", fcstab[0], fcstab[1], fcstab[2], fcstab[255]);
 }
 
 /*
@@ -70,8 +70,8 @@ void tryfcs16(uint16_t *fcstab) {
 
   /* check on input */
   trialfcs = pppfcs16(fcstab, PPPINITFCS16, cp, len + 2 );
-  if ( trialfcs == 0x0f47 ) printf("Good FCS\n");
-  else printf("Bad FCS %04x\n", trialfcs);
+//  if ( trialfcs == 0x0f47 ) printf("Good FCS\n");
+//  else printf("Bad FCS %04x\n", trialfcs);
 }
 
 /* Caluculated CRC for a given bufer (starting from scratch) */

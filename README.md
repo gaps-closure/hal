@@ -1,5 +1,6 @@
 # Hardware Abstraction Layer
-This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within a security enclave with a simple high-level interface to communicate with application in other enclaves. Based only on the application specified [*tag*](#HAL-tag), HAL routes *cross-domain* communication to its destination via Cross Domain Guard (CDG) hardware (where provisioned security policies are enforced).
+This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within a security enclave with a simple high-level interface to communicate with application in other enclaves. Based only on the application specified [*tag*](daemon#HAL-tag), the [HAL daemon](daemon#hal-daemon) routes *cross-domain* communication to its destination via Cross Domain Guard (CDG) hardware (where provisioned security policies are enforced).
+#hal-architecture
 
 The `master` branch contains the most recent public release software while `develop` contains bleeding-edge updates and work-in-progress features for use by beta testers and early adopters.
 
@@ -8,7 +9,6 @@ This repository is maintained by Perspecta Labs.
 ## Contents
 
 - [Quick Start Guide](#quick-start-guide)
-- [HAL Architecture](#hal-architecture)
 - [HAL Installation and Usage](#hal-installation-and-usage)
 
 ## Quick Start Guide
@@ -31,9 +31,24 @@ make clean; make
 ```
 Some SDH devices also require installation of a device driver via an associated kernel module. Consult the GAPS Device provider's documentation.
 
+#### Static Binaries ####
+
+To build a static version of you may need the additional packages for the included minimized static build of zmq
+```
+sudo apt install -y liblzma-dev
+sudo apt install -y libunwind-dev
+sudo apt install -y libsodium-dev
+```
+
+Once you have these dependencies you should simply need to run
+
+```
+make clean; make static
+```
+
 ### Configure/Run HAL on Target Hardware
 
-An instance of HAL daemon runs on each host or server that directly utilizes the SDH (cross-domain host), and requires a configuration file. If GAPS devices are already configured on enclave hosts in the target environment, we can simply start HAL daemon with the appropriate configuration file in each enclave host:
+An instance of [HAL daemon](daemon#hal-daemon) runs on each host or server that directly utilizes the SDH (cross-domain host), and requires a configuration file. If GAPS devices are already configured on enclave hosts in the target environment, we can simply start HAL daemon with the appropriate configuration file in each enclave host:
 ```
 hal$ daemon/hal test/sample_6modemo_b{e|w}_{orange|green}.cfg # e.g. sample_6modemo_be_orange.cfg
 ```
@@ -104,39 +119,6 @@ hal/test$ sudo pkill -f "nc -klu"
 hal/test$ sudo pkill -f "nc -u"
 ```
 
-## HAL Architecture
-HAL runs as a single daemon on the host, supporting multiple applications and GAPS devices, which we refer to as network interfaces in this document. Some GAPS devices HAL supports are, in fact, serial/character devices, even though we refer to them as network interfaces here. In the figure below, HAL's left interface connects to the applications, while its right interfaces connect (through the host's network interfaces) to the CDGs (residing either as a *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
-
-![HAL interfaces between applications and Network Interfaces.](hal_api.png)
-
-The HAL daemon has the following major components:
-- [API](api/) to applications (*xdcomms C library*), which provide the high-level interface used by Applications to: a) send and receive Application Data Units (ADUs), and b) describe the ADU configuration. Using the ADU configuration description, the API uses the Application generated [Codecs](appgen/) to serialize (or de-serialize) the ADU before sending the packet to (or after receiving a packet from) HAL.
-- [Data Plane Switch](daemon/), which forwards data to the correct interface based based on the arriving packet's [**tag**](#HAL-tag) and the HAL configuration file mapping (**halmap**) rules.
-- [Packetizer](daemon/), which converts between the internal HAL format (containing [tag](#HAL-tag) and ADU) and the different packet formats. Each CDG packet format has a separate sub-components that performs the encoding and decoding to and from the HAL internal format.
-- [Device read and write](daemon/), which wait for packets on all the opened read devices and forward them based on the halmap forwarding table specified in the configuration file.
-- [Device Manager](daemon/), which opens the devices specified in the configuration file. It also provisions the CDGs with security policies. 
-
-
-Also included in the HAL directory are [test](test/) programs, which includes:
-- **Application test**, which provides an example of sending and receiving different data types through HAL.
-- **Halperf**, which emulates an application sending and receiving data through HAL at a specified rate. It also collects performance statistics.
-- **HAL configuration files**, which a) define the supported device configurations, and b) define the halmap forwarding rules.
-- **Simple network emulation**, which emulate the HAL devices and the remote HAL.
-
-### HAL Tag
-HAL communication contains only the Application Data Unit (ADU) and a small HAL tag.
-The tag has three orthogonal identifiers: *<mux, sec, typ>*, where:
-- **mux** is a session multiplexing handle used to identify a unidirectional applicaiton flow.
-- **sec** identifies a CDG security policy used to processing an ADU. 
-- **typ** identifies the type of ADU (based on DFDL xsd definition), which tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
-
-There are tags on the application side and tags on the network (GAPS device) side:
-- The **Application tag**, which is used by the applicaitons and contained in the application packets (on the left side of HAL).
-- The **Network tag**, which is used by the CDG components in the network, and contained in the network packets (on the right side of HAL).
-
-HAL uses the tag to know how to route data to the correct interface using its configuration file mapping (**halmap**) rules. Also, the:
-- Sending HAL will map the Applicaiton tag into the Network tag using its *halmap* rules.
-- Receiving HAL will map the Network tag back into an Applicaiton tag using its *halmap* rules.
 
 ## HAL Installation and Usage
 
@@ -145,20 +127,7 @@ HAL uses the tag to know how to route data to the correct interface using its co
 See [Download Sources, Build, and Install](#download-sources-build-and-install) for required steps.
 
 ### Run HAL
-Starting the HAL daemon requires specifying a HAL configuration file. The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
-
-#### HAL Command Options
-To see the HAL daemon command options, run with the -h option.  Below shows the current options:
-```
-hal$ daemon/hal -h
-Hardware Abstraction Layer (HAL) for gaps CLOSURE project
-Usage: hal [OPTIONS]... CONFIG-FILE
-OPTIONS: are one of the following:
- -h --help : print this message
- -v --hal_verbose : print debug messages to stderr
- -w --hal_verbose : device not ready (EAGAIN) wait time (microseconds) - default 1000us (-1 exits if not ready)
-CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
-```
+Starting the HAL daemon requires specifying a HAL configuration file and any [options](daemon#HAL-Daemon-Command-Options). The [test directory](test/) has examples of configuration files (with a .cfg) extension. 
 
 #### HAL Loopback Mode
 At its simplest, we can start HAL to echo send requests made back on the application interface. Loopback mode is enabled by specifying the loopback configuration file [test/sample_loopback.cfg](test/sample_loopback.cfg)
@@ -182,7 +151,7 @@ HAL map list (0x5597a6af8150):
 HAL Waiting for input on fds, 3
 ```
 #### HAL Test Driver (halperf.py)
-We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
+We provide an easy to use utility, <b>halperf.py</b>, for sending and receiving Mission App datatypes (Position/Distance) while utilizing HAL and SDH. halperf constructs an in-memory instance of the datatype, provides it to HAL with appropriate application [tag](daemon#hal-tag), HAL maps it to the configured SDH, constructs the on-wire format, and releases a frame to the SDH. The receive-side HAL unrolls the frame and provides it to the receiving halperf instance.
 ```
 usage: halperf.py [-h] [-s MUX SEC TYP RATE] [-r MUX SEC TYP] [-l PATH]
                   [-x PATH] [-i URI] [-o URI]

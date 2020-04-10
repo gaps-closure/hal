@@ -1,27 +1,103 @@
 ## HAL Daemon
-This daemon directory contains the Hardware Abstraction Layer (HAL) Service.
-The HAL Service runs as a daemon (typically started by a systemd script at boot 
-time).  Based on its conifguration file HAL:
-. Opens, configures and manages multiple types of interfaces (real or emualted).
-. Routes packets between any pair or interfaces (based on the configured route map).
-. Translates the HAL packet headers (based on the interface packet model).
+This README describes the Hardware Abstraction Layer (HAL) daemon that will:
+- Open, configure and manage interfaces.
+- Route packets between interfaces.
+- Provide messaging functions, including translating between packet formats.
 
-The types of intefaces supported currently include:
-. Serial devices (e.g., tty0) carrying TCP/IP packets.
-. Network devices (e.g., eth0) carrying either UDP or TCP packets (in client and/or server mode).
-. ZeroMQ pub/sub with the applications.
 
-The HAL directory contains two example coniguration file (based on a libconfig format):
-. Loopback example, useful for local testing of the API ([sample_loopback.cfg](../sample_loopback.cfg)).
-. Network example, with multiple network devices 
-([sample.cfg](../sample.cfg)).
+## Contents
 
-Packet formats can be spefcified per device instance (in the conifg file). 
-The packet format and translation programs are contained in separate files
-(packetize_XXX.c and packetize_XXX.h).
+- [HAL Daemon Architecture](#hal-daemon-architecture)
+- [HAL Interface](#hal-interfaces)
+- [HAL Tag](#HAL-tag)
+- [HAL Daemon Command Options](#HAL-Daemon-Command-Options)
+- [HAL Configuration](#HAL-Configuration)
 
-Planned HAL extensions include:
-. Configuring the cross domain guards.
-. Performing any ADU encoding/decoding.
-. Mediating  exchange between the application and the guard devices, handling the multiplexing/demultiplexing, segmentation/reassembly and rate control, as applicable.
 
+## HAL Daemon Architecture
+The HAL Service runs as a daemon, whicn can be [started manually](../README.md#configurerun-hal-on-target-hardware) or started by a systemd script at boot time. 
+The figure below shows an example of the HAL daemon supporting multiple applications and Cross Domain Guards (CDGs).
+
+![HAL interfaces between applications and Network Interfaces.](figure_HAL_daemon.png)
+
+The figure highlights the three major HAL daemon components:
+### Data Plane Switch
+The **Data Plane Switch** forwards packets (containing a tag and ADU) from one interface to another (e.g., from xdd0 to xdd1). Its forwarding in based on the arriving packet's interface name, the packet's [*tag*](#HAL-tag) value, and the HAL configuration file unidirectional mapping rules (**halmap**).  
+
+### Device Manager
+The **Device Manager** opens, configures and manages the different types of interfaces (real or emulated) based on the configuration file's device specification (**devices-spec**):
+- Opening the devices specified in the configuration file, using each one's specified addressing/port and communication mode. 
+- Reading and writing packets. It waits for received packets on all the opened read interfaces (using a select() function) and transmits packets back out onto the halmap-specified write interface.
+  
+### Message Functions
+The  **Message Functions** transform and control packets exchanged between the applications and guard devices: 
+- *Tag translation* between the internal HAL format and the different CDG packet formats. Each CDG packet format has a separate HAL sub-component that performs the tag encoding and decoding: e.g., [packetize_sdh_bw_v1.c](packetize_sdh_bw_v1.c) and [packetize_sdh_bw_v1.h](packetize_sdh_bw_v1.h).
+- *Message mediation* is not currently supported, but may include functions such as multiplexing/demultiplexing, segmentation/reassembly and rate control.
+  
+  
+## HAL Interfaces
+
+In the figure above, HAL's left interface (xdd0) connects to the applications, 
+while its right interfaces  (e.g., xdd1) connect (through the host's devices) to the CDGs 
+(residing either as a  *bookend* (BE) on the same host as HAL or as a *bump-in-the-wire* (BW).
+HAL communicates with the application or guard using its host interfaces, which include: 
+- Serial devices carrying TCP/IP packets (e.g., tty0).
+- Network devices carrying either UDP or TCP packets (e.g., eth0) in client or server mode).
+- ZeroMQ (0MQ) sockets using IPC or INET (e.g., ipc:///tmp/halpub, ipc:///tmp/halsub).
+
+HAL's interface to applications is through the [HAL-API](../api/) *xdcomms C library*,
+which currently supports a 0MQ pub/sub interface.
+The HAL API connects to the two (a publish and a subscribe) HAL listening 0MQ sockets.
+
+
+## HAL Tag
+HAL packets from the application contain only the Application Data Unit (ADU) and a 
+HAL packet header. The packet header contains the HAL tag, with three orthogonal 
+32-bit unsigned identifiers: *<mux, sec, typ>*, where:
+- **mux** is a session multiplexing handle used to identify a unidirectional application flow.
+- **sec** identifies a CDG security policy used to processing an ADU. 
+- **typ** identifies the type of ADU (based on DFDL xsd definition). This tells HAL how to serialize the ADU. The CDG can also use the tag *typ* (and its associated description) in order to process (e.g., downgrade) the ADU contents.
+
+HAL uses the tag information in the HAL packet header to know how to route data 
+to the correct interface, based on its configuration file mapping (**halmap**) rules.
+- When sending data from the applications (on the left side of HAL in the figure above) into the network (on the right side of HAL), HAL [Message Functions](#Message-Functions) will encode (and possibly translate) the **Application tag** into a **Network tag**.
+- When receiving data from the network, HAL will decode (and possibly translate) the **Network tag** back into an **Application tag**.
+
+
+## HAL Daemon Command Options
+To see the HAL daemon command options, run with the -h option.  Below shows the current options:
+```
+~/gaps/hal$ daemon/hal -h
+Hardware Abstraction Layer (HAL) for GAPS CLOSURE project (version 0.11)
+Usage: hal [OPTIONS]... CONFIG-FILE
+OPTIONS: are one of the following:
+ -f : log file name (default = no log file)
+ -h : print this message
+ -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 0)
+ -q : quiet: disable logging on stderr (default = enabled)
+ -w : device not ready (EAGAIN) wait time in microseconds (default = 1000us): -1 exits if not ready
+CONFIG-FILE: path to HAL configuration file (e.g., test/sample.cfg)
+```
+
+## HAL Configuration
+HAL Configuration currently uses a a libconfig file specified when starting the HAL daemon
+(see the [Quick Start Guide](../README.md#quick-start-guide) and 
+[HAL Installation and Usage](../README.md#hal-installation-and-usage)).
+
+The HAL daemon configuration file contains two sections:
+- **devices-spec**, which specifies the device configuration for each HAL interface, including:
+  - Interface ID (e.g., xdd1), 
+  - enable flag,
+  - packet format,
+  - communication mode,
+  - device paths,
+  - [optional] addresses and ports,
+  - [optional] max packet size (HAL may perform Segment and Reassemble (SAR)),
+  - [optional] max rate (bits/second).
+- **halmap** routing rules and message functions applied to each allowed unidirectional link.
+  - *from_* fields specifying the inbound HAL Interface ID and packet tag values,
+  - *to_* fields specifying the outbound HAL Interface ID and packet tag values,
+  - message functions specific to this path (e.g., ADU codec).
+
+
+The [test directory](../test/) has examples of configuration files (with a .cfg) extension. Note that, if there are multiple HAL daemon instances on a node (e.g., for testing), then they must be configured with different interfaces.

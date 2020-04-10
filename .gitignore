@@ -1,4 +1,7 @@
 *.o
 *.a
+!/x86_64_prebuild/*.a
 *.so
 *_log*
+*.DS_Store
+gmon.out
