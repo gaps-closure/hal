@@ -148,7 +148,7 @@ def recv(m, s, t, interval):
             plock.acquire()
             print('%f recv_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
             plock.release()
-        if args.latency_log: print(global_stats[key].wincnt, ',', int(adu.x), ',', global_stats[key].wincnt - int(adu.x), ',', time.time() - adu.y, file=log_file)
+        if args.latency_log: print(global_stats[key].wincnt, ',', int(adu.x), ',', time.time(), ',', adu.y, file=log_file)
 
         
 if __name__ == '__main__':
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
     gma_so = CDLL(args.l + '/libgma.so')
-    if args.latency_log:  log_file = open(args.latency_log, 'w');  print("RX Sequence Number , TX Sequence Number, latency (seconds)", file=log_file)
+    if args.latency_log:  log_file = open(args.latency_log, 'w');  print("RX Sequence Number , TX Sequence Number, time received (secs), time sent (secs)", file=log_file)
 
     # Check verbose mode
     verbose = True if args.v == True else False
