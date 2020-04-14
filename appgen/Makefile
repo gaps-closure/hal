@@ -1,31 +1,12 @@
-CC          = gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes -L.
-LIB_OBJ     =pnt.o gma.o float.o
+DIRS = $(wildcard 6month-demo apptest)
 
-all: libpnt.a libgma.a slibs
+default: clean sub_appgen
 
-libpnt.a: $(LIB_OBJ)
-	ar rcs $@ $(LIB_OBJ)
+all:
+	for d in $(DIRS); do $(MAKE) -C "$$d" $@ || exit 1; done
 
-libgma.a: gma.o float.o
-	ar rcs $@ $^
-
-libpnt.so: pnt.c float.c
-	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
-
-libgma.so: gma.c
-	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< -lfloat
-
-libfloat.so: float.c
-	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
-
-%.o:	%.c
-	$(CC) $(CFLAGS) -c $<
-
-libs: libpnt.a libgma.a
-
-slibs: libfloat.so libgma.so
+static:
+	for d in $(DIRS); do $(MAKE) -C "$$d" $@ || exit 1; done
 
 clean:
-	rm -f *.o *.a float *.so
-
+	for d in $(DIRS); do $(MAKE) -C "$$d" $@ || exit 1; done

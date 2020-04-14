@@ -11,14 +11,13 @@ COMPATLIBS  = ../x86_64_prebuild/libzmq.a -static -Wl,--allow-multiple-definitio
 all: hal
 
 hal: 	../log/log.o config.o device_open.o device_read_write.o map.o packetize.o packetize_sdh_be_v1.o packetize_sdh_be_v2.o packetize_sdh_bw_v1.o crc.o hal.o 
-ifeq ($(STATIC_BUILD),true)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) $(COMPATLIBS)
-else
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) $(LDLIBS) $(LDFLAGS)
-endif
+
+static: ../log/log.o config.o device_open.o device_read_write.o map.o packetize.o packetize_sdh_be_v1.o packetize_sdh_be_v2.o packetize_sdh_bw_v1.o crc.o hal.o 
+	$(CC) $(CFLAGS) -o hal $^ $(LIBS) $(COMPATLIBS)
 
 %.o:	%.c
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f *.o hal
+	rm -f *.o hal hal-compat

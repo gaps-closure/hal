@@ -91,10 +91,12 @@ terminal2 (orange):
 4. An instance of halperf.py can both send and receive messages. Run an instance on both green and orange enclaves and send the appropriate mux/sec/typ combinations that correspond to the Perspecta tag specification for the Mission App datatypes:
 ```
 terminal4 (green):
-  hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -s 1 1 1 1 -r 2 2 1 -r 2 2 2 -i ipc:///tmp/halsubbwgreen -o ipc:///tmp/halpubbwgreen
+  export LD_LIBRARY_PATH=../appgen/6month-demo
+  hal/test$ ./halperf.py -s 1 1 1 100 -r 2 2 1 -r 2 2 2 -i ipc:///tmp/halsubbwgreen -o ipc:///tmp/halpubbwgreen
 
 terminal5 (orange):
-  hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -s 2 2 1 1 -s 2 2 2 1 -r 1 1 1 -i ipc:///tmp/halsubbworange -o ipc:///tmp/halpubbworange
+  export LD_LIBRARY_PATH=../appgen/6month-demo
+  hal/test$ ./halperf.py -s 2 2 1 10 -s 2 2 2 100 -r 1 1 1 -i ipc:///tmp/halsubbworange -o ipc:///tmp/halpubbworange
   ```
 Note the -i and -o arguments which correspond to input/ouptut ZMQ interfaces utilized by HAL. The example provided is for SDH-BW. If using SDH-BE, replace 'bw' with 'be' for each -i and -o argument (e.g. halpub<b>bw</b>orange --> halpub<b>be</b>orange)
 
@@ -163,7 +165,7 @@ optional arguments:
   -r MUX SEC TYP, --recv MUX SEC TYP
                         recv cross-domain flow mapped to MUX/SEC/TYP
   -l PATH               path to mission app shared libraries
-                        (default=../appgen)
+                        (default=../appgen/6month-demo)
   -x PATH               path to libxdcomms.so (default=../api)
   -i URI                in URI (default=ipc:///tmp/halpub1)
   -o URI                out URI (default=ipc:///tmp/halsub1)

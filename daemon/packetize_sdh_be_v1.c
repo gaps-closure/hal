@@ -7,7 +7,7 @@
 
 #include "hal.h"
 #include "packetize_sdh_be_v1.h"
-#include "../appgen/float.h"          /* use htonll */
+#include "../appgen/6month-demo/float.h"          /* use htonll */
 
 void linux_time_set(uint64_t *t) {
   struct timeval tv;

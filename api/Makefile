@@ -1,9 +1,9 @@
 CC          = gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes
 
-#LDLIBS      = -L./codecs -lpnt -lxyz
-
 all: libxdcomms.a libxdcomms.so
+
+static: libxdcomms.a
 
 libxdcomms.a: ../log/log.o xdcomms.o 
 	ar rcs $@ $^ 
