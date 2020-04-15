@@ -3,13 +3,15 @@
 # Plot HAL Perormance
 
 # Example:
+#
+# 1) Run experiment
 #   jaga:~/gaps/hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -i ipc:///tmp/halsubbegreen -o ipc:///tmp/halpubbegreen -r 2 2 1 -t 30 -s 1 1 1 500 --interval 10000 -Z
 #   jaga:~/gaps/hal$ daemon/hal test/sample_6modemo_be_green.cfg
 #   jaga:~/gaps/hal$ daemon/hal test/sample_6modemo_be_orange.cfg
-#   jaga:~/gaps/hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -i ipc:///tmp/halsubbeorange -o ipc:///tmp/halpubbeorange -r 1 1 1 -t 35 -s 2 2 1 500 --interval 10000 -z plot_sn_data.csv
+#   jaga:~/gaps/hal/test$ LD_LIBRARY_PATH=../appgen ./halperf.py -i ipc:///tmp/halsubbeorange -o ipc:///tmp/halpubbeorange -r 1 1 1 -t 35 -s 2 2 1 500 --interval 10000 -z results_halperf.csv
 #   jaga:~/gaps/hal/test$ python3 plot_halperf.py
-
-# Input file example (from halperf.py):
+#
+# 2) generates input file example (from halperf.py):
 #   RX Sequence Number , TX Sequence Number, time now, time sent
 #   1 , 1 , 1586886473.6721835 , 1586886473.6712658
 #   2 , 2 , 1586886473.674395 , 1586886473.6734793
@@ -41,44 +43,42 @@ def create_plot(x_array, y_array):
 #  plt.legend()
   plt.scatter(x_array, y_array)
   
-  # b) Configurure x and y axes
+  # b) Configurure x axes
   plt.xticks(np.arange(0, max(x_array), int(max(x_array)/10)))
   plt.xlim(left=0)
   plt.xlim(right=max(x_array))
-  plt.grid(True)
-  
   if args.sn_series:
     plt.xlabel(fields[0])
   else:
     plt.xlabel(fields[3])
-  t = round(float(rows[-1][3]) - float(rows[0][3]))
-  n = len(y_array)
-  p = round(float(rows[-1][0])/float(t), 1)
-  m = round(np.quantile(y_array, .50), 3)
-  h = round(np.quantile(y_array, .95), 3)
   
+  # c) Configurure y axes and summary results
+  t = round(float(rows[-1][3]) - float(rows[0][3]))   # experiment duration
+  n = len(y_array)                                    # packets sent
+  p = round(float(rows[-1][0])/float(t), 1)           # packets per second
+  m = round(np.quantile(y_array, .50), 3)             # median packet latency
+  h = round(np.quantile(y_array, .95), 3)             # 95% quantile packet latency
   if args.loss:
     plt.ylabel("Packet diff (RX-TX SN)")
   else:
     plt.ylim(bottom=0)
     plt.ylabel("message latency (milliseconds)")
-    print('At', p, 'pps, delay seen by', n, 'packets over', t, 'secs: Median =',
+    if args.csv_filename:
+      print('todo: if csv summary file does not exist, add labels.  Append results to', args.csv_filename)
+      print('At', p, 'pps, delay seen by', n, 'packets over', t, 'secs: Median =',
+        m, 'ms, 95% quantile =', h, 'ms')
+    else:
+      print('At', p, 'pps, delay seen by', n, 'packets over', t, 'secs: Median =',
       m, 'ms, 95% quantile =', h, 'ms')
       
-  # c)  Configurure overall plot
-
-  
+  # d) Display or save series plot
+  plt.grid(True)
   plt.title('HAL with BE Loopback Devices. Performance of '
-    + str(n) + ' packets over ' + str(t) + ' secs:\n' +
-    'green sends <1,1,1> and orange sends <2,2,1>, each at ' +
-    str(p) + ' pkts/sec')
-    
-    
-
-  # d) display and save plot
-  plt.savefig('zz.png')
-  plt.savefig(args.output_filename)
-  if args.plot:  plt.show()
+      + str(n) + ' packets over ' + str(t) + ' secs:\n' +
+      'green sends <1,1,1> and orange sends <2,2,1>, each at ' + str(p) + ' pkts/sec')
+  if args.pkt_filename_prefix: plt.savefig(args.pkt_filename_prefix +
+    '_' + str(t) + '_' + str(int(p)) +'.png')
+  else: plt.show()
 #  os.system('open ' + args.output_filename)
 
 
@@ -103,10 +103,10 @@ if __name__=='__main__':
   
   # a) Get user parameters into args
   parser = argparse.ArgumentParser(description='Plot HAL delay against time')
-  parser.add_argument('-i', '--input_filename', help='Input filename', type=str, default='plot_sn_data.csv')
-  parser.add_argument('-o', '--output_filename', help='Output filename', type=str, default='plot_sn_data.png')
+  parser.add_argument('-c', '--csv_filename', help='summary results appended into csv file with this name (deault = print results)', type=str, default='')
+  parser.add_argument('-i', '--input_filename', help='Input filename', type=str, default='results_halperf.csv')
   parser.add_argument('-l', '--loss', help='Y-axis is packet loss (RX-TX SN)', action='store_true')
-  parser.add_argument('-p', '--plot', help='do not display results (deault = display)', action='store_false')
+  parser.add_argument('-p', '--pkt_filename_prefix', help='Save packet results in .png file (deault = display results)', type=str, default='')
   parser.add_argument('-s', '--sn_series', help='X-axis is sequence number (default = time series)', action='store_true')
   args = parser.parse_args()
   
