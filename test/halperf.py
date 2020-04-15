@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
     gma_so = CDLL(args.l + '/libgma.so')
-    if args.latency_log:  log_file = open(args.latency_log, 'w');  print("RX Sequence Number , TX Sequence Number, time received (secs), time sent (secs)", file=log_file)
+    if args.latency_log:  log_file = open(args.latency_log, 'w');  print("RX Sequence Number , TX Sequence Number, time received (secs), time sent (secs), " + args.send[0][-1], file=log_file)
 
     # Check verbose mode
     verbose = True if args.v == True else False
