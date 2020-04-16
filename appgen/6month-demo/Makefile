@@ -1,30 +1,33 @@
-CC          = gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes -L.
+CC          ?= gcc
+AR          ?= ar
 LIB_OBJ     =pnt.o gma.o float.o
 
-all: libfloat.a libgma.a slibs
+OBJDIR ?= .
+CFLAGS      = -O2 -Wall -Wstrict-prototypes
+
+all: $(OBJDIR)/libfloat.a $(OBJDIR)/libgma.a slibs
 
 static: libs
 
-libgma.a: gma.o float.o
+$(OBJDIR)/libgma.a: $(OBJDIR)/gma.o $(OBJDIR)/float.o
 	ar rcs $@ $^
 
-libfloat.a: float.o
+$(OBJDIR)/libfloat.a: $(OBJDIR)/float.o
 	ar rcs $@ $^
 
-libgma.so: gma.c
-	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< -lfloat
+$(OBJDIR)/libgma.so: $(OBJDIR)/gma.o
+	$(CC) $(CFLAGS) -fPIC -shared -L$(OBJDIR) -o $@ $< -lfloat
 
-libfloat.so: float.c
+$(OBJDIR)/libfloat.so: $(OBJDIR)/float.o
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
 
-%.o:	%.c
-	$(CC) $(CFLAGS) -c $<
+$(OBJDIR)/%.o:	%.c
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
-libs: libgma.a libfloat.a
+libs: $(OBJDIR)/libgma.a $(OBJDIR)/libfloat.a
 
-slibs: libfloat.so libgma.so
+slibs: $(OBJDIR)/libfloat.so $(OBJDIR)/libgma.so
 
 clean:
-	rm -f *.o *.a float *.so *~
+	rm -f $(OBJDIR)/*.o $(OBJDIR)/*.a $(OBJDIR)/float $(OBJDIR)/*.so $(OBJDIR)/*~
 

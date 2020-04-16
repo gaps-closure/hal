@@ -1,20 +1,23 @@
-CC          = gcc
+CC          ?= gcc
+AR          ?= ar
 CFLAGS      = -O2 -Wall -Wstrict-prototypes -L.
 LIB_OBJ     = pnt.o 
 
-all: libpnt.a libpnt.so
+OBJDIR ?= .
 
-static: libpnt.a
+all: $(OBJDIR)/libpnt.a $(OBJDIR)/libpnt.so
 
-libpnt.a: pnt.o
-	ar rcs $@ $^
+static: $(OBJDIR)libpnt.a
 
-libpnt.so: pnt.c
+$(OBJDIR)/libpnt.a: $(OBJDIR)/pnt.o
+	$(AR) rcs $@  $^
+
+$(OBJDIR)/libpnt.so: $(OBJDIR)/pnt.o
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< 
 
-%.o:	%.c
-	$(CC) $(CFLAGS) -c $<
+$(OBJDIR)/%.o:	%.c
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
 clean:
-	rm -f *.o *.a *.so *~
+	rm -f $(OBJDIR)/*.o $(OBJDIR)/*.a $(OBJDIR)/*.so $(OBJDIR)/*~
 

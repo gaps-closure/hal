@@ -1,23 +1,31 @@
-CC          = gcc    # GMON_OUT_PREFIX=mygmon; gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes # -g -pg
+CC          ?= gcc    # GMON_OUT_PREFIX=mygmon; gcc
+CFLAGS      ?= -O2 -Wall -Wstrict-prototypes # -g -pg
 
-LDFLAGS     = -lconfig
+LOCAL_LIBS  = -lconfig
+LIBS 	    = $(OBJDIR)/../api/libxdcomms.a
+
+OBJDIR ?= .
+
 LDLIBS      = -lzmq   # -L../codecs -lpnt
-LIBS 	    = ../api/libxdcomms.a
+LIBS        = $(OBJDIR)/../api/libxdcomms.a
+HAL_OBJECT_LIST = $(OBJDIR)/../log/log.o $(OBJDIR)/config.o $(OBJDIR)/device_open.o $(OBJDIR)/device_read_write.o $(OBJDIR)/map.o $(OBJDIR)/packetize.o $(OBJDIR)/packetize_sdh_be_v1.o $(OBJDIR)/packetize_sdh_be_v2.o $(OBJDIR)/packetize_sdh_bw_v1.o $(OBJDIR)/crc.o $(OBJDIR)/hal.o
 
 #static version of LDLIBS for compatible binaries
-COMPATLIBS  = ../x86_64_prebuild/libzmq.a -static -Wl,--allow-multiple-definition -Wl,-Bstatic -lsodium -lunwind -llzma $(LDFLAGS) -ldl -lc -lstdc++ -lpthread
+COMPATLIBS  = ../x86_64_prebuild/libzmq.a -static -Wl,--allow-multiple-definition -Wl,-Bstatic -lsodium -lunwind -llzma $(LOCAL_LIBS) -ldl -lc -lstdc++ -lpthread
 
-all: hal
+all: $(OBJDIR)/hal
 
-hal: 	../log/log.o config.o device_open.o device_read_write.o map.o packetize.o packetize_sdh_be_v1.o packetize_sdh_be_v2.o packetize_sdh_bw_v1.o crc.o hal.o 
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) $(LDLIBS) $(LDFLAGS)
+$(OBJDIR)/../log/log.o: ../log/log.c
+	$(CC) $(CFLAGS) -fpic -c ../log/log.c -o $@
 
-static: ../log/log.o config.o device_open.o device_read_write.o map.o packetize.o packetize_sdh_be_v1.o packetize_sdh_be_v2.o packetize_sdh_bw_v1.o crc.o hal.o 
-	$(CC) $(CFLAGS) -o hal $^ $(LIBS) $(COMPATLIBS)
+$(OBJDIR)/hal: $(HAL_OBJECT_LIST)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) $(LDLIBS) $(LDFLAGS) $(LOCAL_LIBS)
 
-%.o:	%.c
-	$(CC) $(CFLAGS) -c $<
+static: $(HAL_OBJECT_LIST) 
+	$(CC) $(CFLAGS) -o $(OBJDIR)/hal $^ $(LIBS) $(COMPATLIBS)
+
+$(OBJDIR)/%.o:	%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o hal hal-compat
+	rm -f $(OBJDIR)/*.o $(OBJDIR)/hal $(OBJDIR)/hal-compat

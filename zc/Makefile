@@ -1,12 +1,16 @@
 LDLIBS=-lzmq
 COMPATLIBS  = -static ../x86_64_prebuild/libzmq.a -Wl,--allow-multiple-definition -Wl,-Bstatic -lsodium -lunwind -llzma  -lc -lstdc++ -lpthread -ldl
+OBJDIR=.
 
-all: zc
+all: $(OBJDIR)/zc
 
-zc: zc.o
+$(OBJDIR)/zc: $(OBJDIR)/zc.o
 
-static: zc.o
-	$(CC) -o zc zc.o $(COMPATLIBS)
+$(OBJDIR)/%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+static: $(OBJDIR)/zc.o
+	$(CC) -o $(OBJDIR)/zc $(OBJDIR)/zc.o $(COMPATLIBS)
 
 clean:
-	rm -f zc *.o
+	rm -f $(OBJDIR)/zc $(OBJDIR)/*.o
