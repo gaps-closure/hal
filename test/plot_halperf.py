@@ -45,7 +45,7 @@ def create_plot(mode, x_array, y_array, a, r, t):
   
   # b) Configurure x axes
   m=max(x_array)
-  s=max(1, int(m/10))
+  s=max(1, int(round(m/10, 0)))
   plt.xticks(np.arange(0, m, s))
   plt.xlim(left=0)
   plt.xlim(right=max(x_array))
@@ -125,7 +125,8 @@ if __name__=='__main__':
 #  print(rows, fields)
   x_array, y_array_loss, y_array_late = set_xy_values()
   a, r, t = get_summary_stats(y_array_late)
-  if args.pkt_filename_prefix or (not args.loss):
+  print ('x', args.pkt_filename_prefix, 'l', args.loss, 'z', (args.pkt_filename_prefix != ''))
+  if (args.pkt_filename_prefix != '') or (not args.loss):
     create_plot('latency', x_array, y_array_late, a, r, t)
-  if args.pkt_filename_prefix or args.loss:
+  if (args.pkt_filename_prefix != '') or args.loss:
     create_plot('loss', x_array, y_array_loss, a, r, t)

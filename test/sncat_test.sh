@@ -34,27 +34,27 @@ while true; do
   read APP_INDEX
   case $APP_INDEX in
     0)
-      echo "Write $C01 characters to netcat side"
+      echo "Write $C01 binary bytes to netcat side"
       echo -n "$DATA_BE1_01" | xxd -r -p  > $FIF0_PORT1
       ;;
     1)
-      echo "Write $C01 characters to netcat side (stdbuf -oL)"
+      echo "Write $C01 binary bytes  to netcat side (stdbuf -oL)"
       echo -n "$DATA_BE1_01" | stdbuf -oL xxd -r -p  > $FIF0_PORT1
       ;;
     2)
-      echo "Write $C02 characters to netcat side (stdbuf -oL)"
+      echo "Write $C02 binary bytes  to netcat side (stdbuf -oL)"
       echo -n "$DATA_BE1_02" | xxd -r -p  > $FIF0_PORT1
       ;;
     5)
-      echo "Write $C01 characters to socat side"
+      echo "Write $C01 binary bytes  to socat side"
       echo -n "$DATA_BE1_01" | xxd -r -p  > $IF_NET1
       ;;
     6)
-      echo "Write $C01 characters to socat side (stdbuf -oL)"
+      echo "Write $C01 binary bytes  to socat side (stdbuf -oL)"
       echo -n "$DATA_BE1_01" | stdbuf -oL xxd -r -p  > $IF_NET1
       ;;
     7)
-      echo "Write $C02 characters to socat side (stdbuf -oL)"
+      echo "Write $C02 binary bytes  to socat side"
       echo -n "$DATA_BE1_02" | xxd -r -p  > $IF_NET1
       ;;
     *)
