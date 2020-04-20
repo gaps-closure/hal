@@ -97,7 +97,7 @@ def plot_scatter(mode, x_array, y_array, a, r, t):
 
 # calculate latency metrics
 def get_summary_stats(y_array):
-  r = len(y_array) - 1                                # packets received
+  r = len(y_array)                                    # packets received
   s = int(rows[-1][1])                                # packets sent
   t = round(float(rows[-1][3]) - float(rows[0][3]))   # experiment duration
   a = int(fields[-1])                                 # requested rate
