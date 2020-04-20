@@ -233,17 +233,31 @@ void ilp_open_data_devices(device *d) {
   // tried | O_NONBLOCK  and O_RDWR
   if (d->enabled == 0) return;
   
-  if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path_r);
-    exit(EXIT_FAILURE);
+
+  if (strlen(d->path_r) > 0) {
+
+    log_debug("About to open device %s: %s\n", d->id, d->path_r);
+
+    if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
+      log_fatal("Error opening device %s: %s\n", d->id, d->path_r);
+      exit(EXIT_FAILURE);
+    }
+    d->readfd  = fd_read;
+
+    log_debug("Opened device %s: %s\n", d->id, d->path_r);
   }
-  d->readfd  = fd_read;
   
-  if ((fd_write = open(d->path_w, O_WRONLY, S_IWUSR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path_w);
-    exit(EXIT_FAILURE);
+  if (strlen(d->path_w) > 0) {
+    log_debug("About to open device %s: %s\n", d->id, d->path_w);
+
+    if ((fd_write = open(d->path_w, O_WRONLY, S_IWUSR)) < 0) {
+      log_fatal("Error opening device %s: %s\n", d->id, d->path_w);
+      exit(EXIT_FAILURE);
+    }
+    d->writefd = fd_write;
+
+    log_debug("Opened device %s: %s\n", d->id, d->path_w);
   }
-  d->writefd = fd_write;
 }
 
 /* Get session information (to_mux) from root device */
