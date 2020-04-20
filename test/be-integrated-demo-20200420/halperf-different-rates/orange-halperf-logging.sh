@@ -1,2 +1,4 @@
-cd ~/gaps/build/src/hal/test
-LD_LIBRARY_PATH=../appgen ./halperf.py -r 1 1 1 -i ipc:///tmp/halsubbworange -o ipc:///tmp/halpubbworange -t 100 --interval 10000 -Z -s 2 2 1 10 -s 2 2 2 100
+TYPE="bw"
+DURATION=100
+cd $(pwd | sed 's:test/.*$:test/:')
+LD_LIBRARY_PATH=../appgen/6month-demo ./halperf.py -r 1 1 1 -i ipc:///tmp/halsub${TYPE}orange -o ipc:///tmp/halpub${TYPE}orange -t $((DURATION+5)) -v > orange_${1}.log

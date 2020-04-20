@@ -51,9 +51,11 @@ def set_xy_values():
 # Display or save series plot
 def plot_display(mode, a, r, t):
   plt.grid(True)
-  plt.title('HAL with BE Loopback Devices, receives '
-      + str(r) + ' packets over ' + str(t) + ' secs:\n' +
-      'green sends <1,1,1> and orange sends <2,2,1>, requesting ' + str(a) + ' pps')
+  title = args.title_start + ', receives ' + str(r) + ' packets over ' + str(t) + ' secs:\n'
+  title += 'green sends <1,1,1>'
+#  title += 'orange sends <2,2,1>'
+  if (a > 0): title += ', requesting ' + str(a) + ' pps'
+  plt.title(title)
   if args.pkt_filename_prefix:
     plt.savefig(args.pkt_filename_prefix + '_' + mode + '_' + str(t) + '_' + str(a) +'.png')
   else:
@@ -133,6 +135,7 @@ if __name__=='__main__':
   parser.add_argument('-i', '--input_filename', help='Input filename', type=str, default='results_halperf.csv')
   parser.add_argument('-p', '--pkt_filename_prefix', help='Save packet results in .png files (deault = display selected results)', type=str, default='')
   parser.add_argument('-s', '--sn_series', help='X-axis is sequence number (default = time series)', action='store_true')
+  parser.add_argument('-t', '--title_start', help='Start of title', type=str, default='HAL with BE Devices')
   args = parser.parse_args()
   
   # b) Process CSV input file, create xy arrays and plot
