@@ -130,7 +130,7 @@ def get_summary_stats(y_array):
 # create xy arrays and plot
 def plot_all(plot_prefix):
   x_array, y_array_loss, y_array_late = set_xy_values()
-  print('length:', len(fields), len(rows), len(x_array), len(y_array_loss), len(y_array_late))
+#  print('length:', len(fields), len(rows), len(x_array), len(y_array_loss), len(y_array_late))
 #  print(rows[100000], y_array_late[100000])
   a, r, t = get_summary_stats(y_array_late)
   if plot_prefix or args.latency:

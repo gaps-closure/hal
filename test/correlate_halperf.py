@@ -6,10 +6,12 @@
 #   python3 correlate_halperf_logs.py -a green -A green_1.log -b orange -B orange_1.log
 # one run: assuming prefix green and orange:
 #   python3 correlate_halperf_logs.py -A green_1.log
+# one run with time receiver time skey o 1.5 ms
+#   python3 correlate_halperf_logs.py -a green -A green_1.log -b orange -B orange_1.log -s 0.0015
 # multiple runs: assuming prefix green and orange:
 #   python3 correlate_halperf_logs.py
-# multiple runs: assuming prefix green and orange, with clock skew of 1.6 ms
-#   python3 correlate_halperf_logs.py -s 1.6
+# multiple runs: assuming prefix green and orange, with clock skew of 1.5 ms
+#   python3 correlate_halperf_logs.py -s 1.5
 
 import argparse
 import os
