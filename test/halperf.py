@@ -73,7 +73,6 @@ def send(m, s, t, r, interval):
     global_stats[key] = Stats()
     slock = Lock()
     
-    if args.timestamp: pos.x = 0.0
     if int(t) == 1:
         adu = Position(pos.x, pos.y, pos.z, ClosureTrailer(0,0,0,0,0))
     elif int(t) == 2:
@@ -82,7 +81,6 @@ def send(m, s, t, r, interval):
         raise Exception('unsupported data typ: ' + str(t))
     
     def task(stats,slock):
-        if args.timestamp: adu.x += 1; adu.y = time.time()
         adu.z += 0.1
         xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag))
         slock.acquire()
@@ -148,7 +146,6 @@ def recv(m, s, t, interval):
             plock.acquire()
             print('%f recv_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
             plock.release()
-        if args.latency_log: print(global_stats[key].wincnt, ',', int(adu.x), ',', time.time(), ',', adu.y, file=log_file)
 
         
 if __name__ == '__main__':
@@ -162,13 +159,10 @@ if __name__ == '__main__':
     parser.add_argument('--interval', help="reporting interval, default=10s", default=10)
     parser.add_argument('-t', help="duration of test in seconds, if not specified, runs indefinitely", default=0)
     parser.add_argument('-v', help="verbose mode, logs every message", action='store_true', default=False)
-    parser.add_argument('-Z', '--timestamp', help='Print packet Sequence Number and latency', action='store_true')
-    parser.add_argument('-z', '--latency_log', help='Write delay measurements to this file (default = not write)', default='')
     args = parser.parse_args()
 
     xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
     gma_so = CDLL(args.l + '/libgma.so')
-    if args.latency_log:  log_file = open(args.latency_log, 'w');  print("RX Sequence Number , TX Sequence Number, time received (secs), time sent (secs), " + args.send[0][-1], file=log_file)
 
     # Check verbose mode
     verbose = True if args.v == True else False
@@ -205,7 +199,6 @@ if __name__ == '__main__':
         print('elapsed time: %.2fs' % (end - start))
 
     def self_kill():
-        if args.latency_log:  log_file.close()
         print_totals()
         os.kill(os.getpid(), signal.SIGKILL)
 
