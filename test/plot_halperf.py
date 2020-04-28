@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Plot HAL Perormance v0.02 (April 17, 2020)
+# Plot HAL Perormance v1 (April 28, 2020)
 
 # Example:
 #
@@ -150,14 +150,14 @@ if __name__=='__main__':
   parser.add_argument('-c', '--csv_filename', help='Summary results appended into specified csv file with this name (default = print results)', type=str, default='')
   parser.add_argument('-d', '--input_directory', help='Summary results directory (default = current directory)', type=str, default='')
   parser.add_argument('-i', '--input_filename', help='Input filename (prefix)', type=str, default='results')
-  parser.add_argument('-p', '--png', help='Save packet results in .png files', action='store_true')
+  parser.add_argument('-p', '--png', help='Save packet plot results in .png files', action='store_true')
   parser.add_argument('-s', '--sn_series', help='X-axis is sequence number (default = time series)', action='store_true')
   parser.add_argument('-t', '--title_start', help='Start of title', type=str, default='HAL with BE Devices')
   args = parser.parse_args()
   
   # b) Process CSV input file,
   prefix = args.input_filename
-  file_list1 = glob.glob(args.input_directory + prefix + '*')
+  file_list1 = sorted(glob.glob(args.input_directory + prefix + '*'))
   for fn1  in file_list1:
     rows = []
     fields = read_values(fn1)
