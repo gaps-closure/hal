@@ -1,0 +1,23 @@
+http://wiki.zeromq.org/area:licensing
+
+ZeroMQ Free Software Licenses
+
+The libzmq library is licensed under the GNU Lesser General Public License V3 plus a static linking exception.
+
+    You get the full source code. You can examine the code, modify it, and share your modified code under the terms of the LGPL.
+
+    Static linking exception. The copyright holders give you permission to link this library with independent modules to produce an executable, regardless of the license terms of these independent modules, and to copy and distribute the resulting executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions of the license of that module. An independent module is a module which is not derived from or based on this library. If you modify this library, you must extend this exception to your version of the library.
+
+ZeroMQ for Commercial Applications
+
+    ZeroMQ is safe for use in close-source applications. The LGPL share-alike terms do not apply to applications built on top of ZeroMQ.
+
+    You do not need a commercial license. The LGPL applies to ZeroMQ's own source code, not your applications. Many commercial applications use ZeroMQ.
+
+Intent to Move to MPL v2
+
+It is the intention of the ZeroMQ community to move gradually towards the Mozilla Public License v2, as a replacement for the current LGPLv3 + static link exception.
+
+MPLv2 offers largely the same advantages as our custom LGPLv3 + static link exception license, with the added advantage of being a standard license, thus easier for corporate lawyers to accept.
+
+MPLv2 is the recommended license for new ZeroMQ projects, and where possible, ZeroMQ projects should collect approval from contributors to move towards MPLv2.

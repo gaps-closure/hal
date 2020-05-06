@@ -1,0 +1,35 @@
+http://wiki.zeromq.org/area:faq#toc3
+
+License
+
+Can I use ZeroMQ in my closed-source application?
+
+Yes, libzmq and most other ZeroMQ projects are licensed under the LGPL with a Static Linking Exception that relieve you of any obligations under sections 4 and 5 of The LGPLv3 license, and section 6 of the GNU GPL. This license gives you the explicit right to link the library with closed-source applications (as well as open source applications). Other projects like CZMQ are licensed under MPLv2, which gives you very similar rights.
+
+Can I use ZeroMQ in my commercial application?
+
+Yes. You may use ZeroMQ in your commercial application as long as you resubmit any changes you might make to the ZeroMQ source code itself. The license has a Static Linking Exception that lets you redistribute the compiled library with your application under your own terms (not the LGPL).
+
+Can I use pieces of the ZeroMQ code in my non-LGPL library or application?
+
+If you include any ZeroMQ code in your closed source works, these become derived works of ZeroMQ and must be licensed under the LGPL. The LGPL does make an exception for header files.
+
+Why does ZeroMQ use the LGPL and not a more liberal license like BSD?
+
+We believe in community before software, and in our experience the LGPL or MPLv2 are the right licenses to build the most successful community around this technology.
+
+What if my organization will not or cannot use the LGPL?
+
+You are free to choose any of the dozens of alternative products, or build your own ZMTP stack under a different license. Yay diversity!
+
+Could we change the ZeroMQ license?
+
+We could change to a later version of LGPL. Some ZeroMQ projects like CZMQ have switched to MPLv2 by getting all contributors to agree.
+
+Who is the copyright owner of ZeroMQ? Maybe I can talk to him or her?
+
+ZeroMQ is owned by each contributor. There are hundreds of owners. Feel free to track them down and ask them individually if they want to give you their work under a different license.
+
+Does the Static Link Exception apply to older versions of ZeroMQ?
+
+Please read the COPYING.LESSER that comes with your source package. The SLE is explained at the end of this file. Concretely, all versions of ZeroMQ (libzmq) from 2.0.6 onwards are covered, including ZeroMQ v2.2, ZeroMQ v3.x, and ZeroMQ v4.x.
