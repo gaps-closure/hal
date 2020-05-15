@@ -19,7 +19,6 @@ class TypeLexer(Lexer):
   def __init__(self, lexer_conf): pass
   def lex(self, data):
     for x in data:
-      print (x.spelling)
       if x.kind == TokenKind.PUNCTUATION:
         if   x.spelling == '{': yield Token('OPENBRACES', x)
         elif x.spelling == '}': yield Token('CLOSEBRACES', x)
@@ -52,9 +51,10 @@ def idl_parser():
   return Lark(r"""
     datlst:      dat_item+
     ?dat_item:   struct structname openbraces field+ closebraces semicolon
-    field:      basictype fieldname semicolon
+                 | other
+    field:       basictype fieldname semicolon
     ?basictype:  double
-                 | float
+                 | ffloat
                  | int8
                  | uint8
                  | int16
@@ -64,7 +64,7 @@ def idl_parser():
                  | int64
                  | uint64
     double:      DOUBLE
-    float:       FLOAT
+    ffloat:      FLOAT
     int8:        CHAR
     uint8:       UNSIGNED CHAR
     int16:       SHORT
@@ -87,29 +87,35 @@ def idl_parser():
     %declare PUNCTUATION IDENTIFIER LITERAL KEYWORD COMMENT OPENBRACES CLOSEBRACES SEMICOLON STRUCT UNSIGNED CHAR SHORT INT LONG FLOAT DOUBLE
   """, start='datlst', parser='lalr', lexer=TypeLexer)
 
-'''
-def deraw(s):
-  return s.replace('R"JSON(','').replace(')JSON"','').replace('\n','')
+flatten = lambda l: [item for sublist in l for item in sublist]
+flatone = lambda l: [i for i in l if (not isinstance(i,list)) or len(i) != 0]
 
 # Tranform parsed tree to extract relevant IDL information
 class IDLTransformer(Transformer):
   def _hlp(self, items):
     return ' '.join([x.value.spelling for x in items if isinstance(x, Token)])
-  def acode(self, items):    return [i for s in items for i in s]
-  def other(self, items):    return []
-  def begin(self, items):    return []
-  def end(self, items):      return []
-  def deff(self, items):     return []
-  def pfx(self, items):      return items[0].value.extent.start.line
-  def label(self, items):    return self._hlp(items)
-  def clejson(self, items):  return json.loads(deraw(self._hlp(items)))
-  def cledef(self, items):   return [['cledef'] + items]
-  def clebegin(self, items): return [['clebegin'] + items]
-  def cleend(self, items):   return [['cleend'] + items]
-  def cleappnl(self, items): return [['cleappnl'] + items]
+  def datlst(self, items):      return flatone(items)
+  def dat_item(self, items):    return flatone(items)
+  def structname(self, items):  return items[0].value.spelling
+  def field(self, items):       return flatten(items)
+  def fieldname(self, items):   return [items[0].value.spelling]
+  def basictype(self,items):    return [items]
+  def double(self,items):       return [items[0].type]
+  def ffloat(self,items):       return [items[0].type]
+  def int8(self,items):         return [items[0].type]
+  def uint8(self,items):        return [items[0].type]
+  def int16(self,items):        return [items[0].type]
+  def uint16(self,items):       return [items[0].type]
+  def int32(self,items):        return [items[0].type]
+  def uint32(self,items):       return [items[0].type]
+  def int64(self,items):        return [items[0].type]
+  def uint64(self,items):       return [items[0].type]
+  def openbraces(self,items):   return []
+  def closebraces(self,items):  return []
+  def semicolon(self,items):    return []
+  def struct(self,items):       return []
+  def other(self, items):       return []
 
-'''
-    
 # Parse command line argumets
 def get_args():
   p = ArgumentParser(description='CLOSURE Autogeneration Utility')
@@ -129,11 +135,9 @@ def main():
   tree   = idl_parser().parser.parse(toks)
   print(tree.pretty())
 
-  '''
   print('Transformed Tree:')
-  ttree  = IDETransformer().transform(tree)
+  ttree  = IDLTransformer().transform(tree)
   for x in ttree: print(x)
-  '''
 
 if __name__ == '__main__':
   main()

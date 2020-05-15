@@ -1,3 +1,5 @@
+/* Sample IDL file */
+
 struct Position {
   double x;
   double y;
