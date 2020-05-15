@@ -23,11 +23,11 @@ The IDL syntax is based on C; an IDL file contains one or more C struct datatype
 Datatype tags are assigned numerically in the order the structs are found in the file.
 Not all valid C struct declarations are supported.
 
-Currently we support the following atomic types: uint8_t, uint16_t, uint32_t,
-uint64_t, int8_t, int16_t, int32_t, int64_t, and double.
+Currently we support the following atomic types: char, unsigned char, short,
+unsigned short, int, unsigned int, long, unsigned long, float, double
 
-Additionally we plan to support fixed-size arrays of any supported atomic type, 
-and null-terminated C-strings.  We might also include std::array and std::vector 
-of the supported atomic types, std::string. 
+Additionally we plan to support fixed-size arrays of any supported atomic type,
+and null-terminated C-strings.  We might also include std::array and
+std::vector of the supported atomic types, std::string. 
 
 

@@ -1,0 +1,12 @@
+struct Position {
+  double x;
+  double y;
+  double z;
+};
+
+struct Distance {
+  double dx;
+  double dy;
+  double dz;
+};
+
