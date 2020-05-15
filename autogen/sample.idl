@@ -12,3 +12,8 @@ struct Distance {
   double dz;
 };
 
+struct Distance {
+  int num;
+  unsigned long longuns [3];
+  unsigned long doubleuns [3];
+};

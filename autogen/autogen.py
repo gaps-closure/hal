@@ -23,8 +23,8 @@ class TypeLexer(Lexer):
         if   x.spelling == '{': yield Token('OPENBRACES', x)
         elif x.spelling == '}': yield Token('CLOSEBRACES', x)
         elif x.spelling == ';': yield Token('SEMICOLON', x)
-        #elif x.spelling == '[': yield Token('OPENBRACKET', x)
-        #elif x.spelling == ']': yield Token('CLOSEBRACKET', x)
+        elif x.spelling == '[': yield Token('OPENBRACKET', x)
+        elif x.spelling == ']': yield Token('CLOSEBRACKET', x)
         #elif x.spelling == ';': yield Token('COLON', x)
         else:                   yield Token('PUNCTUATION', x)
       elif x.kind == TokenKind.IDENTIFIER:
@@ -53,6 +53,7 @@ def idl_parser():
     ?dat_item:   struct structname openbraces field+ closebraces semicolon
                  | other
     field:       basictype fieldname semicolon
+                 | basictype fieldname openbracket count closebracket semicolon
     ?basictype:  double
                  | ffloat
                  | int8
@@ -63,6 +64,7 @@ def idl_parser():
                  | uint32
                  | int64
                  | uint64
+    count:       LITERAL
     double:      DOUBLE
     ffloat:      FLOAT
     int8:        CHAR
@@ -73,18 +75,20 @@ def idl_parser():
     uint32:      UNSIGNED INT
     int64:       LONG
     uint64:      UNSIGNED LONG
-    openbraces:  OPENBRACES
-    closebraces: CLOSEBRACES
-    semicolon:   SEMICOLON
-    structname:  IDENTIFIER
-    struct:      STRUCT
-    fieldname:   IDENTIFIER
-    other:       PUNCTUATION
-                 | IDENTIFIER
-                 | LITERAL
-                 | KEYWORD
-                 | COMMENT
-    %declare PUNCTUATION IDENTIFIER LITERAL KEYWORD COMMENT OPENBRACES CLOSEBRACES SEMICOLON STRUCT UNSIGNED CHAR SHORT INT LONG FLOAT DOUBLE
+    openbracket:  OPENBRACKET
+    closebracket: CLOSEBRACKET
+    openbraces:   OPENBRACES
+    closebraces:  CLOSEBRACES
+    semicolon:    SEMICOLON
+    structname:   IDENTIFIER
+    struct:       STRUCT
+    fieldname:    IDENTIFIER
+    other:        PUNCTUATION
+                  | IDENTIFIER
+                  | LITERAL
+                  | KEYWORD
+                  | COMMENT
+    %declare PUNCTUATION IDENTIFIER LITERAL KEYWORD COMMENT OPENBRACKET CLOSEBRACKET OPENBRACES CLOSEBRACES SEMICOLON STRUCT UNSIGNED CHAR SHORT INT LONG FLOAT DOUBLE 
   """, start='datlst', parser='lalr', lexer=TypeLexer)
 
 flatten = lambda l: [item for sublist in l for item in sublist]
@@ -96,10 +100,11 @@ class IDLTransformer(Transformer):
     return ' '.join([x.value.spelling for x in items if isinstance(x, Token)])
   def datlst(self, items):      return flatone(items)
   def dat_item(self, items):    return flatone(items)
-  def structname(self, items):  return items[0].value.spelling
   def field(self, items):       return flatten(items)
-  def fieldname(self, items):   return [items[0].value.spelling]
   def basictype(self,items):    return [items]
+  def structname(self, items):  return items[0].value.spelling
+  def fieldname(self, items):   return [items[0].value.spelling]
+  def count(self, items):       return [items[0].value.spelling]
   def double(self,items):       return [items[0].type]
   def ffloat(self,items):       return [items[0].type]
   def int8(self,items):         return [items[0].type]
@@ -112,6 +117,8 @@ class IDLTransformer(Transformer):
   def uint64(self,items):       return [items[0].type]
   def openbraces(self,items):   return []
   def closebraces(self,items):  return []
+  def openbracket(self,items):  return []
+  def closebracket(self,items): return []
   def semicolon(self,items):    return []
   def struct(self,items):       return []
   def other(self, items):       return []
