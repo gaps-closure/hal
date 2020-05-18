@@ -61,6 +61,9 @@ GAPSTYPES = '''
 <xs:simpleType name="gapsdouble" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian">
 <xs:restriction base="xs:double"/>
 </xs:simpleType>
+<xs:simpleType name="gapsfloat" dfdl:lengthKind="explicit" dfdl:length="4" dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian">
+<xs:restriction base="xs:float"/>
+</xs:simpleType>
 <xs:simpleType name="gapsuint64" dfdl:lengthKind="explicit" dfdl:length="64" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:unsignedLong"/>
 </xs:simpleType>
@@ -72,6 +75,18 @@ GAPSTYPES = '''
 </xs:simpleType>
 <xs:simpleType name="gapsuint8" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:unsignedInt"/>
+</xs:simpleType>
+<xs:simpleType name="gapsint64" dfdl:lengthKind="explicit" dfdl:length="64" dfdl:lengthUnits="bits">
+<xs:restriction base="xs:long"/>
+</xs:simpleType>
+<xs:simpleType name="gapsint32" dfdl:lengthKind="explicit" dfdl:length="32" dfdl:lengthUnits="bits">
+<xs:restriction base="xs:int"/>
+</xs:simpleType>
+<xs:simpleType name="gapsint16" dfdl:lengthKind="explicit" dfdl:length="16" dfdl:lengthUnits="bits">
+<xs:restriction base="xs:short"/>
+</xs:simpleType>
+<xs:simpleType name="gapsint8" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bits">
+<xs:restriction base="xs:byte"/>
 </xs:simpleType>
 '''
 
