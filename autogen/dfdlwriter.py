@@ -203,8 +203,8 @@ class DFDLWriter:
     appstr = ''
     if f[0] in gapstyp:
       appstr += '<xs:element name="' + f[1] + '" type="gma:' + gapstyp[f[0]] + '"' 
-      appstr += ' dfdl:occursCountKind="fixed" xs:minOccurs="' + str(f[2]) + '"'
-      appstr += ' xs:maxOccurs="' + str(f[2]) + '"' + ' />' + '\n'
+      appstr += ' dfdl:occursCountKind="fixed" minOccurs="' + str(f[2]) + '"'
+      appstr += ' maxOccurs="' + str(f[2]) + '"' + ' />' + '\n'
     else:
       raise Exception('Unhandled type: ' + f[0])
     return appstr
@@ -231,9 +231,9 @@ class DFDLWriter:
       appstr += '<xs:appinfo source="http://www.ogf.org/dfdl/">' + '\n'
       appstr += '<dfdl:discriminator test='
       if pdutype == 'be_v1':
-        appstr += '"{../gma:SDHBEHeader/dtag eq ' + str(dtypid) + '}"'
+        appstr += '"{../../gma:SDHBEHeader/dtag eq ' + str(dtypid) + '}"'
       elif pdutype == 'bw_v1':
-        appstr += '"{../gma:SDHBWHeader/tagt eq ' + str(dtypid) + '}"'
+        appstr += '"{../../gma:SDHBWHeader/tagt eq ' + str(dtypid) + '}"'
       else:
         raise Exception('Unknown pdutype: ' + pdutype)
       appstr += '/>' + '\n'
@@ -264,11 +264,11 @@ class DFDLWriter:
 
   def write(self, outfname, tree, pdutype):
     try:
-      dfdlstr = ''.join([XSDHEAD, DFDLDEFAULTS, GAPSTYPES, GAPSTRAILER])
+      dfdlstr = ''.join([XSDHEAD, DFDLDEFAULTS])
       if   pdutype == 'be_v1': dfdlstr += ''.join([GAPSPDU_BE, SDHBEHDR_v1, '\n'])
       elif pdutype == 'bw_v1': dfdlstr += ''.join([GAPSPDU_BW, SDHBWHDR_v1, '\n'])
       else: raise Exception('Unknown pdutype: ' + pdutype)
-      dfdlstr += self.make_appdata(tree,pdutype) + XSDTAIL
+      dfdlstr += ''.join([GAPSTYPES, GAPSTRAILER, self.make_appdata(tree,pdutype), XSDTAIL])
       dom     = xml.dom.minidom.parseString(dfdlstr)
       with open(outfname, 'w') as f:
         f.write(dom.toprettyxml(indent=' ', newl=''))
