@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import xml.dom.minidom
-import copy
 
 #---------------------- Begin DFDL Boilerplate for GAPS ------------------------
 XSDHEAD = '''<?xml version="1.0" encoding="UTF-8"?> 
@@ -11,8 +10,7 @@ xmlns:daf="urn:ogf:dfdl:2013:imp:daffodil.apache.org:2018:ext"
 xmlns:gma="urn:gma:1.0" targetNamespace="urn:gma:1.0">
 '''
 
-XSDTAIL = '''
-</xs:schema>
+XSDTAIL = '''</xs:schema>
 '''
 
 DFDLDEFAULTS = '''
@@ -61,30 +59,39 @@ GAPSTYPES = '''
 <xs:simpleType name="gapsdouble" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian">
 <xs:restriction base="xs:double"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsfloat" dfdl:lengthKind="explicit" dfdl:length="4" dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian">
 <xs:restriction base="xs:float"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsuint64" dfdl:lengthKind="explicit" dfdl:length="64" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:unsignedLong"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsuint32" dfdl:lengthKind="explicit" dfdl:length="32" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:unsignedInt"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsuint16" dfdl:lengthKind="explicit" dfdl:length="16" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:unsignedInt"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsuint8" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:unsignedInt"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsint64" dfdl:lengthKind="explicit" dfdl:length="64" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:long"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsint32" dfdl:lengthKind="explicit" dfdl:length="32" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:int"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsint16" dfdl:lengthKind="explicit" dfdl:length="16" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:short"/>
 </xs:simpleType>
+
 <xs:simpleType name="gapsint8" dfdl:lengthKind="explicit" dfdl:length="8" dfdl:lengthUnits="bits">
 <xs:restriction base="xs:byte"/>
 </xs:simpleType>
@@ -113,6 +120,7 @@ GAPSPDU_BE = '''
 </xs:choice>
 </xs:complexType>
 </xs:element>
+
 <xs:element name="SDHBEPDU">
 <xs:complexType>
 <xs:sequence>
@@ -133,6 +141,7 @@ GAPSPDU_BW = '''
 </xs:choice>
 </xs:complexType>
 </xs:element>
+
 <xs:element name="SDHBWPDU">
 <xs:complexType>
 <xs:sequence>
@@ -176,18 +185,6 @@ SDHBWHDR_v1 = '''
 '''
 #---------------------- End DFDL Boilerplate for GAPS   ------------------------
 
-'''
-  <xs:element name="Distance">
-    <xs:complexType>
-      <xs:sequence dfdl:byteOrder="bigEndian">
-        <xs:element name="x" type="gma:gapsdouble" />
-        <xs:element name="y" type="gma:gapsdouble" />
-        <xs:element name="z" type="gma:gapsdouble" />
-      </xs:sequence>
-    </xs:complexType>
-  </xs:element>
-'''
-
 gapstyp = {
   'double': 'gapsdouble',
   'ffloat': 'gapsfloat',
@@ -204,12 +201,18 @@ gapstyp = {
 class DFDLWriter:
   def make_array(self, f):
     appstr = ''
+    if f[0] in gapstyp:
+      appstr += '<xs:element name="' + f[1] + '" type="gma:' + gapstyp[f[0]] + '"' 
+      appstr += ' dfdl:occursCountKind="fixed" xs:minOccurs="' + str(f[2]) + '"'
+      appstr += ' xs:maxOccurs="' + str(f[2]) + '"' + ' />' + '\n'
+    else:
+      raise Exception('Unhandled type: ' + f[0])
     return appstr
 
   def make_scalar(self, f):
     appstr = ''
     if f[0] in gapstyp:
-      appstr += '<xs:element name="' + f[1] + '" type="gma:' + gapstyp[f[0]] + '" />' + '\n'
+      appstr += '<xs:element name="' + f[1] + '" type="gma:' + gapstyp[f[0]] + '"' + ' />' + '\n'
     else:
       raise Exception('Unhandled type: ' + f[0])
     return appstr
@@ -222,14 +225,15 @@ class DFDLWriter:
     appstr += '<xs:choice>' + '\n'
 
     for dtypnm in [l[0] for l in tree]:
+      dtypid += 1
       appstr += '<xs:element ref="gma:' + dtypnm + '">' + '\n'
       appstr += '<xs:annotation>' + '\n'
       appstr += '<xs:appinfo source="http://www.ogf.org/dfdl/">' + '\n'
       appstr += '<dfdl:discriminator test='
       if pdutype == 'be_v1':
-        appstr += '"{../gma:SDHBEHeader/dtag eq 1}"'
+        appstr += '"{../gma:SDHBEHeader/dtag eq ' + str(dtypid) + '}"'
       elif pdutype == 'bw_v1':
-        appstr += '"{../gma:SDHBWHeader/tagt eq 1}"'
+        appstr += '"{../gma:SDHBWHeader/tagt eq ' + str(dtypid) + '}"'
       else:
         raise Exception('Unknown pdutype: ' + pdutype)
       appstr += '/>' + '\n'
@@ -239,38 +243,32 @@ class DFDLWriter:
 
     appstr += '</xs:choice>' + '\n'
     appstr += '</xs:complexType>' + '\n'
-    appstr += '</xs:element>' + '\n'
+    appstr += '</xs:element>' + '\n' + '\n'
 
     for l in tree:
-      fldnm = l.pop(0)
+      fldnm = l[0]
       appstr += '<xs:element name="' + fldnm + '">' + '\n'
       appstr += '<xs:complexType>' + '\n'
       appstr += '<xs:sequence dfdl:byteOrder="bigEndian">' + '\n'
 
-      for f in l:
+      for f in l[1:]:
         if   len(f) == 2: appstr += self.make_scalar(f)
         elif len(f) == 3: appstr += self.make_array(f)
         else:             raise Exception('Unhandled field: ' + f)
 
       appstr += '</xs:sequence>' + '\n'
       appstr += '</xs:complexType>' + '\n'
-      appstr += '</xs:element>' + '\n'
+      appstr += '</xs:element>' + '\n' + '\n'
 
     return appstr
 
   def write(self, outfname, tree, pdutype):
     try:
       dfdlstr = ''.join([XSDHEAD, DFDLDEFAULTS, GAPSTYPES, GAPSTRAILER])
-      if pdutype == 'be_v1':
-        dfdlstr += GAPSPDU_BE
-        dfdlstr += SDHBEHDR_v1
-      elif pdutype == 'bw_v1':
-        dfdlstr += GAPSPDU_BW
-        dfdlstr += SDHBWHDR_v1
-      else:
-        raise Exception('Unknown pdutype: ' + pdutype)
-      dfdlstr += self.make_appdata(tree,pdutype)
-      dfdlstr += XSDTAIL
+      if   pdutype == 'be_v1': dfdlstr += ''.join([GAPSPDU_BE, SDHBEHDR_v1, '\n'])
+      elif pdutype == 'bw_v1': dfdlstr += ''.join([GAPSPDU_BW, SDHBWHDR_v1, '\n'])
+      else: raise Exception('Unknown pdutype: ' + pdutype)
+      dfdlstr += self.make_appdata(tree,pdutype) + XSDTAIL
       dom     = xml.dom.minidom.parseString(dfdlstr)
       with open(outfname, 'w') as f:
         f.write(dom.toprettyxml(indent=' ', newl=''))
@@ -278,8 +276,11 @@ class DFDLWriter:
       print("Error in export: ", e)
 
 if __name__ == '__main__':
-  pt = [['Position', ['double', 'x'], ['double', 'y'], ['double', 'z']], ['Distance', ['double', 'dx'], ['double', 'dy'], ['double', 'dz']]]
+  pt = [['Position', ['double', 'x'], ['double', 'y'], ['double', 'z']], 
+        ['Distance', ['double', 'dx'], ['double', 'dy'], ['double', 'dz']],
+        ['ArrayTest', ['double', 'doubloons', '3']]]
+
   print('Writing test DFDL to betest.dfdl.xsd')
-  DFDLWriter().write('betest.dfdl.xsd', copy.deepcopy(pt), 'be_v1')
+  DFDLWriter().write('betest.dfdl.xsd', pt, 'be_v1')
   print('Writing test DFDL to bwtest.dfdl.xsd')
-  DFDLWriter().write('bwtest.dfdl.xsd', copy.deepcopy(pt), 'bw_v1')
+  DFDLWriter().write('bwtest.dfdl.xsd', pt, 'bw_v1')

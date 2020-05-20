@@ -13,7 +13,5 @@ struct Distance {
 };
 
 struct ArrayTest {
-  int num;
-  unsigned long longuns [3];
-  unsigned long doubleuns [3];
+  double doubloons [3];
 };
