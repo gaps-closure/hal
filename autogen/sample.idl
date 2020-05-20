@@ -15,3 +15,8 @@ struct Distance {
 struct ArrayTest {
   double doubloons [3];
 };
+
+struct FancyArrayTest {
+  int eger;
+  unsigned short sweet[3];
+};
