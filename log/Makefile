@@ -1,10 +1,14 @@
-CC          = gcc
+CC          ?= gcc
 CFLAGS      = -O2 -Wall -Wstrict-prototypes #-g -pg
 
-all:  log.o
+OBJDIR ?= .
 
-%.o:	%.c
-	$(CC) $(CFLAGS) -fpic -c $<
+all:  $(OBJDIR)/log.o
+
+static: all
+
+$(OBJDIR)/%.o:	%.c
+	$(CC) $(CFLAGS) -fpic -c $< $a
 
 clean:
-	rm -f *.o
+	rm -f $(OBJDIR)/*.o

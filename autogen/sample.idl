@@ -1,0 +1,22 @@
+/* Sample IDL file */
+
+struct Position {
+  double x;
+  double y;
+  double z;
+};
+
+struct Distance {
+  double dx;
+  double dy;
+  double dz;
+};
+
+struct ArrayTest {
+  double doubloons [3];
+};
+
+struct FancyArrayTest {
+  int eger;
+  unsigned short sweet[3];
+};

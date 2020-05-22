@@ -1,22 +1,37 @@
-CC          = gcc
-CFLAGS      = -O2 -Wall -Wstrict-prototypes
+CC          ?= gcc
+AR          ?= ar
+CFLAGS      ?= -O2 -Wall -Wstrict-prototypes
+LDLIBS       =-lzmq
+OBJDIR       =.
 
-#LDLIBS      = -L./codecs -lpnt -lxyz
+ifeq ($(CC),cc)
+CC=gcc
+endif
 
-all: libxdcomms.a libxdcomms.so
+ifneq ($(STATICZMQ),)
+LDLIBS = $(LDFLAGS)
+endif
 
-libxdcomms.a: ../log/log.o xdcomms.o 
-	ar rcs $@ $^ 
+all: $(OBJDIR)/libxdcomms.a $(OBJDIR)/libxdcomms.so
 
-libxdcomms.so: ../log/log.o xdcomms.o
-	$(CC) $(CFLAGS) -shared -o $@ $^ -lzmq
+static: $(OBJDIR)/libxdcomms.a
 
-xdcomms.o:  xdcomms.c
-	$(CC) $(CFLAGS) -fpic -c $<
+$(OBJDIR)/../log/log.o: ../log/log.c
+	$(CC) $(CFLAGS) -fpic -c ../log/log.c -o $@
 
-libs: libxdcomms.a libxdcomms.so
+$(OBJDIR)/libxdcomms.a: $(OBJDIR)/../log/log.o $(OBJDIR)/xdcomms.o 
+	$(AR) rcs $@ $^ 
+
+$(OBJDIR)/libxdcomms.so: $(OBJDIR)/../log/log.o $(OBJDIR)/xdcomms.o
+	$(info $(CC) $(CFLAGS) $(STATICZMQ) -shared -o $@ $^ $(LDLIBS))
+	$(CC) $(CFLAGS) $(STATICZMQ) -shared -o $@ $^ $(LDLIBS)
+
+$(OBJDIR)/xdcomms.o:  xdcomms.c
+	$(CC) $(CFLAGS) -fpic -c $< -o $@
+
+libs: $(OBJDIR)/libxdcomms.a $(OBJDIR)/libxdcomms.so
 
 clean:
-	rm -f *.o *.a *.so
+	rm -f $(OBJDIR)/*.o $(OBJDIR)/*.a $(OBJDIR)/*.so
 
 
