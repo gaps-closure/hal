@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # Autogeneration Utilities for CLOSURE
 #
+from   codecwriter   import CodecWriter
 from   dfdlwriter    import DFDLWriter
 from   clang.cindex  import Index, TokenKind
 from   lark.lexer    import Lexer, Token
@@ -130,6 +131,7 @@ def get_args():
   p.add_argument('-i', '--idl_file', required=True, type=str, help='Input IDL file')
   p.add_argument('-g', '--gaps_devtyp', required=True, type=str, help='GAPS device type [bw_v1 or be_v1]')
   p.add_argument('-d', '--dfdl_outfile', required=True, type=str, help='Output DFDL file')
+  p.add_argument('-e', '--encoder_outfile', required=False, default='codectest', type=str, help='Output codec filename without .c/.h suffix')
   #p.add_argument('-j', '--json_cle_file', required=True, type=str, help='Input CLE-JSON file')
   p.add_argument('-c', '--clang_args', required=False, type=str, 
                  default='-x,c++,-stdlib=libc++', help='Arguments for clang')
@@ -151,6 +153,10 @@ def main():
 
   print('Writing DFDL file ' + args.dfdl_outfile + ' for ' + args.gaps_devtyp)
   DFDLWriter().write(args.dfdl_outfile, ttree, args.gaps_devtyp)
+
+  print('Writing Encoder files ' + args.encoder_outfile + '.c/.h')
+  CodecWriter().writeheader(args.encoder_outfile, ttree)
+  CodecWriter().writecodecc(args.encoder_outfile, ttree)
 
 if __name__ == '__main__':
   main()
