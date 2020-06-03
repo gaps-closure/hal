@@ -18,7 +18,7 @@ void tag_print (gaps_tag *tag, FILE * fd) {
   fprintf(fd, "[mux=%02u sec=%02u typ=%02u] ", tag->mux, tag->sec, tag->typ);
 }
 
-/* Print raw data of specified length (TODO - Remove as no longer used) */
+/* Print raw data of specified length (TODO - move to daemon as no longer used here) */
 void data_print(const char *str, uint8_t *data, size_t data_len) {
   fprintf(stderr, "%s (len=%ld)", str, data_len);
   for (int i = 0; i < data_len; i++) {
@@ -69,8 +69,45 @@ void len_decode (size_t *out, uint32_t in) {
 }
 
 /**********************************************************************/
-/* LIB Coding Functions for Data (TODO, Use DFDL schema) */
+/* Coding Functions for Application Data (TODO, Use DFDL schema)      */
 /**********************************************************************/
+/*
+ * Print Codec Table
+ */
+void xdc_maps_print(void) {
+  fprintf(stderr, "%s: ", __func__);
+  for (int i=0; i < DATA_TYP_MAX; i++) {
+    if (cmap[i].valid != 0) {
+      fprintf(stderr, "[typ=%d ", i);
+      fprintf(stderr, "e=%p ", cmap[i].encode);
+      fprintf(stderr, "d=%p] ", cmap[i].decode);
+    }
+  }
+  fprintf(stderr, "\n");
+}
+
+/*
+ * Load Codec Table with ADU encode and decode functions
+ */
+void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
+  static int   do_once = 1;
+  
+  if (do_once == 1) {
+    for (int i=0; i < DATA_TYP_MAX; i++)  cmap[i].valid=0;
+    do_once = 0;
+  }
+//  fprintf(stderr, "%s: typ=%d\n", __func__, typ);
+  cmap[typ].valid=1;
+  cmap[typ].encode=encode;
+  cmap[typ].decode=decode;
+  // xdc_maps_print();
+}
+
+// XXX: Additional Functions TBD
+//  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then uses register to load them into the table */
+// Also xdc_provision function(s)
+
+
 void type_check(uint32_t typ) {
   if ( (typ >= DATA_TYP_MAX) || (cmap[typ].valid==0) ) {
     log_fatal("No encode function loaded for data typ=%d\n", typ);
@@ -114,33 +151,80 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
 }
 
 /**********************************************************************/
-/* LIB Network (ZMQ-based) Functions */
+/* Get and Set ZMQ Addresses (init to default; set if valid addr_in)  */
 /**********************************************************************/
-
-void exit_with_zmq_error(const char* where) {
-  log_fatal("%s error %d: %s\n",where,errno,zmq_strerror(errno));
-  exit(-1);
+void set_address(char *xdc_addr, char *addr_in, const char *addr_default, int *do_once) {
+    if (*do_once == 1) {
+      if (strlen(addr_default) >= 255) {
+        log_fatal("API IPC address default is too long: %s", addr_default);
+        exit(1);
+      }
+      *do_once = 0;
+      strcpy(xdc_addr, addr_default);
+    }
+    if (addr_in != NULL) {
+      if (strlen(addr_in) >= 255) {
+        log_warn("%s: Input too long, not changing", __func__);
+      } else {
+        strcpy(xdc_addr, addr_in);
+      }
+    }
 }
 
 /*
- * Connect to ZMQ socket
+ * Get IPC Addresses (and set if addr_in not NULL)
+ * where local APP client subscribes to peer publisher
+ * TODO: change name to xdc_addr_sub
  */
-void * z_connect(int type, const char *dest) {
-  void   *socket, *ctx;
-  int     err;
-
-  ctx = zmq_ctx_new ();
-  if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
-  socket = zmq_socket(ctx, type);
-  if(socket == NULL) exit_with_zmq_error("zmq_socket");
-  err = zmq_connect(socket, dest);
-  if(err) exit_with_zmq_error("zmq_connect");
-
-  log_trace("API connects (s=%p t=%d) to %s\n", socket, type, dest);
-  usleep(10000); // let connection establish before sending a message
-  return (socket);
+char *xdc_set_in(char *addr_in) {
+  static int do_once = 1;
+  static char xdc_addr[256];
+  set_address(xdc_addr, addr_in, IPC_ADDR_DEFAULT_HALSUB, &do_once);
+//  fprintf(stderr, "%s = %s\n", __func__, xdc_addr);
+  return xdc_addr;
 }
 
+/*
+ * Get IPC Addresses (and set if addr_in not NULL),
+ * where local APP server publishes to peer subscriber
+ * TODO: change name to xdc_addr_pub
+ */
+char *xdc_set_out(char *addr_in) {
+  static int do_once = 1;
+  static char xdc_addr[256];
+  set_address(xdc_addr, addr_in, IPC_ADDR_DEFAULT_HALPUB, &do_once);
+// fprintf(stderr, "%s = %s\n", __func__, xdc_addr);
+  return xdc_addr;
+}
+
+/*
+ * Get IPC Addresses (and set if addr_in not NULL),
+ * where local APP client requests peer server response
+ */
+char *xdc_addr_req(char *addr_in) {
+  static int do_once = 1;
+  static char xdc_addr[256];
+  set_address(xdc_addr, addr_in, IPC_ADDR_DEFAULT_HALREQ, &do_once);
+//  fprintf(stderr, "%s = %s\n", __func__, xdc_addr);
+  return xdc_addr;
+}
+
+/*
+ * Get IPC Addresses (and set if addr_in not NULL),
+ * where local APP server responds to peer client requests
+ */
+char *xdc_addr_rep(char *addr_in) {
+  static int do_once = 1;
+  static char xdc_addr[256];
+  set_address(xdc_addr, addr_in, IPC_ADDR_DEFAULT_HALREP, &do_once);
+//  fprintf(stderr, "%s = %s\n", __func__, xdc_addr);
+  return xdc_addr;
+}
+
+
+/**********************************************************************/
+/* ZMQ Communication Send and Receive */
+/**********************************************************************/
 /*
  * Send ADU to HAL (which should be listening on the ZMQ subscriber socket)
  */
@@ -158,154 +242,80 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   if (bytes <= 0) fprintf(stderr, "send error %s %d ", zmq_strerror(errno), bytes);
 }
 
-void *xdc_pub_socket()
-{
-    int err;
-    void *socket;
-
-    socket = zmq_socket(xdc_ctx(), ZMQ_PUB);
-    if (socket == NULL) exit_with_zmq_error("zmq_socket");
-
-    err = zmq_connect(socket, xdc_set_out(NULL));
-    if (err) exit_with_zmq_error("zmq_connect");
-
-    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
-
- // if (xdc_verbose) fprintf(stderr, "API connects (s=%p t=%d) to %s\n",socket, ZMQ_PUB, xdc_set_out(NULL));
-
-    return socket;
-}
-
-void *xdc_sub_socket(gaps_tag tag)
-{
-    int err;
-    gaps_tag tag4filter;
-    void *socket;
-
-    socket = zmq_socket(xdc_ctx(), ZMQ_SUB);
-    if (socket == NULL)
-        exit_with_zmq_error("zmq_socket");
-
-    err = zmq_connect(socket, xdc_set_in(NULL));
-    if (err)
-        exit_with_zmq_error("zmq_connect");
-
-    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, xdc_set_in(NULL));
-    tag_encode(&tag4filter, &tag);
-
-    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
-    assert(err == 0);
-
-    return socket;
-}
-
+/*
+* Receive ADU from HAL (which should be listening on the ZMQ publisher socket)
+*/
 void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
 {
-    log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
-  // uint8_t *f = (uint8_t *) tag;
-  // for (int i = 0; i < RX_FILTER_LEN; i++) fprintf(stderr, "%.02x", *(f++));
-  // fprintf(stderr, ")\n");
-
     sdh_ha_v1 packet;
     void *p = &packet;
 
+    log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
     int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
     log_buf_trace("API recv packet", (uint8_t *) p, size);
-
     size_t adu_len;
     gaps_data_decode(p, size, adu, &adu_len, tag);
 }
 
+/**********************************************************************/
+/* ZMQ-based Communication Functions Setup */
+/**********************************************************************/
 /*
- * Print Codec Table
+ * Exit with ZMQ error message
  */
-void xdc_maps_print(void) {
-  fprintf(stderr, "%s: ", __func__);
-  for (int i=0; i < DATA_TYP_MAX; i++) {
-    if (cmap[i].valid != 0) {
-      fprintf(stderr, "[typ=%d ", i);
-      fprintf(stderr, "e=%p ", cmap[i].encode);
-      fprintf(stderr, "d=%p] ", cmap[i].decode);
-    }
-  }
-  fprintf(stderr, "\n");
+void exit_with_zmq_error(const char* where) {
+  log_fatal("HAL API exits after %s error %d: %s\n", where, errno, zmq_strerror(errno));
+  exit(-1);
 }
-/*
- * Load Codec Table with ADU encode and decode functions
- */
-void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
-  static int   do_once = 1;
-  
-  if (do_once == 1) {
-    for (int i=0; i < DATA_TYP_MAX; i++)  cmap[i].valid=0;
-    do_once = 0;
-  }
-//  fprintf(stderr, "%s: typ=%d\n", __func__, typ);
-  cmap[typ].valid=1;
-  cmap[typ].encode=encode;
-  cmap[typ].decode=decode;
-  // xdc_maps_print();
-}
-
-// XXX: Additional Functions TBD
-//  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then uses register to load them into the table */
-// Also xdc_provision function(s)
 
 /*
- * Load IPC Addresses
+ * Get zmq context (and create if not already created) - once per process
  */
-char *xdc_set_in(char *addr) {
-  static int do_once = 1;
-  static char xdc_addr_in[256];
-  if (do_once == 1) {
-    if (strlen(IPC_ADDR_DEFAULT_IN) >= 255) {
-      log_fatal("API IPC_ADDR_DEFAULT_IN too long");
-      exit(1);
-    }
-    strcpy(xdc_addr_in, IPC_ADDR_DEFAULT_IN);
-    do_once = 0;
-  }
-  if (addr != NULL) {
-    if (strlen(addr) >= 255) {
-      log_warn("%s: Input too long, not changing", __func__);
-    } else {
-      strcpy(xdc_addr_in, addr);
-    }
-  }
-  return xdc_addr_in;
-}
-
-char *xdc_set_out(char *addr) {
-  static int do_once = 1;
-  static char xdc_addr_out[256];
-  if (do_once == 1) {
-    if (strlen(IPC_ADDR_DEFAULT_OUT) >= 255) {
-      log_fatal("API IPC_ADDR_DEFAULT_IN too long");
-      exit(1);
-    }
-    strcpy(xdc_addr_out, IPC_ADDR_DEFAULT_OUT);
-    do_once = 0;
-    
-    /* TODO - Pass logging requirements in as a parameter */
-    log_set_quiet(0);
-    log_set_level(LOG_INFO);
-  }
-  if (addr != NULL) {
-    if (strlen(addr) >= 255) {
-      log_warn("%s: Output too long, not changing", __func__);
-    } else {
-      strcpy(xdc_addr_out, addr);
-    }
-  }
-  return xdc_addr_out;
-}
-
 void *xdc_ctx() {
     static void *ctx = NULL;
     if (ctx == NULL) {
+        /* TODO - Pass logging requirements in as a parameter */
+        log_set_quiet(0);
+        log_set_level(LOG_INFO);
+        
         ctx = zmq_ctx_new();
         if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
     }
-    
     return ctx;
+}
+
+/*
+ * Open ZMQ socket and return socket handle: Publisher
+ */
+void *xdc_pub_socket()
+{
+    int      err;
+    void    *socket;
+
+    socket = zmq_socket(xdc_ctx(), ZMQ_PUB);
+    if (socket == NULL) exit_with_zmq_error("zmq_socket");
+    err = zmq_connect(socket, xdc_set_out(NULL));
+    if (err) exit_with_zmq_error("zmq_connect");
+    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
+    return socket;
+}
+
+/*
+ * Open ZMQ socket and return socket handle: Subscriber
+ */
+void *xdc_sub_socket(gaps_tag tag)
+{
+    int      err;
+    void    *socket;
+    gaps_tag tag4filter;
+
+    socket = zmq_socket(xdc_ctx(), ZMQ_SUB);
+    if (socket == NULL) exit_with_zmq_error("zmq_socket");
+    err = zmq_connect(socket, xdc_set_in(NULL));
+    if (err) exit_with_zmq_error("zmq_connect");
+    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, xdc_set_in(NULL));
+    tag_encode(&tag4filter, &tag);
+    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
+    assert(err == 0);
+    return socket;
 }
