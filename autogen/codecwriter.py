@@ -277,7 +277,7 @@ class CodecWriter:
       appstr += '    ' + 'p2->' + f[1] + '[i] = ' + encfn[f[0]] + '(p1->' + f[1] + '[i]);' + '\n'
       appstr += '  }' + '\n'
     elif ser == 'sizeof':
-      appstr += 'sizeof(' + cintyp[f[0]] + ') * ' + str(f[2]) + ' +'
+      appstr += 'sizeof(' + cintyp[f[0]] + ') * ' + str(f[2]) + ' + '
     else:
       raise Exception('Unknown serializarion: ' + ser)
     return appstr
