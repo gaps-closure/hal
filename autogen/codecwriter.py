@@ -29,7 +29,7 @@ typedef struct _trailer_datatype {
 HTAIL='''#endif
 '''
 
-FLOATH='''//*
+FLOATH='''/*
  * uint64_t Conversion Macros: a) host to network (big endian), b) host to x86 (little endian)
  *   Test determines (at runtime sadly) if host is big endian).
  *   If byte-swapping, then swap each 32-bits using htonl (and swap the two 32=bit words).
@@ -174,9 +174,6 @@ int main(void)
 }
 #endif
 '''
-
-
-
 #---------------------- End Serializer Boilerplate for GAPS   ------------------------
 
 cintyp = {
@@ -256,6 +253,8 @@ class CodecWriter:
       appstr += '  ' + 'p2->' + f[1] + ' = ' + encfn[f[0]] + '(p1->' + f[1] + ');' + '\n'
     elif ser == 'decoder':
       appstr += '  ' + 'p2->' + f[1] + ' = ' + decfn[f[0]] + '(p1->' + f[1] + ');' + '\n'
+    elif ser == 'sizeof':
+      appstr += 'sizeof(' + cintyp[f[0]] + ') + '
     else:
       raise Exception('Unknown serializarion: ' + ser)
     return appstr
@@ -266,17 +265,19 @@ class CodecWriter:
       t = cintyp[f[0]] if inp else coutyp[f[0]]
       appstr += '  ' + t + ' ' + f[1] + '[' + str(f[2]) + '];' + '\n'
     elif ser == 'printer':
-      appstr += '  for (i=0; i<' + str(f[2]) + '; i++) {' + '\n'
+      appstr += '  for (int i=0; i<' + str(f[2]) + '; i++) {' + '\n'
       appstr += '    ' + 'fprintf(stderr, " ' + fmtstr[f[0]] + ',", ' + d + '->' + f[1] + '[i]);' + '\n'
       appstr += '  }' + '\n'
     elif ser == 'encoder':
-      appstr += '  for (i=0; i<' + str(f[2]) + '; i++) {' + '\n'
+      appstr += '  for (int i=0; i<' + str(f[2]) + '; i++) {' + '\n'
       appstr += '    ' + 'p2->' + f[1] + '[i] = ' + encfn[f[0]] + '(p1->' + f[1] + '[i]);' + '\n'
       appstr += '  }' + '\n'
     elif ser == 'decoder':
-      appstr += '  for (i=0; i<' + str(f[2]) + '; i++) {' + '\n'
+      appstr += '  for (int i=0; i<' + str(f[2]) + '; i++) {' + '\n'
       appstr += '    ' + 'p2->' + f[1] + '[i] = ' + encfn[f[0]] + '(p1->' + f[1] + '[i]);' + '\n'
       appstr += '  }' + '\n'
+    elif ser == 'sizeof':
+      appstr += 'sizeof(' + cintyp[f[0]] + ') * ' + str(f[2]) + ' +'
     else:
       raise Exception('Unknown serializarion: ' + ser)
     return appstr
@@ -292,7 +293,7 @@ class CodecWriter:
   def make_structs(self,dtypnm,flds,inp=True):
     appstr = ''
     d = dtypnm.lower()
-    istr   = 'input' if inp else 'output'
+    istr   = 'datatype' if inp else 'output'
     appstr += 'typedef struct _' + d + '_' + istr + ' {' + '\n'
     for f in flds:
       if   len(f) == 2: appstr += self.make_scalar(d,f,'header',inp)
@@ -315,7 +316,7 @@ class CodecWriter:
     for dtypnm in [l[0] for l in tree]:
       dtypid += 1
       d = dtypnm.lower()
-      appstr += 'extern void ' + d + ' _print (' + d + '_datatype *' + d + ');' + '\n'
+      appstr += 'extern void ' + d + '_print (' + d + '_datatype *' + d + ');' + '\n'
       appstr += 'extern void ' + d + '_data_encode (void *buff_out, void *buff_in, size_t *len_out);' + '\n'
       appstr += 'extern void ' + d + '_data_decode (void *buff_out, void *buff_in, size_t *len_in);' + '\n'
       appstr += '\n'
@@ -354,7 +355,11 @@ class CodecWriter:
     appstr += '  p2->trailer.oid = htonl(p1->trailer.oid);' + '\n'
     appstr += '  p2->trailer.mid = htons(p1->trailer.mid);' + '\n'
     appstr += '  p2->trailer.crc = htons(p1->trailer.crc);' + '\n'
-    appstr += '  *len_out = sizeof(p1->x) * 3 + sizeof(trailer_datatype);' + '\n'
+    appstr += '  *len_out = '
+    for f in l[1:]:
+      if   len(f) == 2: appstr += self.make_scalar(d,f,'sizeof',True)
+      elif len(f) == 3: appstr += self.make_array(d,f,'sizeof',True)
+    appstr += 'sizeof(trailer_datatype);' + '\n'
     appstr += '}' + '\n\n'
     return appstr
 
