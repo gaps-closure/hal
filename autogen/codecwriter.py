@@ -29,7 +29,9 @@ typedef struct _trailer_datatype {
 HTAIL='''#endif
 '''
 
-FLOATH='''/*
+FLOATH='''#ifndef _FLOAT_H_
+#define _FLOAT_H_
+/*
  * uint64_t Conversion Macros: a) host to network (big endian), b) host to x86 (little endian)
  *   Test determines (at runtime sadly) if host is big endian).
  *   If byte-swapping, then swap each 32-bits using htonl (and swap the two 32=bit words).
@@ -44,6 +46,7 @@ FLOATH='''/*
 /* Exported packing functions for big endian */
 extern uint64_t      pack754_64_be(long double);
 extern long double unpack754_64_be(uint64_t);
+#endif /* _FLOAT_H_ */
 '''
 
 FLOATC='''/*
@@ -161,14 +164,14 @@ int main(void)
   d2 = unpack754_64(di);
   ni = pack754_64_be(d);
 
-  printf("float before   (bytes = %lu): %.7f\n",             sizeof(f), f);
-  printf("float encoded  (bytes = %lu): 0x%08" PRIx32 "\n",  sizeof(fi), fi);
-  printf("float after    (bytes = %lu): %.7f\n\n",           sizeof(f2), f2);
+  printf("float before   (bytes = %lu): %.7f\\n",             sizeof(f), f);
+  printf("float encoded  (bytes = %lu): 0x%08" PRIx32 "\\n",  sizeof(fi), fi);
+  printf("float after    (bytes = %lu): %.7f\\n\\n",           sizeof(f2), f2);
   
-  printf("double before  (bytes = %lu): %.20lf\n",           sizeof(d), d);
-  printf("double encoded (bytes = %lu): 0x%016" PRIx64 "\n", sizeof(di), di);
-  printf("double big-end (bytes = %lu): 0x%016" PRIx64 "\n", sizeof(ni), ni);
-  printf("double decoder (bytes = %lu): %.20lf [%.20lf]\n",  sizeof(d), d2, (double) unpack754_64_be(ni));
+  printf("double before  (bytes = %lu): %.20lf\\n",           sizeof(d), d);
+  printf("double encoded (bytes = %lu): 0x%016" PRIx64 "\\n", sizeof(di), di);
+  printf("double big-end (bytes = %lu): 0x%016" PRIx64 "\\n", sizeof(ni), ni);
+  printf("double decoder (bytes = %lu): %.20lf [%.20lf]\\n",  sizeof(d), d2, (double) unpack754_64_be(ni));
 
   return 0;
 }
