@@ -112,7 +112,7 @@ long double net2double(uint64_t i) {
   return (unpack754_64(h));
 }
 
-#define FLOAT_TEST
+//#define FLOAT_TEST
 #ifdef FLOAT_TEST
 /* testing */
 int main(void)
