@@ -20,9 +20,6 @@ Currently DFDL generation is fully implemented; serialization codec generation i
 Next steps:
 
  * We are missing 3 low-level functions (pack/unpack for 32-bit float, 64-bit ntohll) in the generated float.c/.h
- * Test 1: update the sample IDL to include a struct will all possible options, and test auto-generation of DFDL and codec 
-create a test program that creates a sample instance, print, encode, decode, print
- * Test 2: Based on the DFDL, manually create a sample instance infoset, unparse to binary, decode, encode, print
  * Integrate with CLOSURE toolchain (figure out how to make CAPO generate this IDL)
  * Develop approach to autogenerate DAGR from CLE-JSON companion file 
  * Add support for generating user-defined-function stubs for arbitrary classes/datatypes 
