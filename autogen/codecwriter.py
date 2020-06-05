@@ -277,7 +277,7 @@ class CodecWriter:
       appstr += '  }' + '\n'
     elif ser == 'decoder':
       appstr += '  for (int i=0; i<' + str(f[2]) + '; i++) {' + '\n'
-      appstr += '    ' + 'p2->' + f[1] + '[i] = ' + encfn[f[0]] + '(p1->' + f[1] + '[i]);' + '\n'
+      appstr += '    ' + 'p2->' + f[1] + '[i] = ' + decfn[f[0]] + '(p1->' + f[1] + '[i]);' + '\n'
       appstr += '  }' + '\n'
     elif ser == 'sizeof':
       appstr += 'sizeof(' + cintyp[f[0]] + ') * ' + str(f[2]) + ' + '

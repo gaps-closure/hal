@@ -56,6 +56,7 @@ def idl_parser():
                  | other
     field:       basictype fieldname semicolon
                  | basictype fieldname openbracket count closebracket semicolon
+                 | comment
     ?basictype:  double
                  | ffloat
                  | int8
@@ -85,11 +86,12 @@ def idl_parser():
     structname:   IDENTIFIER
     struct:       STRUCT
     fieldname:    IDENTIFIER
+    comment:      COMMENT
     other:        PUNCTUATION
                   | IDENTIFIER
                   | LITERAL
                   | KEYWORD
-                  | COMMENT
+                  | comment
     %declare PUNCTUATION IDENTIFIER LITERAL KEYWORD COMMENT OPENBRACKET CLOSEBRACKET OPENBRACES CLOSEBRACES SEMICOLON STRUCT UNSIGNED CHAR SHORT INT LONG FLOAT DOUBLE 
   """, start='datlst', parser='lalr', lexer=TypeLexer)
 
@@ -124,6 +126,7 @@ class IDLTransformer(Transformer):
   def semicolon(self,items):    return []
   def struct(self,items):       return []
   def other(self, items):       return []
+  def comment(self, items):     return []
 
 # Parse command line argumets
 def get_args():
