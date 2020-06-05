@@ -44,13 +44,14 @@ FLOATH='''#ifndef _FLOAT_H_
 #define swap_uint32(x) (((uint32_t)swap_uint16((x) & 0xFFFF)     << 16) | swap_uint16((x) >> 16))
 #define swap_uint64(x) (((uint64_t)swap_uint32((x) & 0xFFFFFFFF) << 32) | swap_uint32((x) >> 32))
 
-#define htoxll(x) (big_end_test ? swap_uint64(x) : (x))
-#define htoxl(x)  (big_end_test ? swap_uint32(x) : (x))
+#define my_htoxll(x) (big_end_test ? swap_uint64(x) : (x))
+#define my_htoxl(x)  (big_end_test ? swap_uint32(x) : (x))
+#define my_htonll(x) (big_end_test ? (x) : swap_uint64(x))
+#define my_htonl(x)  (big_end_test ? (x) : swap_uint32(x))
 
 /* Functions / macros called by user */
-
-#define htonll(x) (big_end_test ? (x) : swap_uint64(x))
-#define ntohll(x) htonll(x)
+#define htonll(x) my_htonll(x)
+#define ntohll(x) my_htonll(x)
 
 extern uint32_t    htonf(float);
 extern float       ntohf(uint32_t);
@@ -145,31 +146,31 @@ long double unpack754(uint64_t i, unsigned bits, unsigned expbits)
 /* Converts host float by encoding into IEEE-754 uint32_t and putting into Network byte order */
 uint32_t htonf(float f) {
   uint32_t h = pack754_32(f);
-  if (FLOAT_BIG_ENDIAN != 0)  return ((htonl(h)));  /* to Network Big-Endian */
-  else                        return ((htoxl(h)));  /* to Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  return ((my_htonl(h)));  /* to Network Big-Endian */
+  else                        return ((my_htoxl(h)));  /* to Network Little-Endian */
 }
 
 /* Converts IEEE-754 uint32_t in Network byte order into host float */
 float ntohf(uint32_t i) {
   uint32_t    h;
   
-  if (FLOAT_BIG_ENDIAN != 0)  h = (htonl(i));      /* from Network Big-Endian */
-  else                        h = (htoxl(i));      /* from Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  h = (my_htonl(i));      /* from Network Big-Endian */
+  else                        h = (my_htoxl(i));      /* from Network Little-Endian */
   return (unpack754_32(h));
 }
 
 /* Converts host double by encoding into IEEE-754 uint64_t and putting into Network byte order */
 uint64_t htond(long double f) {
   uint64_t h = pack754_64(f);
-  if (FLOAT_BIG_ENDIAN != 0)  return ((htonll(h)));  /* to Network Big-Endian */
-  else                        return ((htoxll(h)));  /* to Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  return ((my_htonll(h)));  /* to Network Big-Endian */
+  else                        return ((my_htoxll(h)));  /* to Network Little-Endian */
 }
 
 /* Converts IEEE-754 uint64_t in Network byte order into host double */
 long double ntohd(uint64_t i) {
   uint64_t    h;
-  if (FLOAT_BIG_ENDIAN != 0)  h = (htonll(i));      /* from Network Big-Endian */
-  else                        h = (htoxll(i));      /* from Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  h = (my_htonll(i));      /* from Network Big-Endian */
+  else                        h = (my_htoxll(i));      /* from Network Little-Endian */
   return (unpack754_64(h));
 }
 '''
