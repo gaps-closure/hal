@@ -83,31 +83,31 @@ long double unpack754(uint64_t i, unsigned bits, unsigned expbits)
 /* Converts host float by encoding into IEEE-754 uint32_t and putting into Network byte order */
 uint32_t htonf(float f) {
   uint32_t h = pack754_32(f);
-  if (FLOAT_BIG_ENDIAN != 0)  return ((htonl(h)));  /* to Network Big-Endian */
-  else                        return ((htoxl(h)));  /* to Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  return ((my_htonl(h)));  /* to Network Big-Endian */
+  else                        return ((my_htoxl(h)));  /* to Network Little-Endian */
 }
 
 /* Converts IEEE-754 uint32_t in Network byte order into host float */
 float ntohf(uint32_t i) {
   uint32_t    h;
   
-  if (FLOAT_BIG_ENDIAN != 0)  h = (htonl(i));      /* from Network Big-Endian */
-  else                        h = (htoxl(i));      /* from Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  h = (my_htonl(i));      /* from Network Big-Endian */
+  else                        h = (my_htoxl(i));      /* from Network Little-Endian */
   return (unpack754_32(h));
 }
 
 /* Converts host double by encoding into IEEE-754 uint64_t and putting into Network byte order */
 uint64_t htond(long double f) {
   uint64_t h = pack754_64(f);
-  if (FLOAT_BIG_ENDIAN != 0)  return ((htonll(h)));  /* to Network Big-Endian */
-  else                        return ((htoxll(h)));  /* to Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  return ((my_htonll(h)));  /* to Network Big-Endian */
+  else                        return ((my_htoxll(h)));  /* to Network Little-Endian */
 }
 
 /* Converts IEEE-754 uint64_t in Network byte order into host double */
 long double ntohd(uint64_t i) {
   uint64_t    h;
-  if (FLOAT_BIG_ENDIAN != 0)  h = (htonll(i));      /* from Network Big-Endian */
-  else                        h = (htoxll(i));      /* from Network Little-Endian */
+  if (FLOAT_BIG_ENDIAN != 0)  h = (my_htonll(i));      /* from Network Big-Endian */
+  else                        h = (my_htoxll(i));      /* from Network Little-Endian */
   return (unpack754_64(h));
 }
 
