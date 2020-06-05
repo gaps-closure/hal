@@ -81,14 +81,14 @@ long double unpack754(uint64_t i, unsigned bits, unsigned expbits)
 }
 
 /* Converts host float by encoding into IEEE-754 uint32_t and putting into Network byte order */
-uint32_t float2net(float f) {
+uint32_t htonf(float f) {
   uint32_t h = pack754_32(f);
   if (FLOAT_BIG_ENDIAN != 0)  return ((htonl(h)));  /* to Network Big-Endian */
   else                        return ((htoxl(h)));  /* to Network Little-Endian */
 }
 
 /* Converts IEEE-754 uint32_t in Network byte order into host float */
-float net2float(uint32_t i) {
+float ntohf(uint32_t i) {
   uint32_t    h;
   
   if (FLOAT_BIG_ENDIAN != 0)  h = (htonl(i));      /* from Network Big-Endian */
@@ -97,46 +97,44 @@ float net2float(uint32_t i) {
 }
 
 /* Converts host double by encoding into IEEE-754 uint64_t and putting into Network byte order */
-uint64_t double2net(long double f) {
+uint64_t htond(long double f) {
   uint64_t h = pack754_64(f);
   if (FLOAT_BIG_ENDIAN != 0)  return ((htonll(h)));  /* to Network Big-Endian */
   else                        return ((htoxll(h)));  /* to Network Little-Endian */
 }
 
 /* Converts IEEE-754 uint64_t in Network byte order into host double */
-long double net2double(uint64_t i) {
+long double ntohd(uint64_t i) {
   uint64_t    h;
-  
   if (FLOAT_BIG_ENDIAN != 0)  h = (htonll(i));      /* from Network Big-Endian */
   else                        h = (htoxll(i));      /* from Network Little-Endian */
   return (unpack754_64(h));
 }
 
-//#define FLOAT_TEST
+/* #define FLOAT_TEST */
 #ifdef FLOAT_TEST
-/* testing */
 int main(void)
 {
     float    f = 3.1415926535897932384;
   uint32_t p = pack754_32(f);
   float    u = unpack754_32(p);
-  uint32_t n = float2net(f);
-  float    y = net2float(n);
+  uint32_t n = htonf(f);
+  float    y = ntohf(n);
   printf("  f=float                          [%luB]  %.22f\n",                              sizeof(f), f);
   printf("  p=pack754_32(f)=ntohl(n)         [%luB]  0x%08" PRIx32 " [0x%08" PRIx32 "]\n",  sizeof(p), p, ntohl(n));
-  printf("  n=float2net(f)=htonl(p)          [%luB]  0x%08" PRIx32 " [0x%08" PRIx32 "]\n",  sizeof(n), n, htonl(p));
-  printf("  u=unpack754_32(p)=net2float(n)   [%luB]  %.22f [%.22f]\n\n",                      sizeof(u), u, y);
+  printf("  n=htonf(f)=htonl(p)              [%luB]  0x%08" PRIx32 " [0x%08" PRIx32 "]\n",  sizeof(n), n, htonl(p));
+  printf("  u=unpack754_32(p)=ntohf(n)       [%luB]  %.22f [%.22f]\n\n",                    sizeof(u), u, y);
 
   double   d = 3.141592653589793238462643383279502884197169399375105820974944592307816406286;
   uint64_t q = pack754_64(d);
   double   v = unpack754_64(q);
-  uint64_t m = double2net(d);
-  double   z = net2double(m);
+  uint64_t m = htond(d);
+  double   z = ntohd(m);
   printf("  d=double                         [%luB]  %.48lf\n",                              sizeof(d), d);
   printf("  q=pack754_64(d)=ntohll(m)        [%luB]  0x%016" PRIx64 " [0x%016" PRIx64 "]\n", sizeof(q), q, ntohll(m));
-  printf("  m=double2net(d)=htonll(q)        [%luB]  0x%016" PRIx64 " [0x%016" PRIx64 "]\n", sizeof(m), m, htonll(q));
-  printf("  z=unpack754_64(q)=net2double(m)  [%luB]  %.48lf [%.48lf]\n",                     sizeof(v), v, (double) z);
+  printf("  m=htond(d)=htonll(q)             [%luB]  0x%016" PRIx64 " [0x%016" PRIx64 "]\n", sizeof(m), m, htonll(q));
+  printf("  z=unpack754_64(q)=ntohd(m)       [%luB]  %.48lf [%.48lf]\n",                     sizeof(v), v, (double) z);
 
   return 0;
 }
-#endif
+#endif /* FLOAT_TEST */
