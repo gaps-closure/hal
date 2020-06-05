@@ -23,11 +23,9 @@ struct FancyArrayTest {
   unsigned short  d;
   int             e;
   unsigned int    f;
-  /*
   long            g;
   unsigned long   h;
   float           i;
-  */
   double          j;
   char            k[4];
   unsigned char   l[4];
@@ -35,10 +33,8 @@ struct FancyArrayTest {
   unsigned short  n[4];
   int             o[4];
   unsigned int    p[4];
-  /*
   long            q[4];
   unsigned long   r[4];
   float           s[4];
-  */
   double          t[4];
 };

@@ -31,33 +31,46 @@ HTAIL='''#endif
 
 FLOATH='''#ifndef _FLOAT_H_
 #define _FLOAT_H_
-/*
- * uint64_t Conversion Macros: a) host to network (big endian), b) host to x86 (little endian)
- *   Test determines (at runtime sadly) if host is big endian).
- *   If byte-swapping, then swap each 32-bits using htonl (and swap the two 32=bit words).
- */
-#define big_end_test(x) (1==htonl(1))
-#define swap_uint64(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-#define htonll(x) (big_end_test(x) ? (x) : swap_uint64(x))
-#define htoxll(x) (big_end_test(x) ? swap_uint64(x) : (x))
 
-#define FLOAT_BIG_ENDIAN 0      /* 0 = Little endian, 1 = Big endian */
+/* Network order for double/float: 0 = Little endian, 1 = Big endian          */
+/* Currently our DFDL uses littleEndian network order for float and double    */
+/* This choice was based on the convention used by the shapeFile format       */
+/* We are preserving bigEndian order for all integer types including uint64_t */
+#define FLOAT_BIG_ENDIAN 0
 
-/* Exported packing functions for big endian */
-extern uint64_t      pack754_64_be(long double);
-extern long double unpack754_64_be(uint64_t);
+#define big_end_test (1==htonl(1))
+
+#define swap_uint16(x) (((uint16_t)           ((x) & 0xFF)       <<  8) | (((x) & 0xFF00) >>  8))
+#define swap_uint32(x) (((uint32_t)swap_uint16((x) & 0xFFFF)     << 16) | swap_uint16((x) >> 16))
+#define swap_uint64(x) (((uint64_t)swap_uint32((x) & 0xFFFFFFFF) << 32) | swap_uint32((x) >> 32))
+
+#define htoxll(x) (big_end_test ? swap_uint64(x) : (x))
+#define htoxl(x)  (big_end_test ? swap_uint32(x) : (x))
+
+/* Functions / macros called by user */
+
+#define htonll(x) (big_end_test ? (x) : swap_uint64(x))
+#define ntohll(x) htonll(x)
+
+extern uint32_t    htonf(float);
+extern float       ntohf(uint32_t);
+extern uint64_t    htond(long double);
+extern long double ntohd(uint64_t);
+
 #endif /* _FLOAT_H_ */
 '''
 
 FLOATC='''/*
  * FLOAT.C
- *   IEEE-754 uint64_t encoding/decoding, plus conversion into/from network byte order
+ *   IEEE-754 uint64_t encoding/decoding, plus conversion macros into/from network (x865) byte order
  *
- *  Uses encoder and decoder from: https://beej.us/guide/bgnet/examples/ieee754.c
- *    uint64_t = 1-bit Sign (1=-), 11-bit Biased Exponent (BE), 52-bit Normalised Mantisa (NM)
- *    e.g., 85.125 = 1.010101001 x 2^6 => S=0, BE=(bias=1023)+(6)=10000000101, NM=010101001000000...
+ *  1) Pack (double/float) encoder and decoder using: https://beej.us/guide/bgnet/examples/ieee754.c
+ *    a) uint64_t = 1-bit Sign (1=-), 11-bit Biased Exponent (BE), 52-bit Normalised Mantisa (NM)
+ *       e.g., 85.125 = 1.010101001 x 2^6 => S=0, BE=(bias=1023)+(6)=10000000101, NM=010101001000000...
+ *    n) uint32_t = 1-bit Sign (1=-),  8-bit Biased Exponent (BE), 23-bit Normalised Mantisa (NM)
  *
- *  Adds conversion of encoded (host-byte ordered) double to and from big_endian network format
+ *  2) Endian converter changes byte order between host encoded (uint_xx_t) and big-endian network format
+       (unless FLOAT_BIG_ENDIAN=0, in which case it converts to a little-endian network format)
  */
 
 #include <stdio.h>
@@ -129,53 +142,36 @@ long double unpack754(uint64_t i, unsigned bits, unsigned expbits)
   return result;
 }
 
-/* Adds conversion (of IEEE-754 encoded double) into Network Big-Endian byte ordering */
-uint64_t pack754_64_be(long double f) {
-  uint64_t h = pack754_64(f);
-  if (FLOAT_BIG_ENDIAN != 0)  return ((htonll(h)));
-  else                        return ((htoxll(h)));
+/* Converts host float by encoding into IEEE-754 uint32_t and putting into Network byte order */
+uint32_t htonf(float f) {
+  uint32_t h = pack754_32(f);
+  if (FLOAT_BIG_ENDIAN != 0)  return ((htonl(h)));  /* to Network Big-Endian */
+  else                        return ((htoxl(h)));  /* to Network Little-Endian */
 }
 
-/* Adds conversion (of IEEE-754 encoded double) from Network Big-Endian byte ordering */
-long double unpack754_64_be(uint64_t i) {
-  uint64_t    h;
+/* Converts IEEE-754 uint32_t in Network byte order into host float */
+float ntohf(uint32_t i) {
+  uint32_t    h;
   
-  if (FLOAT_BIG_ENDIAN != 0)  h = (htonll(i));
-  else                        h = (htoxll(i));
+  if (FLOAT_BIG_ENDIAN != 0)  h = (htonl(i));      /* from Network Big-Endian */
+  else                        h = (htoxl(i));      /* from Network Little-Endian */
+  return (unpack754_32(h));
+}
+
+/* Converts host double by encoding into IEEE-754 uint64_t and putting into Network byte order */
+uint64_t htond(long double f) {
+  uint64_t h = pack754_64(f);
+  if (FLOAT_BIG_ENDIAN != 0)  return ((htonll(h)));  /* to Network Big-Endian */
+  else                        return ((htoxll(h)));  /* to Network Little-Endian */
+}
+
+/* Converts IEEE-754 uint64_t in Network byte order into host double */
+long double ntohd(uint64_t i) {
+  uint64_t    h;
+  if (FLOAT_BIG_ENDIAN != 0)  h = (htonll(i));      /* from Network Big-Endian */
+  else                        h = (htoxll(i));      /* from Network Little-Endian */
   return (unpack754_64(h));
 }
-
-//#define FLOAT_TEST
-#ifdef FLOAT_TEST
-/* testing */
-int main(void)
-{
-  float    f = 3.1415926, f2;
-  double   d, d2;
-  uint32_t fi;
-  uint64_t di, ni;
-
-  fi = pack754_32(f);
-  f2 = unpack754_32(fi);
-  
-  d = 3.14159265358979323;
-  d = 74.574489;
-  di = pack754_64(d);
-  d2 = unpack754_64(di);
-  ni = pack754_64_be(d);
-
-  printf("float before   (bytes = %lu): %.7f\\n",             sizeof(f), f);
-  printf("float encoded  (bytes = %lu): 0x%08" PRIx32 "\\n",  sizeof(fi), fi);
-  printf("float after    (bytes = %lu): %.7f\\n\\n",           sizeof(f2), f2);
-  
-  printf("double before  (bytes = %lu): %.20lf\\n",           sizeof(d), d);
-  printf("double encoded (bytes = %lu): 0x%016" PRIx64 "\\n", sizeof(di), di);
-  printf("double big-end (bytes = %lu): 0x%016" PRIx64 "\\n", sizeof(ni), ni);
-  printf("double decoder (bytes = %lu): %.20lf [%.20lf]\\n",  sizeof(d), d2, (double) unpack754_64_be(ni));
-
-  return 0;
-}
-#endif
 '''
 #---------------------- End Serializer Boilerplate for GAPS   ------------------------
 
@@ -219,8 +215,8 @@ fmtstr = {
 }
 
 encfn = {
-  'double': 'pack754_64_be',
-  'ffloat': 'pack754_32_be',
+  'double': 'htond',
+  'ffloat': 'htonf',
   'int8':   'id',
   'uint8':  'id',
   'int16':  'htons',
@@ -232,8 +228,8 @@ encfn = {
 }
 
 decfn = {
-  'double': 'unpack754_64_be',
-  'ffloat': 'unpack754_32_be',
+  'double': 'ntohd',
+  'ffloat': 'ntohf',
   'int8':   'id',
   'uint8':  'id',
   'int16':  'ntohs',

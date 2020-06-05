@@ -51,33 +51,33 @@ class TypeLexer(Lexer):
 # Grammar and parser for IDL
 def idl_parser():
   return Lark(r"""
-    datlst:      dat_item+
-    ?dat_item:   struct structname openbraces field+ closebraces semicolon
-                 | other
-    field:       basictype fieldname semicolon
-                 | basictype fieldname openbracket count closebracket semicolon
-                 | comment
-    ?basictype:  double
-                 | ffloat
-                 | int8
-                 | uint8
-                 | int16
-                 | uint16
-                 | int32
-                 | uint32
-                 | int64
-                 | uint64
-    count:       LITERAL
-    double:      DOUBLE
-    ffloat:      FLOAT
-    int8:        CHAR
-    uint8:       UNSIGNED CHAR
-    int16:       SHORT
-    uint16:      UNSIGNED SHORT
-    int32:       INT
-    uint32:      UNSIGNED INT
-    int64:       LONG
-    uint64:      UNSIGNED LONG
+    datlst:       dat_item+
+    ?dat_item:    struct structname openbraces field+ closebraces semicolon
+                  | other
+    field:        basictype fieldname semicolon
+                  | basictype fieldname openbracket count closebracket semicolon
+                  | comment
+    ?basictype:   double
+                  | ffloat
+                  | int8
+                  | uint8
+                  | int16
+                  | uint16
+                  | int32
+                  | uint32
+                  | int64
+                  | uint64
+    count:        LITERAL
+    double:       DOUBLE
+    ffloat:       FLOAT
+    int8:         CHAR
+    uint8:        UNSIGNED CHAR
+    int16:        SHORT
+    uint16:       UNSIGNED SHORT
+    int32:        INT
+    uint32:       UNSIGNED INT
+    int64:        LONG
+    uint64:       UNSIGNED LONG
     openbracket:  OPENBRACKET
     closebracket: CLOSEBRACKET
     openbraces:   OPENBRACES

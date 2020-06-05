@@ -11,11 +11,9 @@ int main (int argc, char **argv) {
   p.d = 63000;
   p.e = -70000;
   p.f = 70000;
-  /*
   p.g = -9876543210;
   p.h = 9876543210;
   p.i = -5.9345;
-  */
   p.j = 9876543210.012345;
 
   for(int i=0;i<4;i++) {p.k[i] = -5;}
@@ -24,11 +22,9 @@ int main (int argc, char **argv) {
   for(int i=0;i<4;i++) {p.n[i] = 63000;}
   for(int i=0;i<4;i++) {p.o[i] = -70000;}
   for(int i=0;i<4;i++) {p.p[i] = 70000;}
-  /*
   for(int i=0;i<4;i++) {p.q[i] = -9876543210;}
   for(int i=0;i<4;i++) {p.r[i] = 9876543210;}
   for(int i=0;i<4;i++) {p.s[i] = -5.9345;}
-  */
   for(int i=0;i<4;i++) {p.t[i] = 9876543210.012345;}
   p.trailer.seq = 0;
   p.trailer.rqr = 0;
