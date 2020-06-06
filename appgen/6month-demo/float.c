@@ -15,8 +15,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
+#include <limits.h>
+#include <float.h>
  
-#include "float.h"
+#include "float754.h"
 
 #define pack754_32(f)   (pack754((f),   32, 8))
 #define pack754_64(f)   (pack754((f),   64, 11))
@@ -113,21 +115,8 @@ long double ntohd(uint64_t i) {
 
 /* #define FLOAT_TEST */
 #ifdef FLOAT_TEST
-int main(void)
-{
-  uint64_t  a, b, c, list[]={4275878552, 81985529216486895, 18364758544493064720, 18446744073709551615};
-  int list_len = sizeof(list) / sizeof(*list);
-  for (int i=0; i<list_len; i++) {
-    a = list[i];
-    b = htonll(a);
-    c = my_htoxll(a);
-    printf("  a=uint64_t [%luB]          0x%016" PRIx64 "\n", sizeof(a), a);
-    printf("  b=htonll(a)              0x%016" PRIx64 "\n", b);
-    printf("  c=my_htoxll(a)           0x%016" PRIx64 "\n", c);
-    printf("  d=ntohll(b)=my_htoxll(c) 0x%016" PRIx64 " [0x%016" PRIx64 "]\n\n", ntohll(b), my_htoxll(c));
-  }
 
-  float    f = 3.1415926535897932384;
+void test_float(float f) {
   uint32_t p = pack754_32(f);
   float    u = unpack754_32(p);
   uint32_t n = htonf(f);
@@ -136,8 +125,9 @@ int main(void)
   printf("  p=pack754_32(f)=ntohl(n)         [%luB]  0x%08" PRIx32 " [0x%08" PRIx32 "]\n",  sizeof(p), p, ntohl(n));
   printf("  n=htonf(f)=htonl(p)              [%luB]  0x%08" PRIx32 " [0x%08" PRIx32 "]\n",  sizeof(n), n, htonl(p));
   printf("  u=unpack754_32(p)=ntohf(n)       [%luB]  %.22f [%.22f]\n\n",                    sizeof(u), u, y);
+}
 
-  double   d = 3.141592653589793238462643383279502884197169399375105820974944592307816406286;
+void test_double(double d) {
   uint64_t q = pack754_64(d);
   double   v = unpack754_64(q);
   uint64_t m = htond(d);
@@ -145,7 +135,40 @@ int main(void)
   printf("  d=double                         [%luB]  %.48lf\n",                              sizeof(d), d);
   printf("  q=pack754_64(d)=ntohll(m)        [%luB]  0x%016" PRIx64 " [0x%016" PRIx64 "]\n", sizeof(q), q, ntohll(m));
   printf("  m=htond(d)=htonll(q)             [%luB]  0x%016" PRIx64 " [0x%016" PRIx64 "]\n", sizeof(m), m, htonll(q));
-  printf("  z=unpack754_64(q)=ntohd(m)       [%luB]  %.48lf [%.48lf]\n",                     sizeof(v), v, (double) z);
+  printf("  z=unpack754_64(q)=ntohd(m)       [%luB]  %.48lf [%.48lf]\n\n",                     sizeof(v), v, (double) z);
+}
+
+void test_uint64(uint64_t a) {
+  uint64_t  b, c;
+  b = htonll(a);
+  c = my_htoxll(a);
+  printf("  a=uint64_t [%luB]          0x%016" PRIx64 " (%lu)\n", sizeof(a), a, a);
+  printf("  b=htonll(a)              0x%016" PRIx64 "\n", b);
+  printf("  c=my_htoxll(a)           0x%016" PRIx64 "\n", c);
+  printf("  d=ntohll(b)=my_htoxll(c) 0x%016" PRIx64 " [0x%016" PRIx64 "]\n\n", ntohll(b), my_htoxll(c));
+}
+
+void test_int64(int64_t a) {
+  int64_t  b, c;
+  b = htonll(a);
+  c = my_htoxll(a);
+  printf("  a=int64_t [%luB]           0x%016" PRIx64 " (%ld)\n", sizeof(a), a, a);
+  printf("  b=htonll(a)              0x%016" PRIx64 "\n", b);
+  printf("  c=my_htoxll(a)           0x%016" PRIx64 "\n", c);
+  printf("  d=ntohll(b)=my_htoxll(c) 0x%016" PRIx64 " [0x%016" PRIx64 "]\n\n", ntohll(b), my_htoxll(c));
+}
+
+int main(void)
+{
+  uint64_t ul[] = {18446744073709551615UL, 18364758544493064720UL, 81985529216486895, 4275878552, ULLONG_MAX, ULONG_MAX, UINT_MAX, USHRT_MAX, 1, 0};
+  int64_t  sl[] = {LLONG_MIN, LONG_MIN, INT_MIN, -1, LLONG_MAX, LONG_MAX, INT_MAX, 1, 0 };
+  float    fl[] = {FLT_MAX, 3.1415926535897932384, 1.0, FLT_EPSILON, 0.0, -1.0, -1.0 * FLT_MAX};
+  double   dl[] = {DBL_MAX, 3.141592653589793238462643383279502884197169399375105820974944592307816406286, 1.0, DBL_EPSILON, 0.0, -1.0, -1.0 * DBL_MAX};
+
+  for (int i=sizeof(ul)/sizeof(*ul)-1; i>=0; i--) { test_uint64(ul[i]); }
+  for (int i=sizeof(sl)/sizeof(*sl)-1; i>=0; i--) { test_int64(sl[i]); }
+  for (int i=sizeof(fl)/sizeof(*fl)-1; i>=0; i--) { test_float(fl[i]); }
+  for (int i=sizeof(dl)/sizeof(*dl)-1; i>=0; i--) { test_double(dl[i]); }
 
   return 0;
 }
