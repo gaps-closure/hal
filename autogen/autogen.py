@@ -157,7 +157,7 @@ def main():
   print('Writing DFDL file ' + args.dfdl_outfile + ' for ' + args.gaps_devtyp)
   DFDLWriter().write(args.dfdl_outfile, ttree, args.gaps_devtyp)
 
-  print('Writing codec files and extras: ' + args.encoder_outfile + '.c/.h, float.c/.h')
+  print('Writing codec files and extras: ' + args.encoder_outfile + '.c/.h, float754.c/.h')
   CodecWriter().writeheader(args.encoder_outfile, ttree)
   CodecWriter().writecodecc(args.encoder_outfile, ttree)
   CodecWriter().writextras()

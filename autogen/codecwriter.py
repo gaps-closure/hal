@@ -12,7 +12,9 @@ HHEAD='''#ifndef GMA_HEADER_FILE
 #include <unistd.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
-#include "float.h"
+#include <float.h>
+
+#include "float754.h"
 
 #define id(X) (X)
 
@@ -79,7 +81,7 @@ FLOATC='''/*
 #include <inttypes.h>
 #include <arpa/inet.h>
  
-#include "float.h"
+#include "float754.h"
 
 #define pack754_32(f)   (pack754((f),   32, 8))
 #define pack754_64(f)   (pack754((f),   64, 11))
@@ -407,9 +409,9 @@ class CodecWriter:
 
   def writextras(self):
     try:
-      with open('float.c', 'w') as f:
+      with open('float754.c', 'w') as f:
         f.write(FLOATC)
-      with open('float.h', 'w') as f:
+      with open('float754.h', 'w') as f:
         f.write(FLOATH)
     except Exception as e:
       print("Error writing extras: ", e)
@@ -422,6 +424,6 @@ if __name__ == '__main__':
   print('Writing test codec to codec.c/.h')
   CodecWriter().writeheader('codec', pt)
   CodecWriter().writecodecc('codec', pt)
-  print('Creating float.c/.h')
+  print('Creating float754.c/.h')
   CodecWriter().writextras()
 
