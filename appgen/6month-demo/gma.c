@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include "float.h"
+#include "float754.h"
 #include "gma.h"
 
 void position_print (position_datatype *position) {
