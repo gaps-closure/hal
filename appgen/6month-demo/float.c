@@ -115,7 +115,19 @@ long double ntohd(uint64_t i) {
 #ifdef FLOAT_TEST
 int main(void)
 {
-    float    f = 3.1415926535897932384;
+  uint64_t  a, b, c, list[]={4275878552, 81985529216486895, 18364758544493064720, 18446744073709551615};
+  int list_len = sizeof(list) / sizeof(*list);
+  for (int i=0; i<list_len; i++) {
+    a = list[i];
+    b = htonll(a);
+    c = my_htoxll(a);
+    printf("  a=uint64_t [%luB]          0x%016" PRIx64 "\n", sizeof(a), a);
+    printf("  b=htonll(a)              0x%016" PRIx64 "\n", b);
+    printf("  c=my_htoxll(a)           0x%016" PRIx64 "\n", c);
+    printf("  d=ntohll(b)=my_htoxll(c) 0x%016" PRIx64 " [0x%016" PRIx64 "]\n\n", ntohll(b), my_htoxll(c));
+  }
+
+  float    f = 3.1415926535897932384;
   uint32_t p = pack754_32(f);
   float    u = unpack754_32(p);
   uint32_t n = htonf(f);
