@@ -16,8 +16,11 @@
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
 
-#define IPC_ADDR_DEFAULT_IN  "ipc:///tmp/halpub1"
-#define IPC_ADDR_DEFAULT_OUT "ipc:///tmp/halsub1"
+#define IPC_ADDR_DEFAULT_HALPUB "ipc:///tmp/halpub1"
+#define IPC_ADDR_DEFAULT_HALSUB "ipc:///tmp/halsub1"
+#define IPC_ADDR_DEFAULT_HALREQ "ipc:///tmp/halreq1"
+#define IPC_ADDR_DEFAULT_HALREP "ipc:///tmp/halrep1"
+
 /**********************************************************************/
 /* LIB Structures */
 /*********t************************************************************/
@@ -67,5 +70,10 @@ extern void *xdc_sub_socket(gaps_tag tag);
 // 3) Send and recv ADUs
 extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);
 extern void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag);
+
+
+
+extern void *xdc_req_socket(void);
+extern void *xdc_rep_socket(void);
 
 #endif

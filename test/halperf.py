@@ -61,7 +61,8 @@ def get_key(d,m,s,t):
 
 def send(m, s, t, r, interval):
     # Context/Socket setup
-    makesock = xdc_so.xdc_pub_socket
+    if args.reqrep: makesock = xdc_so.xdc_req_socket
+    else:           makesock = xdc_so.xdc_pub_socket
     makesock.restype = c_void_p
     sock = makesock()
 
@@ -83,6 +84,7 @@ def send(m, s, t, r, interval):
     def task(stats,slock):
         adu.z += 0.1
         xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag))
+        if args.reqrep: xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag))
         slock.acquire()
         stats.wincnt += 1
         slock.release()
@@ -116,7 +118,8 @@ def recv(m, s, t, interval):
         raise Exception('data type %d not supported' % (int(t)))
     print("Subscribed to [%s/%s/%s]" % (m,s,t))
     tag = GapsTag(int(m), int(s), int(t))
-    makesock = xdc_so.xdc_sub_socket
+    if args.reqrep: makesock = xdc_so.xdc_rep_socket
+    else:           makesock = xdc_so.xdc_sub_socket
     makesock.restype = c_void_p
     sock = makesock(tag)
     key = get_key('r', m, s, t)
@@ -139,6 +142,7 @@ def recv(m, s, t, interval):
 
     while True:
         xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag))
+        if args.reqrep:  xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag))
         rlock.acquire()
         global_stats[key].wincnt += 1
         rlock.release()
@@ -154,11 +158,12 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--recv', nargs=3, action='append', metavar=('MUX', 'SEC', 'TYP'), help='recv cross-domain flow mapped to MUX/SEC/TYP')
     parser.add_argument('-l', metavar=('PATH'), help="path to mission app shared libraries (default=../appgen/6month-demo)", default='../appgen/6month-demo')
     parser.add_argument('-x', metavar=('PATH'), help="path to libxdcomms.so (default=../api)", default='../api')
-    parser.add_argument('-i', metavar=('URI'), help="in URI (default=ipc:///tmp/halpub1)", default='ipc:///tmp/halpub1')
-    parser.add_argument('-o', metavar=('URI'), help="out URI (default=ipc:///tmp/halsub1)", default='ipc:///tmp/halsub1')
+    parser.add_argument('-i', metavar=('URI'), help="in URI, where local APP client subscribes to peer publisher (default=ipc:///tmp/halsub1)", default='ipc:///tmp/halsub1')
+    parser.add_argument('-o', metavar=('URI'), help="out URI, where local APP server publishes to peer subscriber (default=ipc:///tmp/halpub1)", default='ipc:///tmp/halpub1')
     parser.add_argument('--interval', help="reporting interval, default=10s", default=10)
     parser.add_argument('-t', help="duration of test in seconds, if not specified, runs indefinitely", default=0)
     parser.add_argument('-v', help="verbose mode, logs every message", action='store_true', default=False)
+    parser.add_argument('-z', '--reqrep', help="req/res mode", action='store_true', default=False)
     args = parser.parse_args()
 
     xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
