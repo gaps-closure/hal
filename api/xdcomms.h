@@ -16,11 +16,8 @@
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
 
-#define IPC_ADDR_DEFAULT_HALPUB "ipc:///tmp/halpub1"
-#define IPC_ADDR_DEFAULT_HALSUB "ipc:///tmp/halsub1"
-#define IPC_ADDR_DEFAULT_HALREQ "ipc:///tmp/halreq1"
-#define IPC_ADDR_DEFAULT_HALREP "ipc:///tmp/halrep1"
-
+#define IPC_ADDR_DEFAULT_IN  "ipc:///tmp/halpub1"
+#define IPC_ADDR_DEFAULT_OUT "ipc:///tmp/halsub1"
 /**********************************************************************/
 /* LIB Structures */
 /*********t************************************************************/
