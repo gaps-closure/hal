@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # Autogeneration Utilities for CLOSURE
 #
+from   codecwriter   import CodecWriter
 from   dfdlwriter    import DFDLWriter
 from   clang.cindex  import Index, TokenKind
 from   lark.lexer    import Lexer, Token
@@ -50,32 +51,33 @@ class TypeLexer(Lexer):
 # Grammar and parser for IDL
 def idl_parser():
   return Lark(r"""
-    datlst:      dat_item+
-    ?dat_item:   struct structname openbraces field+ closebraces semicolon
-                 | other
-    field:       basictype fieldname semicolon
-                 | basictype fieldname openbracket count closebracket semicolon
-    ?basictype:  double
-                 | ffloat
-                 | int8
-                 | uint8
-                 | int16
-                 | uint16
-                 | int32
-                 | uint32
-                 | int64
-                 | uint64
-    count:       LITERAL
-    double:      DOUBLE
-    ffloat:      FLOAT
-    int8:        CHAR
-    uint8:       UNSIGNED CHAR
-    int16:       SHORT
-    uint16:      UNSIGNED SHORT
-    int32:       INT
-    uint32:      UNSIGNED INT
-    int64:       LONG
-    uint64:      UNSIGNED LONG
+    datlst:       dat_item+
+    ?dat_item:    struct structname openbraces field+ closebraces semicolon
+                  | other
+    field:        basictype fieldname semicolon
+                  | basictype fieldname openbracket count closebracket semicolon
+                  | comment
+    ?basictype:   double
+                  | ffloat
+                  | int8
+                  | uint8
+                  | int16
+                  | uint16
+                  | int32
+                  | uint32
+                  | int64
+                  | uint64
+    count:        LITERAL
+    double:       DOUBLE
+    ffloat:       FLOAT
+    int8:         CHAR
+    uint8:        UNSIGNED CHAR
+    int16:        SHORT
+    uint16:       UNSIGNED SHORT
+    int32:        INT
+    uint32:       UNSIGNED INT
+    int64:        LONG
+    uint64:       UNSIGNED LONG
     openbracket:  OPENBRACKET
     closebracket: CLOSEBRACKET
     openbraces:   OPENBRACES
@@ -84,11 +86,12 @@ def idl_parser():
     structname:   IDENTIFIER
     struct:       STRUCT
     fieldname:    IDENTIFIER
+    comment:      COMMENT
     other:        PUNCTUATION
                   | IDENTIFIER
                   | LITERAL
                   | KEYWORD
-                  | COMMENT
+                  | comment
     %declare PUNCTUATION IDENTIFIER LITERAL KEYWORD COMMENT OPENBRACKET CLOSEBRACKET OPENBRACES CLOSEBRACES SEMICOLON STRUCT UNSIGNED CHAR SHORT INT LONG FLOAT DOUBLE 
   """, start='datlst', parser='lalr', lexer=TypeLexer)
 
@@ -123,6 +126,7 @@ class IDLTransformer(Transformer):
   def semicolon(self,items):    return []
   def struct(self,items):       return []
   def other(self, items):       return []
+  def comment(self, items):     return []
 
 # Parse command line argumets
 def get_args():
@@ -130,6 +134,7 @@ def get_args():
   p.add_argument('-i', '--idl_file', required=True, type=str, help='Input IDL file')
   p.add_argument('-g', '--gaps_devtyp', required=True, type=str, help='GAPS device type [bw_v1 or be_v1]')
   p.add_argument('-d', '--dfdl_outfile', required=True, type=str, help='Output DFDL file')
+  p.add_argument('-e', '--encoder_outfile', required=False, default='codectest', type=str, help='Output codec filename without .c/.h suffix')
   #p.add_argument('-j', '--json_cle_file', required=True, type=str, help='Input CLE-JSON file')
   p.add_argument('-c', '--clang_args', required=False, type=str, 
                  default='-x,c++,-stdlib=libc++', help='Arguments for clang')
@@ -151,6 +156,11 @@ def main():
 
   print('Writing DFDL file ' + args.dfdl_outfile + ' for ' + args.gaps_devtyp)
   DFDLWriter().write(args.dfdl_outfile, ttree, args.gaps_devtyp)
+
+  print('Writing codec files and extras: ' + args.encoder_outfile + '.c/.h, float754.c/.h')
+  CodecWriter().writeheader(args.encoder_outfile, ttree)
+  CodecWriter().writecodecc(args.encoder_outfile, ttree)
+  CodecWriter().writextras()
 
 if __name__ == '__main__':
   main()

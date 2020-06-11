@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include "float.h"
+#include "float754.h"
 #include "gma.h"
 
 void position_print (position_datatype *position) {
@@ -31,9 +31,9 @@ void position_data_encode (void *buff_out, void *buff_in, size_t *len_out) {
   position_datatype *p1 = (position_datatype *) buff_in;
   position_output   *p2 = (position_output *)   buff_out;
 
-  p2->x  = pack754_be(p1->x);
-  p2->y  = pack754_be(p1->y);
-  p2->z  = pack754_be(p1->z);
+  p2->x  = htond(p1->x);
+  p2->y  = htond(p1->y);
+  p2->z  = htond(p1->z);
 
   p2->trailer.seq = htonl(p1->trailer.seq);
   p2->trailer.rqr = htonl(p1->trailer.rqr);
@@ -51,9 +51,9 @@ void position_data_decode (void *buff_out, void *buff_in, size_t *len_in) {
   position_output   *p1 = (position_output *)   buff_in;
   position_datatype *p2 = (position_datatype *) buff_out;
 
-  p2->x  = unpack754_be(p1->x);
-  p2->y  = unpack754_be(p1->y);
-  p2->z  = unpack754_be(p1->z);
+  p2->x  = ntohd(p1->x);
+  p2->y  = ntohd(p1->y);
+  p2->z  = ntohd(p1->z);
 
   p2->trailer.seq = ntohl(p1->trailer.seq);
   p2->trailer.rqr = ntohl(p1->trailer.rqr);
@@ -81,9 +81,9 @@ void distance_data_encode (void *buff_out, void *buff_in, size_t *len_out) {
   distance_datatype *p1 = (distance_datatype *) buff_in;
   distance_output   *p2 = (distance_output *)   buff_out;
 
-  p2->x  = pack754_be(p1->x);
-  p2->y  = pack754_be(p1->y);
-  p2->z  = pack754_be(p1->z);
+  p2->x  = htond(p1->x);
+  p2->y  = htond(p1->y);
+  p2->z  = htond(p1->z);
 
   p2->trailer.seq = htonl(p1->trailer.seq);
   p2->trailer.rqr = htonl(p1->trailer.rqr);
@@ -101,9 +101,9 @@ void distance_data_decode (void *buff_out, void *buff_in, size_t *len_in) {
   distance_output   *p1 = (distance_output *)   buff_in;
   distance_datatype *p2 = (distance_datatype *) buff_out;
 
-  p2->x  = unpack754_be(p1->x);
-  p2->y  = unpack754_be(p1->y);
-  p2->z  = unpack754_be(p1->z);
+  p2->x  = ntohd(p1->x);
+  p2->y  = ntohd(p1->y);
+  p2->z  = ntohd(p1->z);
 
   p2->trailer.seq = ntohl(p1->trailer.seq);
   p2->trailer.rqr = ntohl(p1->trailer.rqr);
