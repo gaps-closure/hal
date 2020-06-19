@@ -1,8 +1,8 @@
 /*
  * HAL device Open, Find and Print
- *   April 2020, Perspecta Labs
+ *   June 2020, Perspecta Labs
  *
- *     a) IPC (ZMQ pub/sub)
+ *     a) IPC to application (unix pipe and ZMQ process)
  *     b) INET device (tcp or udp)
  *     c) Bidirectional Serial Device (tty)
  *     d) Unidirectional Serial Device (ilp)
@@ -11,10 +11,10 @@
 #include "hal.h"
 
 /* Define IPC parent-child process file descriptors */
-#define PARENT_READ  read_pipe[0]
-#define PARENT_WRITE write_pipe[1]
-#define CHILD_WRITE  read_pipe[1]
-#define CHILD_READ   write_pipe[0]
+#define PARENT_IN  pipe_in[0]
+#define PARENT_OUT pipe_out[1]
+#define CHILD_OUT  pipe_in[1]
+#define CHILD_IN   pipe_out[0]
 
 /* Store information on ILP devices associated with serial root device */
 typedef struct _root_device {
@@ -47,12 +47,12 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_str(fd, "mo", d->mode_out);
   device_print_int(fd, "pi", d->port_in);
   device_print_int(fd, "po", d->port_out);
-  device_print_int(fd, "fr", d->readfd);
-  device_print_int(fd, "fw", d->writefd);
-  device_print_str(fd, "dr", d->path_r);
-  device_print_str(fd, "dw", d->path_w);
+  device_print_int(fd, "fi", d->readfd);
+  device_print_int(fd, "fo", d->writefd);
+  device_print_str(fd, "di", d->path_r);
+  device_print_str(fd, "do", d->path_w);
   device_print_int(fd, "mx", d->from_mux);
-  fprintf(fd, " cr=%d cw=%d", d->count_r, d->count_w);
+  fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
   fprintf(fd, "]\n");
 }
   
@@ -97,53 +97,59 @@ device *find_device_by_id(device *root, const char *id) {
 /* Open Device; a) IPC  */
 /*********t************************************************************/
 /* Open HAL child process to read or write using the Application API (using zcat) */
-void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open, int pipe_close, int fd_open, const char *mode, const char *addr) {
-  int  pid;
+int ipc_open_process(int *pipe_in, int *pipe_out, int pipe_open, int pipe_close, int fd_open, const char *path, const char *mode, const char *addr) {
+  int  pid=-1;
 
-  if( access(d->path, X_OK ) == -1 ) {
-    log_fatal("HAL API path (%s) from conig file is not executable", d->path);
+  if( access(path, X_OK ) == -1 ) {
+    log_fatal("HAL API path (%s) from conig file is not executable", path);
     exit(EXIT_FAILURE);
   }
-    
-  if ((pid = fork()) < 0) {
-    log_fatal("Fork failed");
-    exit(EXIT_FAILURE);
-  } else if (pid == 0) {  /* child (API) process starts here */
-    close(PARENT_READ);
-    close(PARENT_WRITE);
-    close(pipe_close);
-    dup2(pipe_open, fd_open);        /* copy fd_open file descriptor into pipe_open file descriptor */
-    char *argv2[] = {(char *) d->path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
-    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
-    exit(EXIT_FAILURE);                                      /* child process should not reach here */
-  } else {                /* parent (HAL) process */
-    log_trace("Spawned %s subscriber pid=%d", d->path, pid);
+  if (strlen(addr) > 0) {
+    if ((pid = fork()) < 0) {
+      log_fatal("Fork failed");
+      exit(EXIT_FAILURE);
+    } else if (pid == 0) {  /* child (API) process starts here */
+      close(PARENT_IN);
+      close(PARENT_OUT);
+      close(pipe_close);
+      dup2(pipe_open, fd_open);        /* copy fd_open file descriptor into pipe_open file descriptor */
+      char *argv2[] = {(char *) path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
+      if(execvp(argv2[0], argv2) < 0) perror("execvp()");
+      exit(EXIT_FAILURE);                                      /* child process should not reach here */
+    } else {                /* parent (HAL) process */
+      log_trace("Spawned %s process pid=%d", path, pid);
+    }
   }
+  else {
+    log_trace("Not forking HAL API process for addr=%s mode=%s\n", addr, mode);
+  }
+  return(pid);
 }
 
-/* Open IPC interfaces (specified in d) */
+/* Open IPC interfaces (specified in d structure) */
 void interface_open_ipc(device *d) {
-  int  read_pipe[2];    /* Read  pipes for parent-child (HAL-API) communication */
-  int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
-
+  int  pipe_in[2];    /* Parent-child (HAL-HALAPI_IN)  comms pipe: APP is initiator (PUB or REQ) into HAL */
+  int  pipe_out[2];   /* Parent-child (HAL-HALAPI_OUT) comms pipe: APP is responder (SUB or REP) out of HAL */
+  int  p_in, p_out;
+  
   /* a) Open communication pipes for IPC reading and writing */
-// fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
-  if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
+  if(pipe(pipe_in) < 0 || pipe(pipe_out) < 0) {
     log_fatal("Pipe creation failed");
     exit(EXIT_FAILURE);
   }
-//  fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
 
-  log_trace("Openning API %s:%s %s:%s", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
   /* b) Fork HAL child processes (to read and write on ipc channels) */
-  ipc_open_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in, d->addr_in);
-  ipc_open_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, d->addr_out);
+  log_trace("Openning API i=[%s:%s] o=[%s:%s]", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
+  p_in  = ipc_open_process(pipe_in, pipe_out, CHILD_OUT, CHILD_IN,  STDOUT_FILENO, d->path, d->mode_in,  d->addr_in);
+  p_out = ipc_open_process(pipe_in, pipe_out, CHILD_IN,  CHILD_OUT, STDIN_FILENO,  d->path, d->mode_out, d->addr_out);
 
   /* c) Parent (HAL) process finishes up */
-  close(CHILD_READ);
-  close(CHILD_WRITE);
-  d->readfd  = PARENT_READ;
-  d->writefd = PARENT_WRITE;
+  close(CHILD_IN);
+  close(CHILD_OUT);
+
+  if(p_in  > 0) d->readfd  = PARENT_IN;
+  if(p_out > 0) d->writefd = PARENT_OUT;
+  log_trace("Opened API i=[%d:%d] o=[%d:%d]", p_in, d->readfd, p_out, d->writefd);
 }
 
 /**********************************************************************/
