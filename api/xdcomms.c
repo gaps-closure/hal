@@ -251,6 +251,12 @@ void *xdc_ctx() {
 
 /*
  * Open ZMQ socket and return socket handle: Publisher
+ * Note:
+ *   The APP-API always connects a bound HAL=API
+ *   The APP-API cannot send immediately after a connect,
+ *   since there is a few msec during which there is no outgoing pipe
+ *   Must wait a short time after connecting before publishing anything
+ *   (usually the publisher would be the one who binds)
  */
 void *xdc_pub_socket()
 {
@@ -262,6 +268,7 @@ void *xdc_pub_socket()
     err = zmq_connect(socket, xdc_set_out(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
     log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
+    sleep (1);
     return socket;
 }
 
