@@ -59,9 +59,9 @@ global_stats = {}
 def get_key(d,m,s,t):
     return '%s-%d-%d-%d' % (d, int(m), int(s), int(t))
 
-def send(m, s, t, r, interval):
+def send(m, s, t, r, interval, m2=None, s2=None, t2=None):
     # Context/Socket setup
-    if args.reqrep: makesock = xdc_so.xdc_req_socket
+    if m2 is not None: makesock = xdc_so.xdc_req_socket
     else:           makesock = xdc_so.xdc_pub_socket
     makesock.restype = c_void_p
     sock = makesock()
@@ -70,6 +70,8 @@ def send(m, s, t, r, interval):
     pos = Position(-74.574489, 40.695545, 101.9, ClosureTrailer(0,0,0,0,0))
     dis = Distance(-1.021, 2.334, 0.4)
     tag = GapsTag(int(m),int(s),int(t))
+    print ("send psrams =", m, s, t, r, m2, s2, t2)
+    if m2 is not None: tag2 = GapsTag(int(m2),int(s2),int(t2))
     key = get_key('s', m, s, t)
     global_stats[key] = Stats()
     slock = Lock()
@@ -84,7 +86,6 @@ def send(m, s, t, r, interval):
     def task(stats,slock):
         adu.z += 0.1
         xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag))
-        if args.reqrep: xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag))
         slock.acquire()
         stats.wincnt += 1
         slock.release()
@@ -92,6 +93,13 @@ def send(m, s, t, r, interval):
             plock.acquire()
             print('%f sent_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
             plock.release()
+        if m2 is not None:
+          xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag2))
+          if verbose:
+            plock.acquire()
+            print('%f recv_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag2.mux,tag2.sec,tag2.typ,adu.x,adu.y,adu.z))
+            plock.release()
+
 
     def print_stats(stats,tag,slock):
         stats.totsec += interval
@@ -109,7 +117,7 @@ def send(m, s, t, r, interval):
     stmr = RptTimer(interval, print_stats, [global_stats[key], tag, slock])
     stmr.start()
         
-def recv(m, s, t, interval):
+def recv(m, s, t, interval, m2=None, s2=None, t2=None):
     if int(t) == DATA_TYP_POS:
         adu = Position()
     elif int(t) == DATA_TYP_DIS:
@@ -118,8 +126,9 @@ def recv(m, s, t, interval):
         raise Exception('data type %d not supported' % (int(t)))
     print("Subscribed to [%s/%s/%s]" % (m,s,t))
     tag = GapsTag(int(m), int(s), int(t))
-    if args.reqrep: makesock = xdc_so.xdc_rep_socket
-    else:           makesock = xdc_so.xdc_sub_socket
+    if m2 is not None: tag2 = GapsTag(int(m2),int(s2),int(t2))
+    if m2 is not None: makesock = xdc_so.xdc_rep_socket
+    else:              makesock = xdc_so.xdc_sub_socket
     makesock.restype = c_void_p
     sock = makesock(tag)
     key = get_key('r', m, s, t)
@@ -142,13 +151,18 @@ def recv(m, s, t, interval):
 
     while True:
         xdc_so.xdc_blocking_recv(c_void_p(sock), pointer(adu), pointer(tag))
-        if args.reqrep:  xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag))
         rlock.acquire()
         global_stats[key].wincnt += 1
         rlock.release()
         if verbose:
             plock.acquire()
             print('%f recv_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag.mux,tag.sec,tag.typ,adu.x,adu.y,adu.z))
+            plock.release()
+        if m2 is not None:
+          xdc_so.xdc_asyn_send(c_void_p(sock), pointer(adu), pointer(tag2))
+          if verbose:
+            plock.acquire()
+            print('%f sent_msg: [%d/%d/%d] -- (%f,%f,%f)' % (time.time(), tag2.mux,tag2.sec,tag2.typ,adu.x,adu.y,adu.z))
             plock.release()
 
         
@@ -163,7 +177,8 @@ if __name__ == '__main__':
     parser.add_argument('--interval', help="reporting interval, default=10s", default=10)
     parser.add_argument('-t', help="duration of test in seconds, if not specified, runs indefinitely", default=0)
     parser.add_argument('-v', help="verbose mode, logs every message", action='store_true', default=False)
-    parser.add_argument('-z', '--reqrep', help="req/res mode", action='store_true', default=False)
+    parser.add_argument('-p', '--response', nargs=6, action='append', metavar=('MUX', 'SEC', 'TYP', 'MUX', 'SEC', 'TYP'), help='response flow mapped to MUXr/SECr/TYPr/MUXs/SECs/TYPs')
+    parser.add_argument('-q', '--request', nargs=7, action='append', metavar=('MUX', 'SEC', 'TYP', 'RATE', 'MUX', 'SEC', 'TYP'), help='request flow mapped to MUXs/SECs/TYPs/RATE(Hz)s/MUXr/SECr/TYPr')
     args = parser.parse_args()
 
     xdc_so = CDLL(args.x + '/libxdcomms.so', use_errno=True)
@@ -182,6 +197,7 @@ if __name__ == '__main__':
     xdc_so.xdc_register(gma_so.distance_data_encode, gma_so.distance_data_decode, DATA_TYP_DIS)
 
     start = time.time()
+    
     if args.send:
         for s in args.send:
             s.append(float(args.interval))
@@ -193,6 +209,19 @@ if __name__ == '__main__':
             r.append(float(args.interval))
             t = Thread(args=r, target=recv)
             t.start()
+
+    if args.request:
+        for s in args.request:
+            s.insert(4, float(args.interval))
+            t = Thread(args=s, target=send)
+            t.start()
+
+    if args.response:
+        for r in args.response:
+            r.insert(3, float(args.interval))
+            t = Thread(args=r, target=recv)
+            t.start()
+
 
     def print_totals():
         end = time.time()

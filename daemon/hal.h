@@ -27,23 +27,25 @@ typedef struct _dev {
   int         init_enable;
   const char *id;
   const char *path;
-  const char *path_r;
+  const char *path_r;      /* HAL-ZMQ-API process command path */
   const char *path_w;
   const char *model;
   const char *comms;
   const char *addr_in;
   const char *addr_out;
-  const char *mode_in;
+  const char *mode_in;      /* HAL-ZMQ-API mode (pub, sub, ...)  */
   const char *mode_out;
   int         port_in;
   int         port_out;
   int         from_mux;
   struct sockaddr_in socaddr_in;
   struct sockaddr_in socaddr_out;
-  int         readfd;
+  int         readfd;       /* file descriptor to HAL-ZMQ-API process */
   int         writefd;
-  int         count_r;
+  int         count_r;      /* total packet count */
   int         count_w;
+  int         pid_in;       /* HAL-ZMQ-API process id */
+  int         pid_out;
 //  int         sn_list_r[SN_LIST_WINDOW_SIZE];
 //  int         sn_list_w[SN_LIST_WINDOW_SIZE];
   struct _dev *next;

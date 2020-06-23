@@ -91,6 +91,8 @@ device *get_devices(config_t *cfg) {
 
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */
+      ret[i].pid_in   = -1; /* to be set when opened */
+      ret[i].pid_out  = -1; /* to be set when opened */
       ret[i].count_r  =  0;
       ret[i].count_w  =  0;
 

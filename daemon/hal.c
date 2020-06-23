@@ -21,6 +21,17 @@
 #include "map.h"
 #include "packetize.h"
 
+void child_kill(int pid) {
+  int rv=-1;
+  char cmd[64];
+  
+  if (pid > 0)  {
+    sprintf(cmd, "kill -9 %d", pid);
+    rv = system(cmd);
+    log_debug("killed child HAL-ZMQ-API process: pid=%d rv=%d", pid, rv);
+  }
+}
+
 /* Signal Handler for SIGINT - print statistics */
 device   *root_dev;
 void sigintHandler(int sig_num)
@@ -31,6 +42,8 @@ void sigintHandler(int sig_num)
     if (d->enabled != 0) {
       sprintf(str_new, "%s[r=%d w=%d] ", d->id, d->count_r, d->count_w);
       strcat(s, str_new);
+      child_kill(d->pid_out);
+      child_kill(d->pid_in);
     }
   }
   fprintf(stderr, "\nDevice read-write summary: %s\n", s);
