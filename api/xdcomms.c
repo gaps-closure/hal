@@ -302,7 +302,7 @@ void *xdc_req_socket()
 
     socket = zmq_socket(xdc_ctx(), ZMQ_REQ);
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
-    err = zmq_connect(socket, xdc_set_out(NULL));
+    err = zmq_connect(socket, xdc_addr_req(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
     log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_REQ, xdc_set_out(NULL));
     return socket;
@@ -318,7 +318,7 @@ void *xdc_rep_socket()
 
     socket = zmq_socket(xdc_ctx(), ZMQ_REP);
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
-    err = zmq_connect(socket, xdc_set_in(NULL));
+    err = zmq_connect(socket, xdc_addr_rep(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
     log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_REP, xdc_set_in(NULL));
     return socket;

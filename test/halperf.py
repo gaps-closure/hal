@@ -59,10 +59,11 @@ global_stats = {}
 def get_key(d,m,s,t):
     return '%s-%d-%d-%d' % (d, int(m), int(s), int(t))
 
+# Send at specified rate (r). Publisher only sends, but Requester waits for response (when m2, s2, t2 defined)
 def send(m, s, t, r, interval, m2=None, s2=None, t2=None):
     # Context/Socket setup
     if m2 is not None: makesock = xdc_so.xdc_req_socket
-    else:           makesock = xdc_so.xdc_pub_socket
+    else:              makesock = xdc_so.xdc_pub_socket
     makesock.restype = c_void_p
     sock = makesock()
 
@@ -70,7 +71,6 @@ def send(m, s, t, r, interval, m2=None, s2=None, t2=None):
     pos = Position(-74.574489, 40.695545, 101.9, ClosureTrailer(0,0,0,0,0))
     dis = Distance(-1.021, 2.334, 0.4)
     tag = GapsTag(int(m),int(s),int(t))
-    print ("send psrams =", m, s, t, r, m2, s2, t2)
     if m2 is not None: tag2 = GapsTag(int(m2),int(s2),int(t2))
     key = get_key('s', m, s, t)
     global_stats[key] = Stats()
@@ -177,6 +177,8 @@ if __name__ == '__main__':
     parser.add_argument('--interval', help="reporting interval, default=10s", default=10)
     parser.add_argument('-t', help="duration of test in seconds, if not specified, runs indefinitely", default=0)
     parser.add_argument('-v', help="verbose mode, logs every message", action='store_true', default=False)
+    parser.add_argument('-Q', metavar=('URI'), help="bi URI, where APP client requests peer server (default=ipc:///tmp/halreq1)", default='ipc:///tmp/halreq1')
+    parser.add_argument('-P', metavar=('URI'), help="bi URI, where APP server responds to peer client (default=ipc:///tmp/halrep1)", default='ipc:///tmp/halrep1')
     parser.add_argument('-p', '--response', nargs=6, action='append', metavar=('MUX', 'SEC', 'TYP', 'MUX', 'SEC', 'TYP'), help='response flow mapped to MUXr/SECr/TYPr/MUXs/SECs/TYPs')
     parser.add_argument('-q', '--request', nargs=7, action='append', metavar=('MUX', 'SEC', 'TYP', 'RATE', 'MUX', 'SEC', 'TYP'), help='request flow mapped to MUXs/SECs/TYPs/RATE(Hz)s/MUXr/SECr/TYPr')
     args = parser.parse_args()
@@ -187,10 +189,16 @@ if __name__ == '__main__':
     # Check verbose mode
     verbose = True if args.v == True else False
 
+    print ('PAR: s = ', args.send, 'r =', args.recv, 'p =', args.response, 'q =', args.request)
+    print ('ADD: o = ', args.o,    'i =', args.i,    'P =', args.P,        'Q =', args.Q)
+
+    
     # Set the URIs for ZMQ
-    xdc_so.xdc_ctx() 
-    xdc_so.xdc_set_in(c_char_p((args.i).encode('utf-8')))
-    xdc_so.xdc_set_out(c_char_p((args.o).encode('utf-8')))
+    xdc_so.xdc_ctx()
+    xdc_so.xdc_set_in  (c_char_p((args.i).encode('utf-8')))
+    xdc_so.xdc_set_out (c_char_p((args.o).encode('utf-8')))
+    xdc_so.xdc_addr_req(c_char_p((args.Q).encode('utf-8')))
+    xdc_so.xdc_addr_rep(c_char_p((args.P).encode('utf-8')))
 
     # Register encode/decode functions; TODO: make spec-driven
     xdc_so.xdc_register(gma_so.position_data_encode, gma_so.position_data_decode, DATA_TYP_POS)
