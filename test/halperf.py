@@ -59,7 +59,7 @@ global_stats = {}
 def get_key(d,m,s,t):
     return '%s-%d-%d-%d' % (d, int(m), int(s), int(t))
 
-# Send at specified rate (r). Publisher only sends, but Requester waits for response (when m2, s2, t2 defined)
+# Send at specified rate (r). Publisher only sends, but Requester waits for reply (when m2, s2, t2 defined)
 def send(m, s, t, r, interval, m2=None, s2=None, t2=None):
     # Context/Socket setup
     if m2 is not None: makesock = xdc_so.xdc_req_socket
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', help="verbose mode, logs every message", action='store_true', default=False)
     parser.add_argument('-Q', metavar=('URI'), help="bi URI, where APP client requests peer server (default=ipc:///tmp/halreq1)", default='ipc:///tmp/halreq1')
     parser.add_argument('-P', metavar=('URI'), help="bi URI, where APP server responds to peer client (default=ipc:///tmp/halrep1)", default='ipc:///tmp/halrep1')
-    parser.add_argument('-p', '--response', nargs=6, action='append', metavar=('MUX', 'SEC', 'TYP', 'MUX', 'SEC', 'TYP'), help='response flow mapped to MUXr/SECr/TYPr/MUXs/SECs/TYPs')
+    parser.add_argument('-p', '--reply', nargs=6, action='append', metavar=('MUX', 'SEC', 'TYP', 'MUX', 'SEC', 'TYP'), help='reply flow mapped to MUXr/SECr/TYPr/MUXs/SECs/TYPs')
     parser.add_argument('-q', '--request', nargs=7, action='append', metavar=('MUX', 'SEC', 'TYP', 'RATE', 'MUX', 'SEC', 'TYP'), help='request flow mapped to MUXs/SECs/TYPs/RATE(Hz)s/MUXr/SECr/TYPr')
     args = parser.parse_args()
 
@@ -189,9 +189,8 @@ if __name__ == '__main__':
     # Check verbose mode
     verbose = True if args.v == True else False
 
-    print ('PAR: s = ', args.send, 'r =', args.recv, 'p =', args.response, 'q =', args.request)
-    print ('ADD: o = ', args.o,    'i =', args.i,    'P =', args.P,        'Q =', args.Q)
-
+#    print ('PAR: s = ', args.send, 'r =', args.recv, 'p =', args.reply, 'q =', args.request)
+#    print ('ADD: o = ', args.o,    'i =', args.i,    'P =', args.P,     'Q =', args.Q)
     
     # Set the URIs for ZMQ
     xdc_so.xdc_ctx()
@@ -224,8 +223,8 @@ if __name__ == '__main__':
             t = Thread(args=s, target=send)
             t.start()
 
-    if args.response:
-        for r in args.response:
+    if args.reply:
+        for r in args.reply:
             r.insert(3, float(args.interval))
             t = Thread(args=r, target=recv)
             t.start()
