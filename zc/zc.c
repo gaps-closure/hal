@@ -1,3 +1,9 @@
+/* ZMQ input (SUB, REP, PULL) -> STDIN;  ZMQ output (PUB, REP, PUSH) <- STDOUT
+ * Two enhancements for CLOSURE:
+ *  a) -d option to define string marking end of STDIN stream (default = CR)
+ *  b) -f option to allow filtering of ZMQ subscriber input
+ */
+
 #include <zmq.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +21,7 @@ void print_help() {
   printf("OPTION: one of the following options:\n");
   printf(" -h --help : print this message\n");
   printf(" -b --bind : bind instead of connect\n");
-  printf(" -d --delim : string marking end of stdin stream\n");
+  printf(" -d --delim : string marking end of stdin stream (default = CR)\n");
   printf(" -f --filter : ZMQ subscriber incoming message filter string (default is all messages)\n");
   printf(" -n --nbiter : number of iterations (0 for infinite loop)\n");
   printf(" -v --verbose : print some messages in stderr\n");
@@ -32,14 +38,21 @@ void free_buffer(void* data,void* hint) {
   free(data);
 }
 
+void print_buf(char* buffer, int len) {
+  fprintf(stderr, "zc buffer (len=%d): ", len);
+  for (int j = 0; j < len; j++) {
+    if ((j%4)==0) fprintf(stderr, " ");
+      fprintf(stderr, "%02X", (uint8_t) buffer[j]);
+  }
+  fprintf(stderr, "\n");
+}
+
 size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
   size_t total = 0;
   int    i, per_read_count=STDIN_READ_SIZE, delim_len=0;
   char*  s;
   char*  buffer = malloc(STDIN_READ_SIZE);
-  
-//  freopen("", "rb", stdin);
-  
+    
   // read from stdin
   if (delim != NULL)  {
     per_read_count = 1;
@@ -49,17 +62,16 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
   while(1) {
 //    size_t read_cnt = fread(buffer+total, 1, per_read_count, stdin);
       size_t read_cnt = read(STDIN_FILENO, buffer+total, STDIN_READ_SIZE);
-    if(verbose) fprintf(stderr, "zc Read %ld (total=%ld) bytes on stdin (%d)\n", read_cnt, total, STDIN_FILENO);
 //if (read_cnt == 0) exit (33);  /* continue */
     total += read_cnt;
+    if(verbose) fprintf(stderr, "zc reads %ld (total=%ld) bytes on stdin (%d)\n", read_cnt, total, STDIN_FILENO);
     if(ferror(stdin)) {
       fprintf(stderr,"fread error %d: %s\n",errno,strerror(errno));
       exit(-2);
     }
 
-    // test for end of stdin input, based on: a) speciied delimiter, b) EOF signal
+    // test for end of stdin input: a) using specified delimiter option
     if ( (delim != NULL) && (total >= delim_len) ) {
-//      if(verbose) fprintf(stderr,"zc testing for delimiter %s (len=%d): \n", delim, delim_len);
       s = strstr(buffer, delim);
       if (s != NULL) {
         total -= strlen(s);
@@ -68,14 +80,11 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
         break;
       }
     }
+    // test for end of stdin input: b) using stream end-of-file indicator
     if(feof(stdin)) break;
+    // test for end of stdin input: c) for each input
     if (read_cnt >= 1) {
-//      fprintf(stderr, "ZC Read_cnt = %ld: ", read_cnt);
-      for (int j = 0; j < read_cnt; j++) {
-//        if ((j%4)==0) fprintf(stderr, " ");
-//        fprintf(stderr, "%02X", (uint8_t) buffer[j]);
-      }
-//      fprintf(stderr, "\n");
+//      print_buf(buffer, read_cnt);
       break;
     }
     buffer = realloc(buffer,total+STDIN_READ_SIZE);
@@ -86,8 +95,7 @@ size_t send_from_stdin(void* socket, char *delim, char *endpoint) {
   err = zmq_msg_init_data(&msg, buffer, total, free_buffer, NULL);
   if(err) exit_with_zmq_error("zmq_msg_init_data");
 
-  if(verbose) fprintf(stderr, "sending %ld bytes into ZMQ\n", total);
-
+//  if(verbose) fprintf(stderr, "sending %ld bytes into ZMQ\n", total);
   err = zmq_sendmsg(socket, &msg, 0);
   if(err==-1) exit_with_zmq_error("zmq_sendmsg");
   if(verbose) fprintf(stderr, "zc sends %ld bytes to %s\n", total, endpoint);

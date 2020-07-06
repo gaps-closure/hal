@@ -115,6 +115,7 @@ void ipc_child_run(int *pipe_a2h, int *pipe_h2a, const char *path, const char *m
     dup2(CHILD_IN,  STDIN_FILENO);        /* copy file descriptor, so both point to pipe with HAL  */
     dup2(CHILD_OUT, STDOUT_FILENO);        /* copy file descriptor, so both point to pipe with HAL  */
   }
+//  char *argv2[] = {(char *) path, "-b", "-v", (char *) mode, (char *) addr, NULL};   /* unix command */
   char *argv2[] = {(char *) path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
   if(execvp(argv2[0], argv2) < 0) perror("execvp()");
 }
