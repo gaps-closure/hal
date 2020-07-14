@@ -17,8 +17,8 @@ typedef void (*log_LockFn)(void *udata, int lock);
 
 enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
-//#define LOG_LEVEL_MIN   0       /* Allow all logging messages */
-#define LOG_LEVEL_MIN   2       /* Increase to removes non-warning messages for better performance  */
+#define LOG_LEVEL_MIN   0      /* Use this, HAL daemon can use -l NUM to control logging level, and HAL API has its own hardcoded set_level() */
+// #define LOG_LEVEL_MIN   2   /* Undefine log_* functions above this level for slight performance boost, avoids entering function, but requires recompilation for debug!  */
 
 #if LOG_TRACE >= LOG_LEVEL_MIN
   #define log_trace(...) log_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
