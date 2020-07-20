@@ -1,0 +1,14 @@
+{"enclaves": [
+	{
+		"enclave":"orange",
+		"inuri":"ipc:///tmp/example1suborange",
+		"outuri":"ipc:///tmp/example1puborange",
+		"halmaps":[{"from":"purple","to":"orange","mux":1,"sec":1,"typ":1,"name":"NEXTRPC"},{"from":"orange","to":"purple","mux":2,"sec":2,"typ":2,"name":"OKAY"},{"from":"purple","to":"orange","mux":1,"sec":1,"typ":3,"name":"REQUEST_GET_A"},{"from":"orange","to":"purple","mux":2,"sec":2,"typ":4,"name":"RESPONSE_GET_A"}]
+	},
+	{
+		"enclave":"purple",
+		"inuri":"ipc:///tmp/example1subpurple",
+		"outuri":"ipc:///tmp/example1pubpurple",
+		"halmaps":[{"from":"purple","to":"orange","mux":1,"sec":1,"typ":1,"name":"NEXTRPC"},{"from":"orange","to":"purple","mux":2,"sec":2,"typ":2,"name":"OKAY"},{"from":"purple","to":"orange","mux":1,"sec":1,"typ":3,"name":"REQUEST_GET_A"},{"from":"orange","to":"purple","mux":2,"sec":2,"typ":4,"name":"RESPONSE_GET_A"}]
+	}
+]}

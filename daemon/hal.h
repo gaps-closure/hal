@@ -21,34 +21,34 @@
 /*********t************************************************************/
 // #define SN_LIST_WINDOW_SIZE 1000
 
-/* HAL Interface parameters (linked list) */
+/* HAL interface device (to the application or to the network) parameters */
 typedef struct _dev {
-  int         enabled;
-  int         init_enable;
-  const char *id;
-  const char *path;
-  const char *path_r;      /* HAL-ZMQ-API process command path */
-  const char *path_w;
-  const char *model;
-  const char *comms;
-  const char *addr_in;
-  const char *addr_out;
-  const char *mode_in;      /* HAL-ZMQ-API mode (pub, sub, ...)  */
-  const char *mode_out;
-  int         port_in;
-  int         port_out;
-  int         from_mux;
+  /* A) external parameters for this device (from HAL config file) */
+  int         enabled;     /* enable (1) or disable (0) use of device  */
+  int         init_enable; /* initialize device (on 'path') */
+  const char *id;          /* device name (locally unique) */
+  const char *path;        /* path to comms device  */
+  const char *path_r;      /* path to read-only device */
+  const char *path_w;      /* path to write-only device */
+  const char *model;       /* packet type sent/received */
+  const char *comms;       /* protocol used for communication */
+  const char *addr_in;     /* address HAL listens to on this device */
+  const char *addr_out;    /* address HAL connects to from this device */
+  const char *mode_in;     /* HAL-ZMQ-API mode (pub, sub, req, ...)  */
+  const char *mode_out;    /* HAL-ZMQ-API mode (pub, sub, req, ...)  */
+  int         port_in;     /* port HAL listens to on this device */
+  int         port_out;    /* port HAL connects to from this device */
+  int         from_mux;    /* tag mux value for ilip device */
+  /* B) internal structures and parameters for this device */
   struct sockaddr_in socaddr_in;
   struct sockaddr_in socaddr_out;
-  int         readfd;       /* file descriptor to HAL-ZMQ-API process */
+  int         readfd;       /* file descriptors to HAL-ZMQ-API process */
   int         writefd;
-  int         count_r;      /* total packet count */
+  int         count_r;      /* total packet counts */
   int         count_w;
-  int         pid_in;       /* HAL-ZMQ-API process id */
+  int         pid_in;       /* HAL-ZMQ-API process ids */
   int         pid_out;
-//  int         sn_list_r[SN_LIST_WINDOW_SIZE];
-//  int         sn_list_w[SN_LIST_WINDOW_SIZE];
-  struct _dev *next;
+  struct _dev *next;        /* Deices saved as a linked list */
 } device;
 
 /* HAL Selector (used in HAL map entries and PDUs) */

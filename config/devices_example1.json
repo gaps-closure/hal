@@ -1,0 +1,26 @@
+{
+  "app": [
+    {
+      "enabled":  1,
+      "model":    "sdh_ha_v1",
+      "path":     "./zc/zc",
+      "comms":    "ipc",
+      "mode_in":  "sub",
+      "mode_out": "pub"
+    }
+  ],
+  "network": [
+    {
+      "enabled":        1,
+      "model":          "sdh_bw_v1",
+      "path":           "lo",
+      "comms":          "udp",
+      "enclave_name_1": "orange",
+      "listen_addr_1":  "10.71.0.1",
+      "listen_port_1":  6788,
+      "enclav_name_2":  "purple",
+      "listen_addr_2":  "10.72.0.1",
+      "listen_port_2":  6788
+    }
+  ]
+}

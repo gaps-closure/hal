@@ -310,7 +310,8 @@ void ilp_root_check(int fd_root, root_device *rd) {
 
   /* Take application_id from HAL config */
   device_pair_count = rd->data_dev_count;
-  for (j=0; j<device_pair_count; j++) application_id[j] = rd->data_dev_list[j]->from_mux;
+  for (j=0; j<device_pair_count; j++)
+    application_id[j] = rd->data_dev_list[j]->from_mux;
   
   /* For this test and this set of devices application ID is equal to session ID */
   for ( i=0; i<2; i++ ) {

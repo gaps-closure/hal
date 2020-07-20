@@ -54,7 +54,9 @@ void log_log_halmap(int level, halmap *map_root, const char *fn) {
   for (i=0; i<2; i++) {
     if (fd[i] != NULL) {
       fprintf(fd[i], "  HAL map list (from %s):\n", fn);
-      for(halmap *hm = map_root; hm != NULL; hm = hm->next) halmap_print_one(hm, fd[i]);
+      for(halmap *hm = map_root; hm != NULL; hm = hm->next) {
+        halmap_print_one(hm, fd[i]);
+      }
       fflush (fd[i]);
     }
   }
