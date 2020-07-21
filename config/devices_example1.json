@@ -1,5 +1,5 @@
 {
-  "app": [
+  "devices": [
     {
       "enabled":  1,
       "model":    "sdh_ha_v1",
@@ -7,9 +7,7 @@
       "comms":    "ipc",
       "mode_in":  "sub",
       "mode_out": "pub"
-    }
-  ],
-  "network": [
+    },
     {
       "enabled":        1,
       "model":          "sdh_bw_v1",

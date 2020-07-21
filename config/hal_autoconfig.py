@@ -5,7 +5,7 @@
 #
 # Usage Examples:
 #  python3 hal_autoconfig
-#  python3 hal_autoconfig.py -d devices_6modemo_bw.json -x xdconf_6modemo_bw.json
+#  python3 hal_autoconfig.py -d devices_6modemo_bw.json -x xdconf_6modemo.json
 
 import json
 import argparse
@@ -56,7 +56,6 @@ def add_inet(local_enclve_name, d, dev):
         d['addr_in']    = dev['listen_addr_1']
         d['port_in']    = dev['listen_port_1']
         if 'connect_addr_1' in dev:
-            print ("found1")
             d['addr_out']   = dev['connect_addr_1']
             d['port_out']   = dev['connect_port_1']
         else:
@@ -66,7 +65,6 @@ def add_inet(local_enclve_name, d, dev):
         d['addr_in']    = dev['listen_addr_2']
         d['port_in']    = dev['listen_port_2']
         if 'connect_addr_1' in dev:
-            print ("found2")
             d['addr_out']   = dev['connect_addr_2']
             d['port_out']   = dev['connect_port_2']
         else:
