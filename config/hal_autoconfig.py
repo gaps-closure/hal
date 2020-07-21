@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    July 17, 2020
+#    July 21, 2020
 #
 # Usage Examples:
 #  python3 hal_autoconfig
@@ -36,82 +36,87 @@ def read_json(file_name):
 # Write python dictionary to HAL configuration file
 def write_hal_config_file(file_name, dict):
     with open(file_name, 'w') as f:
-        print ('Writing HAL libconf configuration file to' , file_name)
+        print ('Writing HAL configuration into file:' , file_name)
         libconf.dump(dict, f)
 
 ###############################################################
-# Put Config File device and map information into a dictionary
+# Put Config File device and map information into dictionaries
 ###############################################################
-# Create HAL API device config(s) as a list of python dictionaries
-def create_device_cfg_ap(index, dev_dict, inuri, outuri):
-    hal_config_dev_list = []
-    for dev in dev_dict['app']:
-        d={}
-        d['enabled']    = dev['enabled']
-        d['id']         = 'xdd'+str(index)
-        d['path']       = dev['path']
-        d['model']      = dev['model']
-        d['comms']      = dev['comms']
-        d['mode_in']    = dev['mode_in']
-        d['mode_out']   = dev['mode_out']
-        d['addr_in']    = outuri;
-        d['addr_out']   = inuri;
-#        print ('d =', dev, '\n', libconf.dumps(d))
-        index += 1
-        hal_config_dev_list.append(dict(d))
-    if (args.verbose): print ('\nAPP Device(s) list =', hal_config_dev_list)
-#    print (libconf.dumps(list[0]))
-    return (hal_config_dev_list, index)
-
-# Create HAL Network device config(s) as a list of python dictionaries
-def create_device_cfg_bw(index, dev_dict, local_enclve_name):
-    hal_config_dev_list = []
-    for dev in dev_dict['network']:
-        d={}
-        d['enabled']    = dev['enabled']
-        d['id']         = 'xdd'+str(index)
-        d['path']       = dev['path']
-        d['model']      = dev['model']
-        d['comms']      = dev['comms']
-        if (local_enclve_name == dev['enclave_name_1']):
-            d['addr_in']    = dev['listen_addr_1']
-            d['port_in']    = dev['listen_port_1']
-            if 'connect_addr_1' in dev:
-                print ("found1")
-                d['addr_out']   = dev['connect_addr_1']
-                d['port_out']   = dev['connect_port_1']
-            else:
-                d['addr_out']   = dev['listen_addr_2']
-                d['port_out']   = dev['listen_port_2']
+# Add ipc speciffic infofrmation to mutable dictionaty (d)
+def add_ipc(local_enclve_name, d, dev, enc_info):
+    d['mode_in']    = dev['mode_in']
+    d['mode_out']   = dev['mode_out']
+    d['addr_in']    = enc_info['outuri']
+    d['addr_out']   = enc_info['inuri']
+    
+# Add ipc speciffic infofrmation (address/port) to mutable dictionaty (d)
+#   connect_addr_1 is found when sending to xd gaurd (not directly to the other enclave)
+def add_inet(local_enclve_name, d, dev):
+    if (local_enclve_name == dev['enclave_name_1']):
+        d['addr_in']    = dev['listen_addr_1']
+        d['port_in']    = dev['listen_port_1']
+        if 'connect_addr_1' in dev:
+            print ("found1")
+            d['addr_out']   = dev['connect_addr_1']
+            d['port_out']   = dev['connect_port_1']
         else:
-            d['addr_in']    = dev['listen_addr_2']
-            d['port_in']    = dev['listen_port_2']
-            if 'connect_addr_1' in dev:
-                print ("found2")
-                d['addr_out']   = dev['connect_addr_2']
-                d['port_out']   = dev['connect_port_2']
-            else:
-                d['addr_out']   = dev['listen_addr_1']
-                d['port_out']   = dev['listen_port_1']
+            d['addr_out']   = dev['listen_addr_2']
+            d['port_out']   = dev['listen_port_2']
+    else:
+        d['addr_in']    = dev['listen_addr_2']
+        d['port_in']    = dev['listen_port_2']
+        if 'connect_addr_1' in dev:
+            print ("found2")
+            d['addr_out']   = dev['connect_addr_2']
+            d['port_out']   = dev['connect_port_2']
+        else:
+            d['addr_out']   = dev['listen_addr_1']
+            d['port_out']   = dev['listen_port_1']
+            
+# Add serial device info to mutable dictionaty (d)
+def add_ilp(local_enclve_name, d, dev):
+    print('Add serial device info to mutable dictionaty in', local_enclve_name)
+    if (local_enclve_name == dev['enclave_name_1']):
+        d['path_r']    = dev['path_r_1']
+        d['path_w']    = dev['path_w_1']
+        d['from_mux']  = dev['from_mux_1']
+        if (dev['init_at_1'] > 0):
+            d['init_enable']  = 1
+        else:
+            d['init_enable']  = 0
+    print('TODO: special case for using root device to initialize read/write devices')
+    print ('d =', d)
+    sys.exit()
+            
+# Create HAL device configurations as a list of python dictionaries
+def create_device_cfg(dev_dict, enc_info, local_enclve_name):
+    index=0
+    hal_config_dev_list = []
+    for dev in dev_dict['devices']:
+        d={}
+        d['enabled']    = dev['enabled']
+        d['id']         = 'xdd'+str(index)
+        d['path']       = dev['path']
+        d['model']      = dev['model']
+        d['comms']      = dev['comms']
+        if ((d['comms'] == "udp") or (d['model'] == "tcp")):
+            add_inet(local_enclve_name, d, dev)
+        elif (d['model'] == "ilp"):
+            add_ilp(local_enclve_name, d, dev)
+        elif (d['comms'] == "ipc"):
+            add_ipc(local_enclve_name, d, dev, enc_info)
         index += 1
         hal_config_dev_list.append(dict(d))
     if (args.verbose): print ('\nNET Device(s) list =', hal_config_dev_list)
-    return (hal_config_dev_list, index)
+    return (hal_config_dev_list)
 
-def create_devices(enc_info, dev_dict):
-    if (args.verbose): print  ('\nINPUT DEVICE DICTIONARY =', dev_dict)
-    dev_tuple = ()
-    index=0
-    dev_list_apps, index = create_device_cfg_ap(index, dev_dict, enc_info['inuri'], enc_info['outuri'])
-    dev_list_nets, index = create_device_cfg_bw(index, dev_dict, enc_info['enclave'])
-    return(dev_list_apps, dev_list_nets)
-
-def create_maps(local_enclve_name, halmaps, dev_list_apps, dev_list_nets):
-    print ('create maps for enclave', enc_info['enclave'])
-    
-    # TODO - select which HAL device. For now, assume there is just one of each.
-    dev_app = dev_list_apps[0]['id']
-    dev_net = dev_list_nets[0]['id']
+# Create HAL maps as a list of python dictionaries
+def create_maps(local_enclve_name, halmaps, dev_list):
+    for dev in dev_list:
+        # TODO - select which HAL device. For now, assume there is just one of each.
+        if (dev['comms'] == "ipc"): dev_app = dev['id']
+        else:                       dev_net = dev['id']
+    if (args.verbose): print ('create maps for enclave', local_enclve_name, 'between', dev_app, 'and', dev_net)
 
     hal_config_map_list = []
     for map in halmaps:
@@ -133,21 +138,23 @@ def create_maps(local_enclve_name, halmaps, dev_list_apps, dev_list_nets):
             d['from_dev'] = dev_net
 #        print ('d =', d)
         hal_config_map_list.append(dict(d))
+        
+    if (args.verbose): print('MAPs =', hal_config_map_list)
     return(hal_config_map_list)
-        
 
-def combine_lists_into_dict(dev_list_apps, dev_list_nets, map_list):
-    # libconfig Lists, enclosed by () parenthesis, map to Python tuples and can contain arbitrary values
-    # libconfig array, enclosed by [] brackets, map to Python lists and must use scalars values
-    #   (int, float, bool, string) of the same type.
-    dev_tuple = tuple(dev_list_apps + dev_list_nets)
-    dev_dict  = {'devices': dev_tuple}
+###############################################################
+# Combine dev and map lists into dictionariesof off tuples
+#   libconfig lists, enclosed by () parentheses, map to Python
+#     tuples and can contain arbitrary values
+#   libconfig array, enclosed by [] brackets, map to Python
+#     lists and must use scalars values of the same type
+#     (int, float, bool, string)
+###############################################################
+def combine_lists_into_dict(dev_list, map_list):
+    dev_dict  = {'devices': tuple(dev_list)}
     if (args.verbose):  print(libconf.dumps(dev_dict))
-        
-    map_tuple = tuple(map_list)
-    map_dict  = {'maps': map_tuple}
+    map_dict  = {'maps': tuple(map_list)}
     if (args.verbose):  print(libconf.dumps(map_dict))
-
     map_dict.update(dev_dict)
     return(map_dict)
 
@@ -160,8 +167,8 @@ if __name__=='__main__':
     dev_dict = read_json(args.json_devices_file)
     for enc_info in map_dict['enclaves']:
         e = enc_info['enclave']
-        print ('\nProcessing enclave', e)
-        dev_list_apps, dev_list_nets = create_devices(enc_info, dev_dict)
-        map_list = create_maps(e, enc_info['halmaps'], dev_list_apps, dev_list_nets)
-        libconf_dict = combine_lists_into_dict(dev_list_apps, dev_list_nets, map_list)
-        write_hal_config_file(args.output_file_prefix + '_' + e + '.cfg', libconf_dict)
+        if (args.verbose):  print ('\nProcessing enclave', e)
+        dev_list = create_device_cfg(dev_dict, enc_info, e)
+        map_list = create_maps(e, enc_info['halmaps'], dev_list)
+        cfg_dict = combine_lists_into_dict(dev_list, map_list)
+        write_hal_config_file(args.output_file_prefix + '_' + e + '.cfg', cfg_dict)
