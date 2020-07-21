@@ -3,9 +3,10 @@
 # Create HAL configuration file
 #    July 21, 2020
 #
-# Usage Examples:
+# Usage Examples (first use default inputs: xdconf.ini.json & devices_examples_bw.json)
 #  python3 hal_autoconfig
-#  python3 hal_autoconfig.py -d devices_6modemo_bw.json -x xdconf_6modemo.json
+#  python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_emu_be.json
+#  python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_bw.json
 
 import json
 import argparse
@@ -92,7 +93,8 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     hal_config_dev_list = []
     for dev in dev_dict['devices']:
         d={}
-        d['enabled']    = dev['enabled']
+        if 'enabled' in dev: d['enabled'] = dev['enabled']
+        else:                d['enabled'] = 1
         d['id']         = 'xdd'+str(index)
         d['path']       = dev['path']
         d['model']      = dev['model']

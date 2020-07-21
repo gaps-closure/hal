@@ -1,7 +1,6 @@
 {
   "devices": [
     {
-      "enabled":  1,
       "model":    "sdh_ha_v1",
       "path":     "./zc/zc",
       "comms":    "ipc",
@@ -9,7 +8,6 @@
       "mode_out": "pub"
     },
     {
-      "enabled":        1,
       "model":          "sdh_bw_v1",
       "path":           "lo",
       "comms":          "udp",
