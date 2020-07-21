@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    July 21, 2020
+#    July 22, 2020
 #
-# Usage Examples (first use default inputs: xdconf.ini.json & devices_examples_bw.json)
-#  python3 hal_autoconfig
-#  python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_emu_be.json
-#  python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_bw.json
+# Usage Examples:
+#  1) eri demo running in emulator (start.sh example1) with BE devices (default inputs)
+#       python3 hal_autoconfig.py
+#  2) eri demo (using default xdconf: xdconf_eri.json) with BW devices
+#       python3 hal_autoconfig -d devices_eri_bw.json
+#  3) 6month demo running both enclave on jaga (with sudo bash test/6MoDemo_BW.net.sh)
+#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_bw.json
+#  4) 6month demo running both enclave on jaga (with ilip root, read and write devices)
+#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_be.json
 
 import json
 import argparse
@@ -15,10 +20,10 @@ import sys
         
 def get_args():
     parser = argparse.ArgumentParser(description='Create HAL configuration file')
-    parser.add_argument('-d', '--json_devices_file',  help='Input JSON file name of HAL device conig', type=str, default='devices_example1.json')
+    parser.add_argument('-d', '--json_devices_file',  help='Input JSON file name of HAL device conig', type=str, default='ddevices_eri_be.json')
     parser.add_argument('-o', '--output_file_prefix', help='Output HAL configuration file name prefix', type=str, default='hal')
     parser.add_argument('-v', '--verbose', help="run in verbose mode", action='store_true', default=False)
-    parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of API config and HAL tag-maps', type=str, default='xdconf.ini.json')
+    parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of API config and HAL tag-maps', type=str, default='xdconf_eri.json')
     return parser.parse_args()
 
 # Read JSON file into a python dictionary (data)
