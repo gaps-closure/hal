@@ -6,11 +6,11 @@
 # Usage Examples:
 #  1) eri demo running in emulator (start.sh example1) with BE devices (default inputs)
 #       python3 hal_autoconfig.py
-#  2) eri demo (using default xdconf: xdconf_eri.json) with BW devices
-#       python3 hal_autoconfig -d devices_eri_bw.json
-#  3) 6month demo running both enclave on jaga (with sudo bash test/6MoDemo_BW.net.sh)
+#  2) eri demo running both enclaves on jaga with BW devices?
+#       python3 hal_autoconfig.py -d devices_eri_bw.json
+#  3) 6month demo running both enclaves on jaga (with sudo bash test/6MoDemo_BW.net.sh)
 #       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_bw.json
-#  4) 6month demo running both enclave on jaga (with ilip root, read and write devices)
+#  4) 6month demo running both enclaves on jaga (with ilip root, read and write devices)
 #       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_be.json
 
 import json
