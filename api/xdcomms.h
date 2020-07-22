@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <assert.h>
-#include "../log/log.h"
+#include "log.h"
 
 #define ADU_SIZE_MAX_C  200
 #define PACKET_MAX      2048

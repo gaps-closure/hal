@@ -3,6 +3,7 @@ CFLAGS      ?= -O2 -Wall -Wstrict-prototypes # -g -pg
 
 LOCAL_LIBS  = -lconfig
 LIBS 	    = $(OBJDIR)/../api/libxdcomms.a
+INCL = -I ../log -I ../api
 
 OBJDIR ?= .
 
@@ -16,16 +17,16 @@ COMPATLIBS  = ../x86_64_prebuild/libzmq.a -static -Wl,--allow-multiple-definitio
 all: $(OBJDIR)/hal
 
 $(OBJDIR)/../log/log.o: ../log/log.c
-	$(CC) $(CFLAGS) -fpic -c ../log/log.c -o $@
+	$(CC) $(CFLAGS) $(INCL) -fpic -c ../log/log.c -o $@
 
 $(OBJDIR)/hal: $(HAL_OBJECT_LIST)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) $(LDLIBS) $(LDFLAGS) $(LOCAL_LIBS)
 
 static: $(HAL_OBJECT_LIST) 
-	$(CC) $(CFLAGS) -o $(OBJDIR)/hal $^ $(LIBS) $(COMPATLIBS)
+	$(CC) $(CFLAGS) $(INCL) -o $(OBJDIR)/hal $^ $(LIBS) $(COMPATLIBS)
 
 $(OBJDIR)/%.o:	%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCL) -c $< -o $@
 
 clean:
 	rm -f $(OBJDIR)/*.o $(OBJDIR)/hal $(OBJDIR)/hal-compat

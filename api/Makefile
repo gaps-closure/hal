@@ -3,6 +3,7 @@ AR          ?= ar
 CFLAGS      ?= -O2 -Wall -Wstrict-prototypes
 LDLIBS       =-lzmq
 OBJDIR       =.
+INCL = -I ../log
 
 ifeq ($(CC),cc)
 CC=gcc
@@ -27,7 +28,7 @@ $(OBJDIR)/libxdcomms.so: $(OBJDIR)/../log/log.o $(OBJDIR)/xdcomms.o
 	$(CC) $(CFLAGS) $(STATICZMQ) -shared -o $@ $^ $(LDLIBS)
 
 $(OBJDIR)/xdcomms.o:  xdcomms.c
-	$(CC) $(CFLAGS) -fpic -c $< -o $@
+	$(CC) $(CFLAGS) $(INCL) -fpic -c $< -o $@
 
 libs: $(OBJDIR)/libxdcomms.a $(OBJDIR)/libxdcomms.so
 

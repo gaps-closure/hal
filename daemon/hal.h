@@ -3,7 +3,7 @@
 #ifndef HAL_HEADER_FILE
 #define HAL_HEADER_FILE
 
-#include "../api/xdcomms.h"
+#include "xdcomms.h"
 
 #include <unistd.h>	
 #include <sys/time.h>
@@ -14,7 +14,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
-#include "../log/log.h"
+#include "log.h"
 
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */

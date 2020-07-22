@@ -3,6 +3,7 @@ DIRS = $(wildcard zc log api appgen daemon)
 CC          ?= gcc
 CFLAGS      ?= -O2 -Wall -Wstrict-prototypes
 OBJDIR ?= $(shell pwd)
+INCLUDES=-I log
 
 all:
 	for d in $(DIRS); do \
