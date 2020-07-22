@@ -8,9 +8,9 @@
       "mode_out": "pub"
     },
     {
-      "model":          "sdh_be_v1",
-      "path":           "/dev/vcom",
-      "comms":          "tty"
+      "model":    "sdh_be_v1",
+      "path":     "/dev/vcom",
+      "comms":    "tty"
     }
   ]
 }
