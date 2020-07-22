@@ -9,8 +9,11 @@
     },
     {
       "model":          "sdh_be_v1",
-      "path":           "/dev/vcom",
-      "comms":          "tty"
+      "comms":          "tty",
+      "enclave_name_1": "orange",
+      "path_1":         "/dev/vcom11",
+      "enclave_name_2": "purple",
+      "path_2":         "/dev/vcom12"
     }
   ]
 }

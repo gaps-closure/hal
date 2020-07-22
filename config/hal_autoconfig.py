@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    July 22, 2020
+#    July 23, 2020
 #
-# Usage Examples:
-#  1) eri demo running in emulator (start.sh example1) with BE devices (default inputs)
+# Tested Examples:
+#  1) eri demo running in emulator (start.sh example1) with /dev/vcom devices (default inputs)
 #       python3 hal_autoconfig.py
-#  2) eri demo running both enclaves on jaga with BW devices?
+#  2) 6month demo running both enclaves on jaga (with sudo bash test/6MoDemo_BW.net.sh)
+#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_jaga_bw.json
+# Untested Examples:
+#  3) eri demo running both enclaves on jaga with BW devices (but not send to gw listners)
 #       python3 hal_autoconfig.py -d devices_eri_bw.json
-#  3) 6month demo running both enclaves on jaga (with sudo bash test/6MoDemo_BW.net.sh)
-#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_bw.json
 #  4) 6month demo running both enclaves on jaga (with ilip root, read and write devices)
-#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_be.json
+#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_ilip.json
+#  5) eri demo running in emulator (start.sh example1) with different BE device paths
+#       python3 hal_autoconfig.py -d devices_eri_be_different_dev_paths.json
 
 import json
 import argparse
@@ -48,13 +51,22 @@ def write_hal_config_file(file_name, dict):
 ###############################################################
 # Put Config File device and map information into dictionaries
 ###############################################################
-# Add ipc speciffic infofrmation to mutable dictionaty (d)
+# Add ipc speciffic information to mutable dictionaty (d)
 def add_ipc(local_enclve_name, d, dev, enc_info):
-    d['mode_in']    = dev['mode_in']
-    d['mode_out']   = dev['mode_out']
-    d['addr_in']    = enc_info['outuri']
-    d['addr_out']   = enc_info['inuri']
-    
+    d['mode_in']   = dev['mode_in']
+    d['mode_out']  = dev['mode_out']
+    d['addr_in']   = enc_info['outuri']
+    d['addr_out']  = enc_info['inuri']
+
+# Add tty speciffic information to mutable dictionaty (d)
+def add_tty(local_enclve_name, d, dev):
+    if 'path_1' in dev:         # not using same name for both envlaves in dev['path']
+        if (local_enclve_name == dev['enclave_name_1']):
+            d['path']  = dev['path_1']
+        else:
+            d['path']  = dev['path_2']
+
+
 # Add ipc speciffic infofrmation (address/port) to mutable dictionaty (d)
 #   connect_addr_1 is found when sending to xd gaurd (not directly to the other enclave)
 def add_inet(local_enclve_name, d, dev):
@@ -101,7 +113,7 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
         if 'enabled' in dev: d['enabled'] = dev['enabled']
         else:                d['enabled'] = 1
         d['id']         = 'xdd'+str(index)
-        d['path']       = dev['path']
+        if 'path' in dev: d['path'] = dev['path']
         d['model']      = dev['model']
         d['comms']      = dev['comms']
         if ((d['comms'] == "udp") or (d['model'] == "tcp")):
@@ -110,6 +122,8 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
             add_ilp(local_enclve_name, d, dev)
         elif (d['comms'] == "ipc"):
             add_ipc(local_enclve_name, d, dev, enc_info)
+        elif (d['comms'] == "tty"):
+            add_tty(local_enclve_name, d, dev)
         index += 1
         hal_config_dev_list.append(dict(d))
     if (args.verbose): print ('\nNET Device(s) list =', hal_config_dev_list)
