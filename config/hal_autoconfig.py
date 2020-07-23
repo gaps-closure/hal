@@ -187,6 +187,7 @@ if __name__=='__main__':
     dev_dict = read_json(args.json_devices_file)
     op = args.output_file_prefix + '_'
     if args.output_dir: op = args.output_dir + '/' + op
+    print('op =', op)
     for enc_info in map_dict['enclaves']:
         e = enc_info['enclave']
         if (args.verbose):  print ('\nProcessing enclave', e)
