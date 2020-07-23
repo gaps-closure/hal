@@ -24,7 +24,8 @@ import sys
 def get_args():
     parser = argparse.ArgumentParser(description='Create HAL configuration file')
     parser.add_argument('-d', '--json_devices_file',  help='Input JSON file name of HAL device conig', type=str, default='devices_eri_be.json')
-    parser.add_argument('-o', '--output_file_prefix', help='Output HAL configuration file name prefix', type=str, default='hal')
+    parser.add_argument('-o', '--output_dir', help='Output directory path', type=str, default='')
+    parser.add_argument('-p', '--output_file_prefix', help='Output HAL configuration file name prefix', type=str, default='hal')
     parser.add_argument('-v', '--verbose', help="run in verbose mode", action='store_true', default=False)
     parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of HAL API and tag-maps', type=str, default='xdconf_eri.json')
     return parser.parse_args()
@@ -184,10 +185,14 @@ if __name__=='__main__':
     args = get_args()
     map_dict = read_json(args.json_api_file)
     dev_dict = read_json(args.json_devices_file)
+    op = args.output_file_prefix + '_'
+    if args.output_dir: op = args.output_dir + '/' + op
+    print (op)
+    sys.exit()
     for enc_info in map_dict['enclaves']:
         e = enc_info['enclave']
         if (args.verbose):  print ('\nProcessing enclave', e)
         dev_list = create_device_cfg(dev_dict, enc_info, e)
         map_list = create_maps(e, enc_info['halmaps'], dev_list)
         cfg_dict = combine_lists_into_dict(dev_list, map_list)
-        write_hal_config_file(args.output_file_prefix + '_' + e + '.cfg', cfg_dict)
+        write_hal_config_file( + e + '.cfg', cfg_dict)
