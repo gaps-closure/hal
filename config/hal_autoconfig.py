@@ -193,4 +193,4 @@ if __name__=='__main__':
         dev_list = create_device_cfg(dev_dict, enc_info, e)
         map_list = create_maps(e, enc_info['halmaps'], dev_list)
         cfg_dict = combine_lists_into_dict(dev_list, map_list)
-        write_hal_config_file( + e + '.cfg', cfg_dict)
+        write_hal_config_file(op + e + '.cfg', cfg_dict)
