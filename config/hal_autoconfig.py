@@ -34,7 +34,11 @@ def get_args():
 def read_json(file_name):
     try:
         with open(file_name, 'r') as json_file:
-            data = json.load(json_file)
+            try:
+                data = json.load(json_file)
+            except json.JSONDecodeError as err:
+                print (file_name, 'file has json error:\n  ', err)
+                sys.exit()
     except FileNotFoundError:
         print (file_name, 'file does not exist')
         sys.exit()
@@ -93,23 +97,30 @@ def add_inet(local_enclve_name, d, dev):
 # Add serial device info to mutable dictionaty (d)
 def add_ilp(local_enclve_name, d, dev):
     print('Add serial device info to mutable dictionaty in', local_enclve_name)
-    if (local_enclve_name == dev['enclave_name_1']):
-        d['path_r']    = dev['path_r_1']
-        d['path_w']    = dev['path_w_1']
-        d['from_mux']  = dev['from_mux_1']
-        if (dev['init_at_1'] > 0):
-            d['init_enable']  = 1
-        else:
-            d['init_enable']  = 0
+    if 'enclave_name_1' in dev:
+        if (local_enclve_name == dev['enclave_name_1']):
+            d['path_r']      = dev['path_r_1']
+            d['path_w']      = dev['path_w_1']
+            d['from_mux']    = dev['from_mux_1']
+            d['init_enable'] = dev['init_at_1']
+    if 'enclave_name_2' in dev:
+        if (local_enclve_name == dev['enclave_name_2']):
+            d['path_r']      = dev['path_r_2']
+            d['path_w']      = dev['path_w_2']
+            d['from_mux']    = dev['from_mux_2']
+            d['init_enable'] = dev['init_at_2']
     print('TODO: special case for using root device to initialize read/write devices')
     print ('d =', d)
-    sys.exit()
             
 # Create HAL device configurations as a list of python dictionaries
 def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     index=0
     hal_config_dev_list = []
     for dev in dev_dict['devices']:
+        # skip if network device does not mention local_enclve_name (needed for ilip)
+        if (dev['comms'] != "ipc"):
+            if (local_enclve_name not in dev.values()):
+                break
         d={}
         if 'enabled' in dev: d['enabled'] = dev['enabled']
         else:                d['enabled'] = 1
@@ -117,9 +128,9 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
         if 'path' in dev: d['path'] = dev['path']
         d['model']      = dev['model']
         d['comms']      = dev['comms']
-        if ((d['comms'] == "udp") or (d['model'] == "tcp")):
+        if ((d['comms'] == "udp") or (d['comms'] == "tcp")):
             add_inet(local_enclve_name, d, dev)
-        elif (d['model'] == "ilp"):
+        elif (d['comms'] == "ilp"):
             add_ilp(local_enclve_name, d, dev)
         elif (d['comms'] == "ipc"):
             add_ipc(local_enclve_name, d, dev, enc_info)
@@ -133,9 +144,10 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
 # Create HAL maps as a list of python dictionaries
 def create_maps(local_enclve_name, halmaps, dev_list):
     for dev in dev_list:
-        # TODO - select which HAL device. For now, assume there is just one of each.
-        if (dev['comms'] == "ipc"): dev_app = dev['id']
-        else:                       dev_net = dev['id']
+        # TODO - select which HAL device. For now, assume there is just one of each is enabled.
+        if (dev['enabled'] == 1):
+            if (dev['comms'] == "ipc"): dev_app = dev['id']
+            else:                       dev_net = dev['id']
     if (args.verbose): print ('create maps for enclave', local_enclve_name, 'between', dev_app, 'and', dev_net)
 
     hal_config_map_list = []
@@ -187,7 +199,6 @@ if __name__=='__main__':
     dev_dict = read_json(args.json_devices_file)
     op = args.output_file_prefix + '_'
     if args.output_dir: op = args.output_dir + '/' + op
-    print('op =', op)
     for enc_info in map_dict['enclaves']:
         e = enc_info['enclave']
         if (args.verbose):  print ('\nProcessing enclave', e)
