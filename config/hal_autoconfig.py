@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    July 23, 2020
+#    July 24, 2020
 #
 # Tested Examples:
 #  1) eri demo running in emulator (start.sh example1) with /dev/vcom devices (default inputs)
 #       python3 hal_autoconfig.py
 #  2) 6month demo running both enclaves on jaga (with sudo bash test/6MoDemo_BW.net.sh)
 #       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_jaga_bw.json
-# Untested Examples:
-#  3) eri demo running both enclaves on jaga with BW devices (but not send to gw listners)
-#       python3 hal_autoconfig.py -d devices_eri_bw.json
-#  4) 6month demo running both enclaves on jaga (with ilip root, read and write devices)
+#  3) 6month demo running both enclaves on jaga (with ilip root, read and write devices)
 #       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_ilip.json
+# Untested Examples:
+#  4) eri demo running both enclaves on jaga with BW devices (but not send to gw listners)
+#       python3 hal_autoconfig.py -d devices_eri_bw.json
 #  5) eri demo running in emulator (start.sh example1) with different BE device paths
 #       python3 hal_autoconfig.py -d devices_eri_be_different_dev_paths.json
 
@@ -96,7 +96,6 @@ def add_inet(local_enclve_name, d, dev):
             
 # Add serial device info to mutable dictionaty (d)
 def add_ilp(local_enclve_name, d, dev):
-    print('Add serial device info to mutable dictionaty in', local_enclve_name)
     if 'enclave_name_1' in dev:
         if (local_enclve_name == dev['enclave_name_1']):
             d['path_r']      = dev['path_r_1']
@@ -109,17 +108,17 @@ def add_ilp(local_enclve_name, d, dev):
             d['path_w']      = dev['path_w_2']
             d['from_mux']    = dev['from_mux_2']
             d['init_enable'] = dev['init_at_2']
-    print('TODO: special case for using root device to initialize read/write devices')
-    print ('d =', d)
             
 # Create HAL device configurations as a list of python dictionaries
 def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     index=0
     hal_config_dev_list = []
     for dev in dev_dict['devices']:
-        # skip if network device does not mention local_enclve_name (needed for ilip)
-        if (dev['comms'] != "ipc"):
+        if (args.verbose): print('create_device_cfg:', dev)
+        # skip if network device other than tty does not mention local_enclve_name (needed for ilip)
+        if ( (dev['comms'] != "ipc") and (dev['comms'] != "tty") ):
             if (local_enclve_name not in dev.values()):
+                if (args.verbose): print('skip this device in:', local_enclve_name)
                 break
         d={}
         if 'enabled' in dev: d['enabled'] = dev['enabled']
