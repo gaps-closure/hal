@@ -1,0 +1,14 @@
+{"enclaves": [
+	{
+		"enclave":"green",
+		"inuri":"ipc:///tmp/halsubgreen",
+		"outuri":"ipc:///tmp/halpubgreen",
+		"halmaps":[{"from":"green","to":"orange","mux":1,"sec":1,"typ":1,"name":"xx"},{"from":"orange","to":"green","mux":2,"sec":2,"typ":1,"name":"xx"},{"from":"orange","to":"green","mux":2,"sec":2,"typ":2,"name":"xx"}]
+	},
+	{
+		"enclave":"orange",
+		"inuri":"ipc:///tmp/halsuborange",
+		"outuri":"ipc:///tmp/halpuborange",
+        "halmaps":[{"from":"green","to":"orange","mux":1,"sec":1,"typ":1,"name":"xx"},{"from":"orange","to":"green","mux":2,"sec":2,"typ":1,"name":"xx"},{"from":"orange","to":"green","mux":2,"sec":2,"typ":2,"name":"xx"}]
+	}
+]}

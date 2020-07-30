@@ -4,6 +4,7 @@
 */
 
 #include "hal.h"
+#include "map.h"
 
 char ipc_addr_in[]   = "ipc:///tmp/halpub1";
 char ipc_addr_out[]  = "ipc:///tmp/halsub1";
@@ -91,6 +92,8 @@ device *get_devices(config_t *cfg) {
 
       ret[i].readfd   = -1; /* to be set when opened */
       ret[i].writefd  = -1; /* to be set when opened */
+      ret[i].pid_in   = -1; /* to be set when opened */
+      ret[i].pid_out  = -1; /* to be set when opened */
       ret[i].count_r  =  0;
       ret[i].count_w  =  0;
 
@@ -132,8 +135,9 @@ halmap *get_mappings(config_t *cfg) {
       ret[i].to.tag.typ   = get_param_int(map, "to_typ",    1, i);
       ret[i].codec        = get_param_str(map, "codec",     1, i);
       ret[i].next         = i < count - 1 ? &ret[i+1] : (halmap *) NULL;
-//      fprintf(stderr, "ctags = %d %d\n", ret[i].from.ctag, ret[i].to.ctag);
+//      fprintf(stderr, "i=%d of %d: f=%s t=%s ctags = %d %d\n", i, count, ret[i].from.dev, ret[i].to.dev,  ret[i].from.ctag, ret[i].to.ctag);
     }
+//    log_log_halmap(LOG_FATAL, ret, __func__);
   }
   return ret;
 }

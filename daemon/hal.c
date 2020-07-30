@@ -21,6 +21,17 @@
 #include "map.h"
 #include "packetize.h"
 
+void child_kill(int pid) {
+  int rv=-1;
+  char cmd[64];
+  
+  if (pid > 0)  {
+    sprintf(cmd, "kill -9 %d", pid);
+    rv = system(cmd);
+    log_debug("killed child HAL-ZMQ-API process: pid=%d rv=%d", pid, rv);
+  }
+}
+
 /* Signal Handler for SIGINT - print statistics */
 device   *root_dev;
 void sigintHandler(int sig_num)
@@ -31,10 +42,36 @@ void sigintHandler(int sig_num)
     if (d->enabled != 0) {
       sprintf(str_new, "%s[r=%d w=%d] ", d->id, d->count_r, d->count_w);
       strcat(s, str_new);
+      child_kill(d->pid_out);
+      child_kill(d->pid_in);
     }
   }
   fprintf(stderr, "\nDevice read-write summary: %s\n", s);
   exit(0);
+}
+
+/* convert tag into compressed tag if not set */
+void convert_into_ctag(const char *id, selector *s) {
+  if ( (strcmp(id, s->dev) == 0) && (s->ctag == -1) ) {
+    s->ctag = (256 * ((256 * (s->tag.mux)) + (s->tag.sec))) + (s->tag.typ);
+//    fprintf(stderr, "converted %s m=%d s=%d t=%d -> ctag=%d (0x%06x)\n", s->dev, s->tag.mux, s->tag.sec, s->tag.typ, s->ctag, s->ctag);
+  }
+}
+
+/* Find maps that shoud have compressed tags based on the device model */
+/* Converts those it finds in both the 'to' and 'from' maps */
+void map_check_ctags(device *devs, halmap *map) {
+  for(device *d = devs; d != NULL; d = d->next) {
+    if (d->enabled == 0) continue;
+//    fprintf(stderr, "device %s: %s %s\n", d->id, d->comms, d->model);
+    if (strcmp(d->model, "sdh_bw_v1") == 0) {
+      for (halmap *hm = map; hm != NULL; hm = hm->next) {
+        convert_into_ctag(d->id, &(hm->from));
+        convert_into_ctag(d->id, &(hm->to));
+      }
+//      log_log_halmap(LOG_FATAL, map, __func__);
+    }
+  }
 }
 
 /**********************************************************************/
@@ -72,6 +109,8 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   log_halmap_debug(map, __func__);
   config_destroy(&cfg);
 
+  map_check_ctags(devs, map);
+  
   /* c) Open devices */
   devices_open(devs);
   log_devs_debug(devs, __func__);

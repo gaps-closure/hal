@@ -1,8 +1,8 @@
 /*
  * HAL device Open, Find and Print
- *   April 2020, Perspecta Labs
+ *   June 2020, Perspecta Labs
  *
- *     a) IPC (ZMQ pub/sub)
+ *     a) IPC to application (unix pipe and ZMQ process)
  *     b) INET device (tcp or udp)
  *     c) Bidirectional Serial Device (tty)
  *     d) Unidirectional Serial Device (ilp)
@@ -11,10 +11,10 @@
 #include "hal.h"
 
 /* Define IPC parent-child process file descriptors */
-#define PARENT_READ  read_pipe[0]
-#define PARENT_WRITE write_pipe[1]
-#define CHILD_WRITE  read_pipe[1]
-#define CHILD_READ   write_pipe[0]
+#define PARENT_IN  pipe_a2h[0]
+#define PARENT_OUT pipe_h2a[1]
+#define CHILD_OUT  pipe_a2h[1]
+#define CHILD_IN   pipe_h2a[0]
 
 /* Store information on ILP devices associated with serial root device */
 typedef struct _root_device {
@@ -47,12 +47,14 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_str(fd, "mo", d->mode_out);
   device_print_int(fd, "pi", d->port_in);
   device_print_int(fd, "po", d->port_out);
-  device_print_int(fd, "fr", d->readfd);
-  device_print_int(fd, "fw", d->writefd);
-  device_print_str(fd, "dr", d->path_r);
-  device_print_str(fd, "dw", d->path_w);
+  device_print_int(fd, "fi", d->readfd);
+  device_print_int(fd, "fo", d->writefd);
+  device_print_str(fd, "di", d->path_r);
+  device_print_str(fd, "do", d->path_w);
+  device_print_int(fd, "Pi", d->pid_in);
+  device_print_int(fd, "Po", d->pid_out);
   device_print_int(fd, "mx", d->from_mux);
-  fprintf(fd, " cr=%d cw=%d", d->count_r, d->count_w);
+  fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
   fprintf(fd, "]\n");
 }
   
@@ -96,54 +98,93 @@ device *find_device_by_id(device *root, const char *id) {
 /**********************************************************************/
 /* Open Device; a) IPC  */
 /*********t************************************************************/
+/* Start child process (currently zcat) to communicate between APP and HAL */
+void ipc_child_run(int *pipe_a2h, int *pipe_h2a, const char *path, const char *mode, const char *addr) {
+  
+//    log_trace("HAL-ZMQ-API process in mode=%s (dup_dupe=%d=%d)", mode, child_fd_duped, STDOUT_FILENO);
+  if (strcmp(mode, "pub") == 0) {
+    close(CHILD_OUT);
+    dup2(CHILD_IN,  STDIN_FILENO);        /* copy file descriptor, so both point to pipe with HAL  */
+  }
+  if (strcmp(mode, "sub") == 0) {
+    close(CHILD_IN);
+    dup2(CHILD_OUT, STDOUT_FILENO);        /* copy file descriptor, so both point to pipe with HAL  */
+  }
+  if ((strcmp(mode, "req") == 0) ||
+      (strcmp(mode, "rep") == 0)) {
+    dup2(CHILD_IN,  STDIN_FILENO);        /* copy file descriptor, so both point to pipe with HAL  */
+    dup2(CHILD_OUT, STDOUT_FILENO);        /* copy file descriptor, so both point to pipe with HAL  */
+  }
+//  char *argv2[] = {(char *) path, "-b", "-v", (char *) mode, (char *) addr, NULL};   /* unix command */
+  char *argv2[] = {(char *) path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
+  if(execvp(argv2[0], argv2) < 0) perror("execvp()");
+}
+  
 /* Open HAL child process to read or write using the Application API (using zcat) */
-void ipc_open_process(device *d, int *read_pipe, int *write_pipe, int pipe_open, int pipe_close, int fd_open, const char *mode, const char *addr) {
-  int  pid;
+int ipc_open_process(int *pipe_a2h, int *pipe_h2a, const char *path, const char *mode, const char *addr) {
+  int  pid=-1;
 
-  if( access(d->path, X_OK ) == -1 ) {
-    log_fatal("HAL API path (%s) from conig file is not executable", d->path);
+  if( access(path, X_OK ) == -1 ) {
+    log_fatal("HAL API path (%s) from conig file is not executable", path);
     exit(EXIT_FAILURE);
   }
-    
-  if ((pid = fork()) < 0) {
-    log_fatal("Fork failed");
-    exit(EXIT_FAILURE);
-  } else if (pid == 0) {  /* child (API) process starts here */
-    close(PARENT_READ);
-    close(PARENT_WRITE);
-    close(pipe_close);
-    dup2(pipe_open, fd_open);        /* copy fd_open file descriptor into pipe_open file descriptor */
-    char *argv2[] = {(char *) d->path, "-b", (char *) mode, (char *) addr, NULL};   /* unix command */
-    if(execvp(argv2[0], argv2) < 0) perror("execvp()");
-    exit(EXIT_FAILURE);                                      /* child process should not reach here */
-  } else {                /* parent (HAL) process */
-    log_trace("Spawned %s subscriber pid=%d", d->path, pid);
+  if (strlen(addr) > 0) {
+    if ((pid = fork()) < 0) {
+      log_fatal("Fork failed");
+      exit(EXIT_FAILURE);
+    } else if (pid == 0) {  /* child (API) process starts here */
+      close(PARENT_IN);
+      close(PARENT_OUT);
+      ipc_child_run(pipe_a2h, pipe_h2a, path, mode, addr);
+      exit(EXIT_FAILURE);                                      /* child process should not reach here */
+    } else {                /* parent (HAL) process */
+      log_trace("HAL spawned %s HAL-ZMQ-API process with pid=%d", path, pid);
+    }
   }
+  else {
+    log_trace("Not forking HAL-ZMQ-API process: addr=%s mode=%s", addr, mode);
+  }
+  return(pid);
 }
 
-/* Open IPC interfaces (specified in d) */
+/* Open IPC interfaces (on device specified in d structure) for app to hal (a2h) and/or hal to app (h2a) communication
+ *   For each (_in or _out) address specified in the configuration, HQL creates one processs, with:
+ *      a) 1 pipe (unidirectional comms) for PUB/SUB
+ *      b) 2 pipes (bidirectional comms) for REQ/REP
+ *   If both addresses specified, HAL creates two processs, with 2 pipes for PUB/SUB and 4 for pipesREQ/REP
+ */
 void interface_open_ipc(device *d) {
-  int  read_pipe[2];    /* Read  pipes for parent-child (HAL-API) communication */
-  int  write_pipe[2];   /* Write pipes for parent-child (HAL-API) communication */
+  int  pipe_a2h[2];    /* Pipe from HAL-ZMQ-APP process (CHILD) into HAL (PAREBT) */
+  int  pipe_h2a[2];    /* Parent-child pipe from HAL (PAREBT) into HAL-ZMQ-APP process (CHILD) */
 
-  /* a) Open communication pipes for IPC reading and writing */
-// fprintf(stderr, "Open IPC %s %s\n", d->id, d->path);
-  if(pipe(read_pipe) < 0 || pipe(write_pipe) < 0) {
+  /* a) Open  communication pipe for IPC with each of the HAL-ZMQ-API processes  */
+  if(pipe(pipe_a2h) < 0 || pipe(pipe_h2a) < 0) {
     log_fatal("Pipe creation failed");
     exit(EXIT_FAILURE);
   }
-//  fprintf(stderr, "Pipe FDs: hal_r=%d hal_w=%d zc_sub_w=%d zc_pub_r=%d\n", PARENT_READ, PARENT_WRITE,  CHILD_WRITE, CHILD_READ);
 
-  log_trace("Openning API %s:%s %s:%s", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
-  /* b) Fork HAL child processes (to read and write on ipc channels) */
-  ipc_open_process(d, read_pipe, write_pipe, CHILD_WRITE, CHILD_READ,  STDOUT_FILENO, d->mode_in, d->addr_in);
-  ipc_open_process(d, read_pipe, write_pipe, CHILD_READ,  CHILD_WRITE, STDIN_FILENO,  d->mode_out, d->addr_out);
+  /* b) Fork HAL-ZMQ-API child processes (using ipc communication pipes with HAL) */
+  log_trace("Openning API i=[%s:%s] o=[%s:%s]", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
+  d->pid_in  = ipc_open_process(pipe_a2h, pipe_h2a, d->path, d->mode_in,  d->addr_in);  /* HAL-ZMQ-API process sends its STDOUT to HAL using pipe_a2h */
+  d->pid_out = ipc_open_process(pipe_a2h, pipe_h2a, d->path, d->mode_out, d->addr_out);  /* HAL-ZMQ-API process gets its STDIN from HAL using pipe_h2a */
 
   /* c) Parent (HAL) process finishes up */
-  close(CHILD_READ);
-  close(CHILD_WRITE);
-  d->readfd  = PARENT_READ;
-  d->writefd = PARENT_WRITE;
+  close(CHILD_IN);
+  close(CHILD_OUT);
+  
+  if (strcmp(d->mode_in,  "req") ||
+      strcmp(d->mode_in,  "rep") ||
+      strcmp(d->mode_out, "req") ||
+      strcmp(d->mode_out, "rep")) {
+    d->readfd  = PARENT_IN;
+    d->writefd = PARENT_OUT;
+  }
+  else
+  {
+    if (d->pid_in  > 0) d->readfd  = PARENT_IN;
+    if (d->pid_out > 0) d->writefd = PARENT_OUT;
+  }
+  log_trace("Starred HAL-ZMQ-API process(es): in=[pid=%d:fd=%d] out=[pid=%d:fd=%d]", d->pid_in, d->readfd, d->pid_out, d->writefd);
 }
 
 /**********************************************************************/
@@ -236,7 +277,7 @@ void ilp_open_data_devices(device *d) {
 
   if (strlen(d->path_r) > 0) {
 
-    log_debug("About to open device %s: %s\n", d->id, d->path_r);
+    log_trace("About to open device %s: %s", d->id, d->path_r);
 
     if ((fd_read  = open(d->path_r, O_RDONLY, S_IRUSR)) < 0) {
       log_fatal("Error opening device %s: %s\n", d->id, d->path_r);
@@ -244,19 +285,19 @@ void ilp_open_data_devices(device *d) {
     }
     d->readfd  = fd_read;
 
-    log_debug("Opened device %s: %s\n", d->id, d->path_r);
+    log_debug("Opened device %s: %s", d->id, d->path_r);
   }
   
   if (strlen(d->path_w) > 0) {
-    log_debug("About to open device %s: %s\n", d->id, d->path_w);
+    log_trace("About to open device %s: %s", d->id, d->path_w);
 
     if ((fd_write = open(d->path_w, O_WRONLY, S_IWUSR)) < 0) {
-      log_fatal("Error opening device %s: %s\n", d->id, d->path_w);
+      log_fatal("Error opening device %s: %s", d->id, d->path_w);
       exit(EXIT_FAILURE);
     }
     d->writefd = fd_write;
 
-    log_debug("Opened device %s: %s\n", d->id, d->path_w);
+    log_debug("Opened device %s: %s", d->id, d->path_w);
   }
 }
 
@@ -269,7 +310,8 @@ void ilp_root_check(int fd_root, root_device *rd) {
 
   /* Take application_id from HAL config */
   device_pair_count = rd->data_dev_count;
-  for (j=0; j<device_pair_count; j++) application_id[j] = rd->data_dev_list[j]->from_mux;
+  for (j=0; j<device_pair_count; j++)
+    application_id[j] = rd->data_dev_list[j]->from_mux;
   
   /* For this test and this set of devices application ID is equal to session ID */
   for ( i=0; i<2; i++ ) {
