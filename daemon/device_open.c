@@ -98,7 +98,7 @@ device *find_device_by_id(device *root, const char *id) {
 /**********************************************************************/
 /* Open Device; a) IPC  */
 /*********t************************************************************/
-/* Start child process (currently zcat) to communicate with HA*/
+/* Start child process (currently zcat) to communicate between APP and HAL */
 void ipc_child_run(int *pipe_a2h, int *pipe_h2a, const char *path, const char *mode, const char *addr) {
   
 //    log_trace("HAL-ZMQ-API process in mode=%s (dup_dupe=%d=%d)", mode, child_fd_duped, STDOUT_FILENO);
