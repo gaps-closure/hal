@@ -5,7 +5,8 @@
 
 #include "../api/xdcomms.h"
 
-#include <unistd.h>	
+#include <getopt.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <libconfig.h>

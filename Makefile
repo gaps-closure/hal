@@ -12,7 +12,7 @@ all:
 
 c99:
 	for d in $(DIRS); do \
-		$(MAKE) CC=$(CC) CFLAGS="-std=c99 -D_DEFAULT_SOURCE" OBJDIR="$(OBJDIR)/$$d" -C "$$d" all || exit 1; \
+		$(MAKE) CC=$(CC) CFLAGS="-std=c99 -D_SVID_SOURCE -D _BSD_SOURCE" OBJDIR="$(OBJDIR)/$$d" -C "$$d" all || exit 1; \
 		done
 
 static:
