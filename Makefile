@@ -10,6 +10,11 @@ all:
 		$(MAKE) CC=$(CC) OBJDIR="$(OBJDIR)/$$d" -C "$$d" $@ || exit 1; \
 		done
 
+c99:
+	for d in $(DIRS); do \
+		$(MAKE) CC=$(CC) CFLAGS="-std=c99 -D_DEFAULT_SOURCE" OBJDIR="$(OBJDIR)/$$d" -C "$$d" all || exit 1; \
+		done
+
 static:
 	for d in $(DIRS); do \
 		$(MAKE) CC=$(CC) OBJDIR="$(OBJDIR)/$$d" -C "$$d" $@ || exit 1; \
