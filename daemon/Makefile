@@ -9,7 +9,7 @@ OBJDIR ?= .
 
 LDLIBS      = -lzmq   # -L../codecs -lpnt
 LIBS        = $(OBJDIR)/../api/libxdcomms.a
-HAL_OBJECT_LIST = $(OBJDIR)/../log/log.o $(OBJDIR)/config.o $(OBJDIR)/device_open.o $(OBJDIR)/device_read_write.o $(OBJDIR)/map.o $(OBJDIR)/packetize.o $(OBJDIR)/packetize_sdh_be_v1.o $(OBJDIR)/packetize_sdh_be_v2.o $(OBJDIR)/packetize_sdh_bw_v1.o $(OBJDIR)/crc.o $(OBJDIR)/hal.o
+HAL_OBJECT_LIST = $(OBJDIR)/../log/log.o $(OBJDIR)/config.o $(OBJDIR)/device_open.o $(OBJDIR)/device_read_write.o $(OBJDIR)/map.o $(OBJDIR)/time.o $(OBJDIR)/packetize.o $(OBJDIR)/packetize_sdh_be_v1.o $(OBJDIR)/packetize_sdh_be_v2.o $(OBJDIR)/packetize_sdh_bw_v1.o $(OBJDIR)/crc.o $(OBJDIR)/hal.o
 
 #static version of LDLIBS for compatible binaries
 COMPATLIBS  = ../x86_64_prebuild/libzmq.a -static -Wl,--allow-multiple-definition -Wl,-Bstatic -lsodium -lunwind -llzma $(LOCAL_LIBS) -ldl -lc -lstdc++ -lpthread

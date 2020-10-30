@@ -15,8 +15,8 @@ typedef struct _pkt_sdh_be_v2 {
     uint32_t  destination_tag;          /* % Multipurpose */
     uint32_t  data_len;                 /*   Data Length (in bytes) */
     uint8_t   data[SDH_BE_V2_ADU_SIZE_MAX];
-    uint32_t  sip_hash_low              /* % 64-bit SipHash (set by ILIP) */
-    uint32_t  sip_hash_high             /* % MAC protects message_descriptor */
+    uint32_t  sip_hash_low;             /* % 64-bit SipHash (set by ILIP) */
+    uint32_t  sip_hash_high;            /* % MAC protects message_descriptor */
 } pkt_sdh_be_v2;
 
 /* exported functions */
