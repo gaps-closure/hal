@@ -2,6 +2,7 @@
  * Get unix time, to put in packets in network byte order)
  */
 
+#include "hal.h"
 #include "time.h"
 #include "../appgen/6month-demo/float754.h"          /* use htonll */
 
