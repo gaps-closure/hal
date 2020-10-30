@@ -46,8 +46,8 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
   
     pkt->session_tag        = htonl(otag->mux);
     pkt->message_tag        = htonl(otag->sec);
-    pkt->message_descriptor = 0;
-    pkt->message_descriptor = htonl(1);   /* temporary hack for testing with v1 ilip */
+    pkt->message_descriptor = htonl(0);
+//    pkt->message_descriptor = htonl(1);   /* temporary hack for testing with v1 ilip */
     pkt->data_tag           = htonl(otag->typ);
 //    pkt->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
 //    pkt->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
