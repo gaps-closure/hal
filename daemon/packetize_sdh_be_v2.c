@@ -17,12 +17,12 @@ void sdh_be_v2_print(pkt_sdh_be_v2 *p) {
   fprintf(stderr, "%s (l=%ld): ", __func__, sizeof(*p));
   fprintf(stderr, "mux=%u ",     ntohl(p->session_tag));
   fprintf(stderr, "sec=%u ",     ntohl(p->message_tag));
-  fprintf(stderr, "des=%d ",     ntohl(p->message_descriptor));
+  fprintf(stderr, "des=%d ",     ntohl(p->descriptor_type));
   fprintf(stderr, "typ=%u ",     ntohl(p->data_tag));
   fprintf(stderr, "gaps=%x.%x ",  p->gaps_time, p->gaps_time_us);
   fprintf(stderr, "unix=%lu ns ", *ut);
   fprintf(stderr, "dst==%u ",    p->destination_tag);
-  data_print(     "Data",        p->data, ntohl(p->data_len));
+  data_print(     "Data",        p->imm_data, ntohl(p->imm_data_len));
   fprintf(stderr, "\n");
 }
 
@@ -35,8 +35,8 @@ void pdu_from_sdh_be_v2 (pdu *out, uint8_t *in, int len) {
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
-    out->data_len = ntohl(pkt->data_len);
-    memcpy (out->data, pkt->data, out->data_len);
+    out->data_len     = ntohl(pkt->imm_data_len);
+    memcpy (out->data, pkt->imm_data, out->data_len);
 }
 
 /* Put data into buf (using M1 model) from internal HAL PDU */
@@ -46,16 +46,16 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
   
     pkt->session_tag        = htonl(otag->mux);
     pkt->message_tag        = htonl(otag->sec);
-    pkt->message_descriptor = htonl(0);
-//    pkt->message_descriptor = htonl(1);   /* temporary hack for testing with v1 ilip */
+    pkt->descriptor_type    = htonl(0);
+//    pkt->descriptor_type    = htonl(1);   /* hack to get basic comms with v1 ilip */
     pkt->data_tag           = htonl(otag->typ);
 //    pkt->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
 //    pkt->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
     pkt->gaps_time = 0;
     pkt->gaps_time_us = 0;
     linux_time_set((uint64_t *) &(pkt->linux_time));
-    pkt->data_len = htonl(in->data_len);
-    memcpy((char *) pkt->data, (char *) in->data, in->data_len);
+    pkt->imm_data_len = htonl(in->data_len);
+    memcpy((char *) pkt->imm_data, (char *) in->data, in->data_len);
 //    sdh_be_v2_print(pkt);
     return (sizeof(*pkt));       /* v2 always sends 256 byte packet */
 }
