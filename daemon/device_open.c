@@ -1,6 +1,6 @@
 /*
  * HAL device Open, Find and Print
- *   June 2020, Perspecta Labs
+ *   November 2020, Perspecta Labs
  *
  *     a) IPC to application (unix pipe and ZMQ process)
  *     b) INET device (tcp or udp)
@@ -17,10 +17,12 @@
 #define CHILD_IN   pipe_h2a[0]
 
 /* Store information on ILP devices associated with serial root device */
+#define ILP_MAX_DEVICES_PER_ROOT 16
+#define ILP_MAX_ROOT_DEVICES  8
 typedef struct _root_device {
   const char   *root_path;
   int           data_dev_count;
-  device       *data_dev_list[10];
+  device       *data_dev_list[ILP_MAX_DEVICES_PER_ROOT];
 } root_device;
 
 /**********************************************************************/
@@ -380,7 +382,7 @@ void ilp_root_device_save_conig(device *d, int *root_count, root_device *root_li
 /* Open ILIP interface */
 void interface_open_ilp(device *d) {
   static int          root_count=0;
-  static root_device  root_list[8], *rd;
+  static root_device  root_list[ILP_MAX_ROOT_DEVICES], *rd;
   int                 i, j;
   
   if (d != NULL) {        /* adding new devces */
