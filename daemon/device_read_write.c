@@ -117,7 +117,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   const char     *com_type;
   static uint8_t  buf[PACKET_MAX];
 
-  log_trace("HAL writting to %s", odev->id);
+  log_trace("HAL writting to %s on fd=%d\n", odev->id, odev->writefd);
   /* a) Convert into packet based on interface packet model  */
   log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
@@ -224,14 +224,14 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   FD_ZERO(readfds);
   maxrfd = -1;
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
-    if ( (d->enabled != 0) && (d->readfd >= 0)) {
+    if ((d->enabled != 0) && (d->readfd >= 0)) {
       select_add(d->readfd, &maxrfd, readfds);
       sprintf(str_new, "%s(fd=%d) ", d->id, d->readfd);
       strcat(s, str_new);
       i++;
     }
   }
-  log_debug("HAL Waiting for input from %d device(s): %s", i, s);
+  log_debug("HAL Waiting for first input from %d device(s): %s", i, s);
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 
