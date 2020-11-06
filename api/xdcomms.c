@@ -18,7 +18,7 @@ void tag_print (gaps_tag *tag, FILE * fd) {
   fprintf(fd, "[mux=%02u sec=%02u typ=%02u] ", tag->mux, tag->sec, tag->typ);
 }
 
-/* Print raw data of specified length (TODO - Remove as no longer used) */
+/* Print raw data of given length (TODO - move to daemon as no longer used here) */
 void data_print(const char *str, uint8_t *data, size_t data_len) {
   fprintf(stderr, "%s (len=%ld)", str, data_len);
   for (int i = 0; i < data_len; i++) {
@@ -69,7 +69,7 @@ void len_decode (size_t *out, uint32_t in) {
 }
 
 /**********************************************************************/
-/* LIB Coding Functions for Data (TODO, Use DFDL schema) */
+/* Coding Functions for Application Data (TODO, Use DFDL schema) */
 /**********************************************************************/
 void type_check(uint32_t typ) {
   if ( (typ >= DATA_TYP_MAX) || (cmap[typ].valid==0) ) {
@@ -258,11 +258,11 @@ char *xdc_set_in(char *addr) {
   static int do_once = 1;
   static char xdc_addr_in[256];
   if (do_once == 1) {
-    if (strlen(IPC_ADDR_DEFAULT_IN) >= 255) {
-      log_fatal("API IPC_ADDR_DEFAULT_IN too long");
+    if (strlen(IPC_ADDR_DEFAULT_HALPUB) >= 255) {
+      log_fatal("API IPC_ADDR_DEFAULT_HALPUB too long");
       exit(1);
     }
-    strcpy(xdc_addr_in, IPC_ADDR_DEFAULT_IN);
+    strcpy(xdc_addr_in, IPC_ADDR_DEFAULT_HALPUB);
     do_once = 0;
   }
   if (addr != NULL) {
@@ -279,11 +279,11 @@ char *xdc_set_out(char *addr) {
   static int do_once = 1;
   static char xdc_addr_out[256];
   if (do_once == 1) {
-    if (strlen(IPC_ADDR_DEFAULT_OUT) >= 255) {
-      log_fatal("API IPC_ADDR_DEFAULT_IN too long");
+    if (strlen(IPC_ADDR_DEFAULT_HALSUB) >= 255) {
+      log_fatal("API IPC_ADDR_DEFAULT_HALPUB too long");
       exit(1);
     }
-    strcpy(xdc_addr_out, IPC_ADDR_DEFAULT_OUT);
+    strcpy(xdc_addr_out, IPC_ADDR_DEFAULT_HALSUB);
     do_once = 0;
     
     /* TODO - Pass logging requirements in as a parameter */

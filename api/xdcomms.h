@@ -11,13 +11,13 @@
 #include <assert.h>
 #include "log.h"
 
-#define ADU_SIZE_MAX_C  200
+#define ADU_SIZE_MAX_C  208
 #define PACKET_MAX      2048
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
 
-#define IPC_ADDR_DEFAULT_IN  "ipc:///tmp/halpub1"
-#define IPC_ADDR_DEFAULT_OUT "ipc:///tmp/halsub1"
+#define IPC_ADDR_DEFAULT_HALPUB "ipc:///tmp/halpub1"
+#define IPC_ADDR_DEFAULT_HALSUB "ipc:///tmp/halsub1"
 /**********************************************************************/
 /* LIB Structures */
 /*********t************************************************************/
@@ -28,11 +28,17 @@ typedef struct _tag {
   uint32_t    typ;      /* data type */
 } gaps_tag;
 
-/* CLOSURE packet */
+/*
+ * CLOSURE packet (for comms between application and HAL)
+ *   a) Immediate data is contained in the packet
+ *   b) Direct Memory Access (DMA) data is an address in memory
+ */
 typedef struct _sdh_ha_v1 {
   gaps_tag  tag;
-  uint32_t  data_len;
-  uint8_t   data[ADU_SIZE_MAX_C];
+  uint32_t  data_len;               /* 0 = no immediate data */
+  uint8_t   data[ADU_SIZE_MAX_C];   /* Immediate data */
+  size_t    dma_len;                /* 0 = no DMA data */
+  void     *dma_address;            /* Driver will DMA from/to host memory */
 } sdh_ha_v1;
 
 /* Map of (encode and decode) function pointers for each data type */
