@@ -10,7 +10,7 @@
 #include "time.h"
 #include "packetize_sdh_be_v2.h"
 
-/* Print M1 Packet */
+/* Print external packet  */
 void sdh_be_v2_print(pkt_sdh_be_v2 *p) {
   uint64_t      *ut = (uint64_t *) &(p->linux_time);
   
@@ -26,36 +26,49 @@ void sdh_be_v2_print(pkt_sdh_be_v2 *p) {
   fprintf(stderr, "\n");
 }
 
-/* Put data from buf (using M1 model) into internal HAL PDU */
-void pdu_from_sdh_be_v2 (pdu *out, uint8_t *in, int len) {
-  pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) in;
-    
-//    sdh_be_v2_print(pkt);
-//    fprintf(stderr, "HAL put packet (len = %d) into internal PDU: ", len); m1_print(pkt);
+/* Check if data length tits in an external packet */
+size_t check_len_sdh_be_v2 (size_t len) {
+    if (len > SDH_BE_V2_ADU_SIZE_MAX) {
+        fprintf(stderr, "Sending immediate data of len (%ld) > MAX packet len (%d)\n", len, SDH_BE_V2_ADU_SIZE_MAX);
+        fprintf(stderr, "...HAL does not currently support Segmentation and Reassembly (or truncating data)\n");
+        exit (1);
+    }
+    return (len);
+}
+
+/* Put data from external packet (*in) into internal HAL PDU */
+void pdu_from_sdh_be_v2 (pdu *out, uint8_t *in) {
+    pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) in;
+    size_t          len;
+
+//    fprintf(stderr, "%s: ", __func__); sdh_be_v2_print(pkt);
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
-    out->data_len     = ntohl(pkt->imm_data_len);
-    memcpy (out->data, pkt->imm_data, out->data_len);
+    len = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
+    out->data_len     = len;
+    memcpy (out->data, pkt->imm_data, len);
 }
 
-/* Put data into buf (using M1 model) from internal HAL PDU */
-/* Returns length of buffer */
+/* Put data into external packet (*out) from internal HAL PDU */
+/* Returns length of external packet */
 int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) out;
-  
+    size_t          len;
+    
     pkt->session_tag        = htonl(otag->mux);
     pkt->message_tag        = htonl(otag->sec);
     pkt->descriptor_type    = htonl(0);
-//    pkt->descriptor_type    = htonl(1);   /* hack to get basic comms with v1 ilip */
+    pkt->descriptor_type    = htonl(1);   /* hack to get basic comms with v1 ilip */
     pkt->data_tag           = htonl(otag->typ);
 //    pkt->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
 //    pkt->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
     pkt->gaps_time = 0;
     pkt->gaps_time_us = 0;
     linux_time_set((uint64_t *) &(pkt->linux_time));
-    pkt->imm_data_len = htonl(in->data_len);
-    memcpy((char *) pkt->imm_data, (char *) in->data, in->data_len);
+    len = check_len_sdh_be_v2(in->data_len);
+    pkt->imm_data_len = htonl(len);
+    memcpy((char *) pkt->imm_data, (char *) in->data, len);
 //    sdh_be_v2_print(pkt);
     return (sizeof(*pkt));       /* v2 always sends 256 byte packet */
 }
