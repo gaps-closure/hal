@@ -71,6 +71,42 @@ void len_decode (size_t *out, uint32_t in) {
 /**********************************************************************/
 /* Coding Functions for Application Data (TODO, Use DFDL schema) */
 /**********************************************************************/
+/*
+ * Print Codec Table
+ */
+void xdc_maps_print(void) {
+  fprintf(stderr, "%s: ", __func__);
+  for (int i=0; i < DATA_TYP_MAX; i++) {
+    if (cmap[i].valid != 0) {
+      fprintf(stderr, "[typ=%d ", i);
+      fprintf(stderr, "e=%p ", cmap[i].encode);
+      fprintf(stderr, "d=%p] ", cmap[i].decode);
+    }
+  }
+  fprintf(stderr, "\n");
+}
+
+/*
+ * Load Codec Table with ADU encode and decode functions
+ */
+void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
+  static int   do_once = 1;
+  
+  if (do_once == 1) {
+    for (int i=0; i < DATA_TYP_MAX; i++)  cmap[i].valid=0;
+    do_once = 0;
+  }
+//  fprintf(stderr, "%s: typ=%d\n", __func__, typ);
+  cmap[typ].valid=1;
+  cmap[typ].encode=encode;
+  cmap[typ].decode=decode;
+  // xdc_maps_print();
+}
+
+// XXX: Additional Functions TBD
+//  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then uses register to load them into the table */
+// Also xdc_provision function(s)
+
 void type_check(uint32_t typ) {
   if ( (typ >= DATA_TYP_MAX) || (cmap[typ].valid==0) ) {
     log_fatal("No encode function loaded for data typ=%d\n", typ);
@@ -114,11 +150,59 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
 }
 
 /**********************************************************************/
-/* LIB Network (ZMQ-based) Functions */
+/* Set and Get APP-HAL API Addresses */
 /**********************************************************************/
+/* Init address to default; set if valid addr_in */
+void set_address(char *xdc_addr, char *addr_in, const char *addr_default, int *do_once) {
+    if (*do_once == 1) {
+      if (strlen(addr_default) >= 255) {
+        log_fatal("API IPC address default is too long: %s", addr_default);
+        exit(1);
+      }
+      *do_once = 0;
+      strcpy(xdc_addr, addr_default);
+    }
+    if (addr_in != NULL) {
+      if (strlen(addr_in) >= 255) {
+        log_warn("%s: Input too long, not changing", __func__);
+      } else {
+        strcpy(xdc_addr, addr_in);
+      }
+    }
+}
 
+/*
+ * Set and Get IPC Addresses where APP client subscribes to HAL publisher
+ * TODO: change name to xdc_addr_sub
+ */
+char *xdc_set_in(char *addr_in) {
+  static int do_once = 1;
+  static char xdc_addr[256];
+  set_address(xdc_addr, addr_in, IPC_ADDR_DEFAULT_HALSUB, &do_once);
+//  fprintf(stderr, "%s = %s\n", __func__, xdc_addr);
+  return xdc_addr;
+}
+
+/*
+ * Set and Get A IPC Addresses where APP publishes to HAL subscriber
+ * TODO: change name to xdc_addr_pub
+ */
+char *xdc_set_out(char *addr_in) {
+  static int do_once = 1;
+  static char xdc_addr[256];
+  set_address(xdc_addr, addr_in, IPC_ADDR_DEFAULT_HALPUB, &do_once);
+// fprintf(stderr, "%s = %s\n", __func__, xdc_addr);
+  return xdc_addr;
+}
+
+/**********************************************************************/
+/* ZMQ-based Communication Setup */
+/**********************************************************************/
+/*
+ * Exit with ZMQ error message
+ */
 void exit_with_zmq_error(const char* where) {
-  log_fatal("%s error %d: %s\n",where,errno,zmq_strerror(errno));
+  log_fatal("HAL API exits after %s error %d: %s\n", where, errno, zmq_strerror(errno));
   exit(-1);
 }
 
@@ -217,95 +301,17 @@ void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
 }
 
 /*
- * Print Codec Table
+ * Get zmq context (and create if not already created) - once per process
  */
-void xdc_maps_print(void) {
-  fprintf(stderr, "%s: ", __func__);
-  for (int i=0; i < DATA_TYP_MAX; i++) {
-    if (cmap[i].valid != 0) {
-      fprintf(stderr, "[typ=%d ", i);
-      fprintf(stderr, "e=%p ", cmap[i].encode);
-      fprintf(stderr, "d=%p] ", cmap[i].decode);
-    }
-  }
-  fprintf(stderr, "\n");
-}
-/*
- * Load Codec Table with ADU encode and decode functions
- */
-void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
-  static int   do_once = 1;
-  
-  if (do_once == 1) {
-    for (int i=0; i < DATA_TYP_MAX; i++)  cmap[i].valid=0;
-    do_once = 0;
-  }
-//  fprintf(stderr, "%s: typ=%d\n", __func__, typ);
-  cmap[typ].valid=1;
-  cmap[typ].encode=encode;
-  cmap[typ].decode=decode;
-  // xdc_maps_print();
-}
-
-// XXX: Additional Functions TBD
-//  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then uses register to load them into the table */
-// Also xdc_provision function(s)
-
-/*
- * Load IPC Addresses
- */
-char *xdc_set_in(char *addr) {
-  static int do_once = 1;
-  static char xdc_addr_in[256];
-  if (do_once == 1) {
-    if (strlen(IPC_ADDR_DEFAULT_HALPUB) >= 255) {
-      log_fatal("API IPC_ADDR_DEFAULT_HALPUB too long");
-      exit(1);
-    }
-    strcpy(xdc_addr_in, IPC_ADDR_DEFAULT_HALPUB);
-    do_once = 0;
-  }
-  if (addr != NULL) {
-    if (strlen(addr) >= 255) {
-      log_warn("%s: Input too long, not changing", __func__);
-    } else {
-      strcpy(xdc_addr_in, addr);
-    }
-  }
-  return xdc_addr_in;
-}
-
-char *xdc_set_out(char *addr) {
-  static int do_once = 1;
-  static char xdc_addr_out[256];
-  if (do_once == 1) {
-    if (strlen(IPC_ADDR_DEFAULT_HALSUB) >= 255) {
-      log_fatal("API IPC_ADDR_DEFAULT_HALPUB too long");
-      exit(1);
-    }
-    strcpy(xdc_addr_out, IPC_ADDR_DEFAULT_HALSUB);
-    do_once = 0;
-    
-    /* TODO - Pass logging requirements in as a parameter */
-    log_set_quiet(0);
-    log_set_level(LOG_INFO);
-  }
-  if (addr != NULL) {
-    if (strlen(addr) >= 255) {
-      log_warn("%s: Output too long, not changing", __func__);
-    } else {
-      strcpy(xdc_addr_out, addr);
-    }
-  }
-  return xdc_addr_out;
-}
-
 void *xdc_ctx() {
     static void *ctx = NULL;
     if (ctx == NULL) {
+        /* TODO - Pass logging requirements in as a parameter */
+        log_set_quiet(0);
+        log_set_level(LOG_INFO);
+        
         ctx = zmq_ctx_new();
         if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
     }
-    
     return ctx;
 }
