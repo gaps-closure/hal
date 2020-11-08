@@ -207,24 +207,65 @@ void exit_with_zmq_error(const char* where) {
 }
 
 /*
- * Connect to ZMQ socket
+ * Get zmq context (and create if not already created) - once per process
  */
-void * z_connect(int type, const char *dest) {
-  void   *socket, *ctx;
-  int     err;
-
-  ctx = zmq_ctx_new ();
-  if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
-  socket = zmq_socket(ctx, type);
-  if(socket == NULL) exit_with_zmq_error("zmq_socket");
-  err = zmq_connect(socket, dest);
-  if(err) exit_with_zmq_error("zmq_connect");
-
-  log_trace("API connects (s=%p t=%d) to %s\n", socket, type, dest);
-  usleep(10000); // let connection establish before sending a message
-  return (socket);
+void *xdc_ctx() {
+    static void *ctx = NULL;
+    if (ctx == NULL) {
+        /* TODO - Pass logging requirements in as a parameter */
+        log_set_quiet(0);
+        log_set_level(LOG_INFO);
+        
+        ctx = zmq_ctx_new();
+        if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
+    }
+    return ctx;
 }
 
+/*
+ * Open ZMQ socket and return socket handle: Publisher
+ * Note:
+ *   HAL subscriber binds to address (usually publisher would bind)
+ *   The APP-API cannot send immediately after a connect, as there
+ *   is a few msec before here is no outgoing pipe (so sleep 1)
+ */
+void *xdc_pub_socket()
+{
+    int      err;
+    void    *socket;
+
+    socket = zmq_socket(xdc_ctx(), ZMQ_PUB);
+    if (socket == NULL) exit_with_zmq_error("zmq_socket");
+    err = zmq_connect(socket, xdc_set_out(NULL));
+    if (err) exit_with_zmq_error("zmq_connect");
+    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
+    sleep (1);
+    return socket;
+}
+
+/*
+ * Open ZMQ socket and return socket handle: Subscriber
+ */
+void *xdc_sub_socket(gaps_tag tag)
+{
+    int      err;
+    void    *socket;
+    gaps_tag tag4filter;
+
+    socket = zmq_socket(xdc_ctx(), ZMQ_SUB);
+    if (socket == NULL) exit_with_zmq_error("zmq_socket");
+    err = zmq_connect(socket, xdc_set_in(NULL));
+    if (err) exit_with_zmq_error("zmq_connect");
+    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, xdc_set_in(NULL));
+    tag_encode(&tag4filter, &tag);
+    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
+    assert(err == 0);
+    return socket;
+}
+
+/**********************************************************************/
+/* ZMQ Communication Send and Receive */
+/**********************************************************************/
 /*
  * Send ADU to HAL (which should be listening on the ZMQ subscriber socket)
  */
@@ -242,76 +283,17 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   if (bytes <= 0) fprintf(stderr, "send error %s %d ", zmq_strerror(errno), bytes);
 }
 
-void *xdc_pub_socket()
-{
-    int err;
-    void *socket;
-
-    socket = zmq_socket(xdc_ctx(), ZMQ_PUB);
-    if (socket == NULL) exit_with_zmq_error("zmq_socket");
-
-    err = zmq_connect(socket, xdc_set_out(NULL));
-    if (err) exit_with_zmq_error("zmq_connect");
-
-    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
-
- // if (xdc_verbose) fprintf(stderr, "API connects (s=%p t=%d) to %s\n",socket, ZMQ_PUB, xdc_set_out(NULL));
-
-    return socket;
-}
-
-void *xdc_sub_socket(gaps_tag tag)
-{
-    int err;
-    gaps_tag tag4filter;
-    void *socket;
-
-    socket = zmq_socket(xdc_ctx(), ZMQ_SUB);
-    if (socket == NULL)
-        exit_with_zmq_error("zmq_socket");
-
-    err = zmq_connect(socket, xdc_set_in(NULL));
-    if (err)
-        exit_with_zmq_error("zmq_connect");
-
-    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, xdc_set_in(NULL));
-    tag_encode(&tag4filter, &tag);
-
-    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
-    assert(err == 0);
-
-    return socket;
-}
-
+/*
+ * Receive ADU from HAL (which should be listening on the ZMQ publisher socket)
+ */
 void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
 {
-    log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
-  // uint8_t *f = (uint8_t *) tag;
-  // for (int i = 0; i < RX_FILTER_LEN; i++) fprintf(stderr, "%.02x", *(f++));
-  // fprintf(stderr, ")\n");
-
     sdh_ha_v1 packet;
     void *p = &packet;
 
+    log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
     int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
     log_buf_trace("API recv packet", (uint8_t *) p, size);
-
     size_t adu_len;
     gaps_data_decode(p, size, adu, &adu_len, tag);
-}
-
-/*
- * Get zmq context (and create if not already created) - once per process
- */
-void *xdc_ctx() {
-    static void *ctx = NULL;
-    if (ctx == NULL) {
-        /* TODO - Pass logging requirements in as a parameter */
-        log_set_quiet(0);
-        log_set_level(LOG_INFO);
-        
-        ctx = zmq_ctx_new();
-        if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
-    }
-    return ctx;
 }
