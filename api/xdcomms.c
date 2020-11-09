@@ -44,28 +44,11 @@ void tag_read (gaps_tag *tag, uint32_t *mux, uint32_t *sec, uint32_t *typ) {
   *typ = tag->typ;
 }
 
-/* Serialize tag onto wire (TODO, Use DFDL schema) */
-void tag_encode (gaps_tag *tag_out, gaps_tag *tag_in) {
-  tag_out->mux = htonl(tag_in->mux);
-  tag_out->sec = htonl(tag_in->sec);
-  tag_out->typ = htonl(tag_in->typ);
-}
-
-/* Convert tag to local host format (TODO, Use DFDL schema) */
-void tag_decode (gaps_tag *tag_out, gaps_tag *tag_in) {
-  tag_out->mux = ntohl(tag_in->mux);
-  tag_out->sec = ntohl(tag_in->sec);
-  tag_out->typ = ntohl(tag_in->typ);
-}
-
-/* Convert tag to local host format (TODO, Use DFDL schema) */
-void len_encode (uint32_t *out, size_t len) {
-  *out = ntohl((uint32_t) len);
-}
-
-/* Convert tag to local host format (TODO, Use DFDL schema) */
-void len_decode (size_t *out, uint32_t in) {
-  *out = (uint32_t) htonl(in);
+/* copy tag_in to tag_out */
+void tag_cp (gaps_tag *tag_out, gaps_tag *tag_in) {
+    tag_out->mux = tag_in->mux;
+    tag_out->sec = tag_in->sec;
+    tag_out->typ = tag_in->typ;
 }
 
 /**********************************************************************/
@@ -117,19 +100,20 @@ void type_check(uint32_t typ) {
 /*
  * Create packet (serialize data and add header)
  */
-void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len_out, gaps_tag *tag) {
+void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buff_len, gaps_tag *tag) {
   uint32_t typ = tag->typ;
   
   /* a) serialize data into packet */
   type_check(typ);
-  cmap[typ].encode (p->data, buff_in, len_out);
-  log_buf_trace("API <- raw app data:", buff_in, *len_out);
-  log_buf_trace("    -> encoded data:", p->data, *len_out);
+  cmap[typ].encode (p->data, buff_in, buff_len);
+  log_buf_trace("API <- raw app data:", buff_in, *buff_len);
+  log_buf_trace("    -> encoded data:", p->data, *buff_len);
 
-  /* b) Create CLOSURE packet header */
-  tag_encode(&(p->tag), tag);
-  len_encode(&(p->data_len), *len_out);
-  *p_len = (*len_out) + sizeof(p->tag) + sizeof(p->data_len);
+  /* b) Create CLOSURE packet header (TODO: remove NBO ha tag, len) */
+  tag_cp(&(p->tag), tag);
+  p->data_len = (uint32_t) *buff_len;
+  /* TODO: preplace last two with  sizeof(*p) - ADU_SIZE_MAX_C  */
+  *p_len = (*buff_len) + sizeof(p->tag) + sizeof(p->data_len);
 }
 
 /*
@@ -138,16 +122,21 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len
 void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len_out, gaps_tag *tag) {
   uint32_t typ = tag->typ;
 
-  /* a) deserialize data from packet */
+  /* a) deserialize data from packet (TODO: remove NBO ha tag, len) */
   type_check(typ);
-  tag_decode(tag, &(p->tag));
-  len_decode(len_out, p->data_len);
+  tag_cp(tag, &(p->tag));
+  *len_out = (size_t) p->data_len;
   cmap[typ].decode (buff_out, p->data, &p_len);
   log_buf_trace("API -> raw app data:", p->data,  *len_out);
   log_buf_trace("    <- decoded data:", buff_out, *len_out);
-//    tag_print(tag, stderr);
-//    fprintf(stderr, "data_len=%lu\n", *len_out);
 }
+
+/* TODO: new gaps_dma_payload_write/read functions to read/write payload packets */
+//      0) API serializes into packet or memory (1 copy)
+//      3) HAL calls sdh_v33 with packet pointting into serialized ha packet or HAL data
+//         Do based on configured sdh (or if length is greater than limit?)
+//  Can choose to have no encode or decode if want no copies (APP serializes)
+//  ?/  Always pass poninter in ha packet ... reduce number of data copies
 
 /**********************************************************************/
 /* Set and Get APP-HAL API Addresses */
@@ -257,7 +246,7 @@ void *xdc_sub_socket(gaps_tag tag)
     err = zmq_connect(socket, xdc_set_in(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
     log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, xdc_set_in(NULL));
-    tag_encode(&tag4filter, &tag);
+    tag_cp(&tag4filter, &tag);
     err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
     assert(err == 0);
     return socket;

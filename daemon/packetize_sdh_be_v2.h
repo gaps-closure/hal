@@ -1,8 +1,6 @@
-/* Define GAPS Packet Format for SDH BE */
-
 #define SDH_BE_V2_ADU_SIZE_MAX   208    /* 0x028 – 0x0f7 */
 
-/* packet ($ = filed is modified from v1, % = field is new in v2) */
+/* GAPS packet Format ($ = filed is modified from v1, % = field is new in v2) */
 typedef struct _pkt_sdh_be_v2 {
     uint32_t  session_tag;              /*   Application Mux TAG */
     uint32_t  message_tag;              /*   Security TAG */

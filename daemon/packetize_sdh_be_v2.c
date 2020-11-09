@@ -29,9 +29,9 @@ void sdh_be_v2_print(pkt_sdh_be_v2 *p) {
 /* Check if data length tits in an external packet */
 size_t check_len_sdh_be_v2 (size_t len) {
     if (len > SDH_BE_V2_ADU_SIZE_MAX) {
-        fprintf(stderr, "Sending immediate data of len (%ld) > MAX packet len (%d)\n", len, SDH_BE_V2_ADU_SIZE_MAX);
-        fprintf(stderr, "...HAL does not currently support Segmentation and Reassembly (or truncating data)\n");
-        exit (1);
+        log_error("Sending immediate data of len (%ld) > MAX packet len (%d)", len, SDH_BE_V2_ADU_SIZE_MAX);
+        log_error("...HAL runcating data to %d Bytes", SDH_BE_V2_ADU_SIZE_MAX);
+        return (SDH_BE_V2_ADU_SIZE_MAX);
     }
     return (len);
 }
@@ -59,7 +59,7 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->session_tag        = htonl(otag->mux);
     pkt->message_tag        = htonl(otag->sec);
     pkt->descriptor_type    = htonl(0);
-    pkt->descriptor_type    = htonl(1);   /* hack to get basic comms with v1 ilip */
+    log_error("HACK to test shd_be v2 with v1 ilip"); pkt->descriptor_type = htonl(1);
     pkt->data_tag           = htonl(otag->typ);
 //    pkt->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
 //    pkt->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
