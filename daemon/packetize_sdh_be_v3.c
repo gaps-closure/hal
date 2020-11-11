@@ -59,8 +59,7 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->message_tag        = htonl(otag->sec);
     pkt->data_tag           = htonl(otag->typ);
     pkt->destination_tag    = 0;
-    pkt->descriptor_type    = htonl(0);
-    log_error("%s HACK: dsc = 1 to allow use of v1 ilip", __func__); pkt->descriptor_type = htonl(1);
+    pkt->descriptor_type    = htonl(1); // Payload Mode - check value and if need hton
  
     // b) Timestamps set by driver (linux) or ILIP (gaps)
 //    pkt->gaps_time_lo = htonl(0x01234567);  /* XXX: Just set for testing */

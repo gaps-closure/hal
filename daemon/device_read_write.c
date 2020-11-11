@@ -101,7 +101,9 @@ pdu *read_pdu(device *idev) {
 
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));
-  pdu_from_packet(ret, buf, pkt_len, idev);
+  valid = pdu_from_packet(ret, buf, pkt_len, idev);
+  if  (valid == 0) return(NULL);
+    
   log_trace("HAL created new PDU");
   log_pdu_trace(ret, __func__);
   return(ret);
@@ -122,11 +124,11 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   log_buf_trace("Packet", buf, pkt_len);
-  
+  if (pkt_len == 0) return ();      // do not write if bad length
+    
   /* b) Write to interface based on interface comms type */
   fd = odev->writefd;
   com_type = odev->comms;
-
 
   log_trace("HAL writing using comms type %s", com_type);
   if (   (strcmp(com_type, "ipc") == 0)
