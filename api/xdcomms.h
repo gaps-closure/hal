@@ -37,8 +37,8 @@ typedef struct _sdh_ha_v1 {
   gaps_tag  tag;
   uint32_t  data_len;               /* 0 = no immediate data */
   uint8_t   data[ADU_SIZE_MAX_C];   /* Immediate data */
-  size_t    dma_len;                /* 0 = no DMA data */
-  void     *dma_address;            /* Driver will DMA from/to host memory */
+//  size_t    dma_len;                /* 0 = no DMA data */
+//  void     *dma_address;            /* Driver will DMA from/to host memory */
 } sdh_ha_v1;
 
 /* Map of (encode and decode) function pointers for each data type */

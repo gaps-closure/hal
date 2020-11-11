@@ -6,10 +6,10 @@ typedef struct _pkt_sdh_be_v3 {
     uint32_t  message_tag;              /*   Security TAG */
     uint32_t  descriptor_type;          /* $ Packet type (DMA channel) v3=1-3 */
     uint32_t  descriptor_tag;           /* ^ Any, security policy dependent */
-    uint32_t  gaps_time;                /*   ILIP GAPS Time (set by ILIP) */
-    uint32_t  gaps_time_us;             /*   -- uint64_t causes struct padding */
-    uint32_t  linux_time;               /*   Time Used/Set by Application */
-    uint32_t  linux_time_us;            /*   Secs & micro-seconds since 1970 */
+    uint32_t  gaps_time_lo;             /*   ILIP GAPS Time (set by ILIP) */
+    uint32_t  gaps_time_up;             /*   -- uint64_t causes struct padding */
+    uint32_t  linux_time_lo;            /*   Time Set by Driver */
+    uint32_t  linux_time_up;            /*   (Secs & micro-seconds since 1970) */
     uint32_t  imm_data_len;             /*   Immediate Data Length (in bytes) */
     uint32_t  destination_tag;          /* % Multipurpose */
     uint32_t  pkt_sip_hash_0;           /* ^ 128-bit SipHash of 256 byte packet */
@@ -26,5 +26,5 @@ typedef struct _pkt_sdh_be_v3 {
 } pkt_sdh_be_v3;
 
 /* exported functions */
-void pdu_from_sdh_be_v3 (pdu *, uint8_t *, int);
+void pdu_from_sdh_be_v3 (pdu *, uint8_t *);
 int  pdu_into_sdh_be_v3 (uint8_t *, pdu *, gaps_tag *);

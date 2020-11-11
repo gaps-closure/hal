@@ -1,5 +1,6 @@
 /*
- * Convert between HAL PDU and SDH BE packet
+ * Convert between HAL PDU and external packet of the BookEnd (BE)
+ * Security Device Hardware (SDH) packet
  *   April 2020, Perspecta Labs
  *
  * v1 is April 2020 packet format with timestamps
