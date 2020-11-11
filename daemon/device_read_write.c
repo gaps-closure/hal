@@ -56,7 +56,7 @@ void devs_stat_print(device *devs) {
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
-  int                 pkt_len=0;
+  int                 pkt_len=0, valid;
   pdu                *ret = NULL;
   static uint8_t      buf[PACKET_MAX];
   int                 fd;
@@ -124,7 +124,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   log_buf_trace("Packet", buf, pkt_len);
-  if (pkt_len == 0) return ();      // do not write if bad length
+  if (pkt_len == 0) return;      // do not write if bad length
     
   /* b) Write to interface based on interface comms type */
   fd = odev->writefd;

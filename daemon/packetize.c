@@ -7,8 +7,8 @@
 #include "packetize.h"
 
 /* Write packet into internal PDU */
-void pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
-  int valid = 1;
+int pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
+  int valid = 1;        // PDU contents default to valid
     
   out->psel.dev  = strdup(idev->id);
   out->psel.ctag = -1;
