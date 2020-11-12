@@ -66,7 +66,7 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->data_tag           = htonl(otag->typ);
     
     pkt->descriptor_type    = htonl(0);         // Immediate mode
-    log_error("HACK to test shd_be v2 with v1 ilip"); pkt->descriptor_type = htonl(1);
+//    log_error("HACK to test shd_be v2 with v1 ilip"); pkt->descriptor_type = htonl(1);
     
 //    pkt->gaps_time = htonl(0x01234567);     /* XXX: Just set for testing */
 //    pkt->gaps_time_us = htonl(0x89abcdef);  /* XXX: Just set for testing */
