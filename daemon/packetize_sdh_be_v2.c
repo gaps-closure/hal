@@ -31,7 +31,7 @@ size_t check_len_sdh_be_v2 (size_t len) {
         log_error("Sending immediate data of len (%ld) > MAX packet len (%d)", len, SDH_BE_V2_ADU_SIZE_MAX);
 //        log_error("...HAL truncating data to %d Bytes", SDH_BE_V2_ADU_SIZE_MAX);
 //        return (SDH_BE_V2_ADU_SIZE_MAX);
-        log_error("...HAL deletes packet");
+        log_error("...HAL deletes Bad packet");
         return (0);
     }
     return (len);

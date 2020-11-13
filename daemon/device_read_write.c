@@ -74,7 +74,10 @@ pdu *read_pdu(device *idev) {
       || (strcmp(com_type, "ilp") == 0)
       || (strcmp(com_type, "tcp") == 0)
       ) {
+      
+log_fatal("XX: read on fd=%d: buf=%p len=%d max=%d err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
     pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
+fprintf(stderr, "YY: read on fd=%d: buf=%p len=%d max=%d err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
     if (pkt_len < 0) {
       if (sel_verbose) log_trace("read error on fd=%d: rv=%d errno=%d", fd, pkt_len, errno);
       if (errno == EAGAIN) {
@@ -93,7 +96,7 @@ pdu *read_pdu(device *idev) {
     }
   }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
-  
+
   (idev->count_r)++;
 
   log_debug("HAL reads %s from %s, fd=%02d:", idev->model, idev->id, fd);
