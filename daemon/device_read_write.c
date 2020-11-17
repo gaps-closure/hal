@@ -75,9 +75,15 @@ pdu *read_pdu(device *idev) {
       || (strcmp(com_type, "tcp") == 0)
       ) {
       
-log_fatal("XX: read on fd=%d: buf=%p len=%d max=%d err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
-    pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
-fprintf(stderr, "YY: read on fd=%d: buf=%p len=%d max=%d err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
+    // Temporary HACK to give ILIP  buffer of 256 for now
+    if (strcmp(com_type, "ilp") == 0) {
+      pkt_len = read(fd, buf, 256);     /* write = send for tcp with no flags */
+//      log_fatal("Temporary HACK to give ILIP buffer of 256 on fd=%d: buf=%p len=%d max=%d->256 err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
+    }
+    else {
+      pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
+    }
+          
     if (pkt_len < 0) {
       if (sel_verbose) log_trace("read error on fd=%d: rv=%d errno=%d", fd, pkt_len, errno);
       if (errno == EAGAIN) {

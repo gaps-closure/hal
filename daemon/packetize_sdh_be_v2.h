@@ -13,8 +13,8 @@ typedef struct _pkt_sdh_be_v2 {
     uint32_t  destination_tag;          /* % Multipurpose */
     uint32_t  imm_data_len;             /*   Immediate Data Length (in bytes) */
     uint8_t   imm_data[SDH_BE_V2_ADU_SIZE_MAX];     /* Optional Immediate Data */
-    uint32_t  desc_sip_hash_0;          /* % 64-bit message description SipHash */
-    uint32_t  desc_sip_hash_1;          /* % Two 32-bit words are set by ILIP */
+    uint32_t  desc_sip_hash_lo;          /* % 64-bit message description SipHash */
+    uint32_t  desc_sip_hash_up;          /* % Two 32-bit words are set by ILIP */
 } pkt_sdh_be_v2;
 
 /* exported functions */
