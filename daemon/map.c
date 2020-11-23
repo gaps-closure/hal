@@ -16,6 +16,16 @@ void selector_print(selector *s, FILE *fd) {
   else             fprintf(fd, "[ctag=0x%08x]      ", s->ctag);
 }
 
+/* Print raw data in Network Byte Order (Bigendian) of given length */
+void data_print(const char *str, uint8_t *data, size_t data_len) {
+  fprintf(stderr, "%s (len=%ld)", str, data_len);
+  for (int i = 0; i < data_len; i++) {
+    if ((i%4)==0) fprintf(stderr, " ");
+    fprintf(stderr, "%02X", data[i]);
+  }
+  fprintf(stderr, "\n");
+}
+
 /* Print a information from an internal PDU */
 void log_log_pdu(int level, pdu *pdu, const char *fn) {
   FILE *fd[2];

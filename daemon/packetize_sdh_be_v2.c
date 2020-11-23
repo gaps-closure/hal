@@ -10,6 +10,7 @@
 #include "hal.h"
 #include "time.h"
 #include "packetize_sdh_be_v2.h"
+#include "map.h"            /* get data_print */
 
 /* Print external packet  */
 void sdh_be_v2_print(pkt_sdh_be_v2 *p) {

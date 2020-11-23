@@ -9,6 +9,7 @@
 #include "hal.h"
 #include "time.h"
 #include "packetize_sdh_be_v1.h"
+#include "map.h"            /* get data_print */
 
 /* Print M1 Packet */
 void sdh_be_v1_print(pkt_sdh_be_v1 *p) {

@@ -7,6 +7,7 @@
 
 #include "hal.h"
 #include "packetize_sdh_ha_v1.h"
+#include "map.h"            /* get data_print */
 
 /* Print M1 Packet */
 void sda_ha_v1_print(sdh_ha_v1 *p) {

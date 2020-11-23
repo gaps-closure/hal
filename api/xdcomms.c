@@ -11,26 +11,12 @@
 codec_map  cmap[DATA_TYP_MAX];
 
 /**********************************************************************/
-/* LIB Printing Functions */
+/* Tag processing (TODO, Use DFDL schema) */
 /**********************************************************************/
 
 void tag_print (gaps_tag *tag, FILE * fd) {
   fprintf(fd, "[mux=%02u sec=%02u typ=%02u] ", tag->mux, tag->sec, tag->typ);
 }
-
-/* Print raw data of given length (TODO - move to daemon as no longer used here) */
-void data_print(const char *str, uint8_t *data, size_t data_len) {
-  fprintf(stderr, "%s (len=%ld)", str, data_len);
-  for (int i = 0; i < data_len; i++) {
-    if ((i%4)==0) fprintf(stderr, " ");
-    fprintf(stderr, "%02X", data[i]);
-  }
-  fprintf(stderr, "\n");
-}
-
-/**********************************************************************/
-/* LIB Coding Functions for Header (TODO, Use DFDL schema) */
-/**********************************************************************/
 
 void tag_write (gaps_tag *tag, uint32_t mux, uint32_t sec, uint32_t typ) {
   tag->mux = mux;

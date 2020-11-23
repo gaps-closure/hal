@@ -10,6 +10,7 @@
 #include "hal.h"
 #include "crc.h"
 #include "packetize_sdh_bw_v1.h"
+#include "map.h"            /* get data_print */
 
 /* Print Packet */
 void sdh_bw_v1_print(sdh_bw_v1 *p) {
