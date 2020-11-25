@@ -18,8 +18,9 @@ typedef struct _pkt_sdh_be_v3 {
     uint32_t  pkt_sip_hash_3;           /* ^ */
     uint32_t  data_tag;                 /*   Type TAG (e.g., DATA_PAYLOAD_1) */
     uint32_t  dma_data_len;             /* ^ DMA Data Length (in bytes) */
-    uint32_t  dma_data_addr_lo;         /* ^ Host Payload Address for DMA */
-    uint32_t  dma_data_addr_up;         /* ^ Two 32-bit words */
+    uint64_t dma_data_addr_lo;          /* ^ Host Payload Address for DMA */
+//    uint32_t  dma_data_addr_lo;         /* ^ Host Payload Address for DMA */
+//    uint32_t  dma_data_addr_up;         /* ^ as Two 32-bit words */
     uint8_t   imm_data[SDH_BE_V3_ADU_SIZE_MAX];     /* Optional Immediate Data */
     uint32_t  desc_sip_hash_0;          /* % 64-bit message description SipHash */
     uint32_t  desc_sip_hash_1;          /* % Two 32-bit words are set by ILIP */

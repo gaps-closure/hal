@@ -60,28 +60,32 @@ pdu *read_pdu(device *idev) {
   pdu                *ret = NULL;
   static uint8_t      buf[PACKET_MAX];
   int                 fd;
-  const char         *com_type;
+  const char         *com_type, *com_model;
   struct sockaddr_in  socaddr_in;
   socklen_t           sock_len = sizeof(socaddr_in);
 
   /* a) read input into buf and get its length (with input dev_id and fd) */
-  fd = idev->readfd;
-  com_type = idev->comms;
+  fd        = idev->readfd;
+  com_type  = idev->comms;
+  com_model = idev->model;
 //exit (21);
-  if (sel_verbose) log_trace("HAL reading using comms type %s", com_type);
+  if (sel_verbose) log_trace("HAL reading using comms type %s (model=%s)", com_type, com_model);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "ilp") == 0)
       || (strcmp(com_type, "tcp") == 0)
       ) {
       
-    // Temporary HACK to give ILIP  buffer of 256 for now
-    if (strcmp(com_type, "ilp") == 0) {
-      pkt_len = read(fd, buf, 256);     /* write = send for tcp with no flags */
+    // Temporary HACK (NOV 2020) to give ILIP buffer of right sizes for sdh_be_v2 and sdh_be_v3
+    if (strcmp(com_model, "sdh_be_v2") == 0) {
 //      log_fatal("Temporary HACK to give ILIP buffer of 256 on fd=%d: buf=%p len=%d max=%d->256 err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
+      pkt_len = read(fd, buf, 256);     /* HACK, max to exact size of of ILIP packet */
+    }
+    else if (strcmp(com_model, "sdh_be_v3") == 0) {
+      pkt_len = read(fd, buf, 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
     }
     else {
-      pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
+      pkt_len = read(fd, buf, PACKET_MAX);     /* read = recv for tcp with no flags */
     }
           
     if (pkt_len < 0) {
