@@ -179,7 +179,7 @@ void xdc_log_level(int new_level) {
   // set to default if user has not already set
   if ((new_level == -1) && (do_once == 1)) {
     log_set_quiet(0);               /* not quiet */
-    log_set_level(LOG_TRACE);       /* default level */
+    log_set_level(LOG_INFO);       /* default level */
   }
   else if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
     log_set_quiet(0);
