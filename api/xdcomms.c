@@ -134,6 +134,7 @@ void xdc_log_level(int new_level) {
   if ((new_level == -1) && (do_once == 1)) {
     log_set_quiet(0);               /* not quiet */
     log_set_level(LOG_INFO);       /* default level */
+//    log_set_level(LOG_TRACE);       /* test */
   }
   else if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
     log_set_quiet(0);
@@ -242,7 +243,7 @@ void *xdc_pub_socket()
 }
 
 /*
- * Open non-blocking ZMQ Subscriber socket, with specified timeout
+ * Open non-blocking ZMQ Subscriber socket, with timeout specified in milliseconds
  */
 void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
 {
@@ -272,7 +273,8 @@ void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
  */
 void *xdc_sub_socket(gaps_tag tag)
 {
-  return (xdc_sub_socket_non_blocking(tag, -1));
+  return (xdc_sub_socket_non_blocking(tag, -1));      /* Recv call blocks forever */
+//  return (xdc_sub_socket_non_blocking(tag, 10000));       /* Receive call block for 10 seconds */
 }
 
 /**********************************************************************/
@@ -304,8 +306,12 @@ void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
     void *p = &packet;
 
     log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
+  
+// TODO handle case were recv call can timeout
+
     int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
     log_buf_trace("API recv packet", (uint8_t *) p, size);
+  
     size_t adu_len;
     gaps_data_decode(p, size, adu, &adu_len, tag);
 }
