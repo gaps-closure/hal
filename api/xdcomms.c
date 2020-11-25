@@ -11,7 +11,7 @@
 codec_map  cmap[DATA_TYP_MAX];
 
 /**********************************************************************/
-/* Tag processing (TODO, Use DFDL schema) */
+/* Tag processing */
 /**********************************************************************/
 
 void tag_print (gaps_tag *tag, FILE * fd) {
@@ -38,7 +38,8 @@ void tag_cp (gaps_tag *tag_out, gaps_tag *tag_in) {
 }
 
 /**********************************************************************/
-/* Coding Functions for Application Data (TODO, Use DFDL schema) */
+/* Coding Functions for Application Data (using cmap table) */
+/* TODO, Use DFDL schema */
 /**********************************************************************/
 /*
  * Print Codec Table
@@ -79,6 +80,7 @@ void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
 void type_check(uint32_t typ) {
   if ( (typ >= DATA_TYP_MAX) || (cmap[typ].valid==0) ) {
     log_fatal("No encode function loaded for data typ=%d\n", typ);
+    // TODO - do not exit; but return an error
     exit (1);
   }
 }
@@ -100,6 +102,7 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
   p->data_len = (uint32_t) *buff_len;
   /* TODO: preplace last two with  sizeof(*p) - ADU_SIZE_MAX_C  */
   *p_len = (*buff_len) + sizeof(p->tag) + sizeof(p->data_len);
+  // TODO - return value to indicate an error
 }
 
 /*
@@ -115,19 +118,16 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
   cmap[typ].decode (buff_out, p->data, &p_len);
   log_buf_trace("API -> raw app data:", p->data,  *len_out);
   log_buf_trace("    <- decoded data:", buff_out, *len_out);
+  // TODO - return value to indicate an error
 }
-
-/* TODO: new gaps_dma_payload_write/read functions to read/write payload packets */
-//      0) API serializes into packet or memory (1 copy)
-//      3) HAL calls sdh_v33 with packet pointting into serialized ha packet or HAL data
-//         Do based on configured sdh (or if length is greater than limit?)
-//  Can choose to have no encode or decode if want no copies (APP serializes)
-//  ?/  Always pass poninter in ha packet ... reduce number of data copies
 
 /**********************************************************************/
 /* Set and Get APP-HAL API Addresses */
 /**********************************************************************/
-/* Init address to default; set if valid addr_in */
+/*
+ * Set static address (xdc_addr) if addr_in != NULL
+ *   and initialize to addr_default when do_once == 1
+ */
 void set_address(char *xdc_addr, char *addr_in, const char *addr_default, int *do_once) {
     if (*do_once == 1) {
       if (strlen(addr_default) >= 255) {
@@ -170,6 +170,28 @@ char *xdc_set_out(char *addr_in) {
   return xdc_addr;
 }
 
+/*
+ * Set log to a new level
+ */
+void xdc_log_level(int new_level) {
+  static int do_once = 1;
+
+  // set to default if user has not already set
+  if ((new_level == -1) && (do_once == 1)) {
+    log_set_quiet(0);               /* not quiet */
+    log_set_level(LOG_TRACE);       /* default level */
+  }
+  else if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
+    log_set_quiet(0);
+    log_set_level(new_level);
+    log_trace("API log level set to %d)", new_level);
+    do_once = 0;
+  }
+  else {
+    log_warn("Cannot change xdcomms to log level to %d (min=%d max=%d)\n", __func__, new_level, LOG_TRACE, LOG_FATAL);
+  }
+}
+
 /**********************************************************************/
 /* ZMQ-based Communication Setup */
 /**********************************************************************/
@@ -185,24 +207,18 @@ void exit_with_zmq_error(const char* where) {
  * Get zmq context (and create if not already created) - once per process
  */
 void *xdc_ctx() {
-    static void *ctx = NULL;
-    if (ctx == NULL) {
-        /* TODO - Pass logging requirements in as a parameter */
-        log_set_quiet(0);
-        log_set_level(LOG_INFO);
-        
-        ctx = zmq_ctx_new();
-        if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
-    }
-    return ctx;
+  static void *ctx = NULL;
+  if (ctx == NULL) {
+//    xdc_log_level(LOG_INFO);    /* default */
+    xdc_log_level(-1);            /* set logging level to default */
+    ctx = zmq_ctx_new();
+    if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
+  }
+  return ctx;
 }
 
 /*
  * Open ZMQ socket and return socket handle: Publisher
- * Note:
- *   HAL subscriber binds to address (usually publisher would bind)
- *   The APP-API cannot send immediately after a connect, as there
- *   is a few msec before here is no outgoing pipe (so sleep 1)
  */
 void *xdc_pub_socket()
 {
@@ -214,6 +230,11 @@ void *xdc_pub_socket()
     err = zmq_connect(socket, xdc_set_out(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
     log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
+    /*
+     * HAL subscriber binds to address (usually publisher would bind).
+     * The APP-API cannot send immediately after a connect, as there
+     * is a few msec before ZMQ creates outgoing pipe (so sleep 1)
+     */
     sleep (1);
     return socket;
 }
