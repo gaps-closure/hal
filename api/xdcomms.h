@@ -66,6 +66,7 @@ extern char *xdc_set_out(char *addr);
 // 2) Initialize send and recv sockets
 extern void *xdc_ctx(void);
 extern void *xdc_pub_socket(void);
+extern void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout);
 extern void *xdc_sub_socket(gaps_tag tag);
 // 3) Send and recv ADUs
 extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);

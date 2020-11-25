@@ -1,6 +1,6 @@
 /*
  * Cross Domain (XD) Communication API between Applicaitons and GAP XD Guards
- *   March 2020, Perspecta Labs
+ *   November 2020, Perspecta Labs
  *
  * TODO:
  *  XXX: enclose data encode/decode API functions by passing data file description
@@ -11,7 +11,7 @@
 codec_map  cmap[DATA_TYP_MAX];
 
 /**********************************************************************/
-/* Tag processing */
+/* A) Tag processing */
 /**********************************************************************/
 
 void tag_print (gaps_tag *tag, FILE * fd) {
@@ -38,7 +38,7 @@ void tag_cp (gaps_tag *tag_out, gaps_tag *tag_in) {
 }
 
 /**********************************************************************/
-/* Coding Functions for Application Data (using cmap table) */
+/* B) Coding Application Data (using cmap table) */
 /* TODO, Use DFDL schema */
 /**********************************************************************/
 /*
@@ -122,7 +122,32 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
 }
 
 /**********************************************************************/
-/* Set and Get APP-HAL API Addresses */
+/* C) Logging */
+/**********************************************************************/
+/*
+ * Set log to a new level
+ */
+void xdc_log_level(int new_level) {
+  static int do_once = 1;
+
+  // set to default if user has not already set
+  if ((new_level == -1) && (do_once == 1)) {
+    log_set_quiet(0);               /* not quiet */
+    log_set_level(LOG_INFO);       /* default level */
+  }
+  else if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
+    log_set_quiet(0);
+    log_set_level(new_level);
+    log_trace("API log level set to %d)", new_level);
+    do_once = 0;
+  }
+  else {
+    log_warn("Cannot change xdcomms to log level to %d (min=%d max=%d)\n", __func__, new_level, LOG_TRACE, LOG_FATAL);
+  }
+}
+
+/**********************************************************************/
+/* D) Set and Get APP-HAL API Addresses */
 /**********************************************************************/
 /*
  * Set static address (xdc_addr) if addr_in != NULL
@@ -170,30 +195,8 @@ char *xdc_set_out(char *addr_in) {
   return xdc_addr;
 }
 
-/*
- * Set log to a new level
- */
-void xdc_log_level(int new_level) {
-  static int do_once = 1;
-
-  // set to default if user has not already set
-  if ((new_level == -1) && (do_once == 1)) {
-    log_set_quiet(0);               /* not quiet */
-    log_set_level(LOG_INFO);       /* default level */
-  }
-  else if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
-    log_set_quiet(0);
-    log_set_level(new_level);
-    log_trace("API log level set to %d)", new_level);
-    do_once = 0;
-  }
-  else {
-    log_warn("Cannot change xdcomms to log level to %d (min=%d max=%d)\n", __func__, new_level, LOG_TRACE, LOG_FATAL);
-  }
-}
-
 /**********************************************************************/
-/* ZMQ-based Communication Setup */
+/* E) ZMQ-based Communication Setup */
 /**********************************************************************/
 /*
  * Exit with ZMQ error message
@@ -209,7 +212,6 @@ void exit_with_zmq_error(const char* where) {
 void *xdc_ctx() {
   static void *ctx = NULL;
   if (ctx == NULL) {
-//    xdc_log_level(LOG_INFO);    /* default */
     xdc_log_level(-1);            /* set logging level to default */
     ctx = zmq_ctx_new();
     if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
@@ -218,7 +220,7 @@ void *xdc_ctx() {
 }
 
 /*
- * Open ZMQ socket and return socket handle: Publisher
+ * Open ZMQ Publisher socket, connecting to HAL subscriber listening at addreess set by xdc_set_out:
  */
 void *xdc_pub_socket()
 {
@@ -240,9 +242,9 @@ void *xdc_pub_socket()
 }
 
 /*
- * Open ZMQ socket and return socket handle: Subscriber
+ * Open non-blocking ZMQ Subscriber socket, with specified timeout
  */
-void *xdc_sub_socket(gaps_tag tag)
+void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
 {
     int      err;
     void    *socket;
@@ -250,6 +252,12 @@ void *xdc_sub_socket(gaps_tag tag)
 
     socket = zmq_socket(xdc_ctx(), ZMQ_SUB);
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
+  
+    if (timeout>=0) {
+        err = zmq_setsockopt(socket, ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
+        assert(err == 0);
+    }
+  
     err = zmq_connect(socket, xdc_set_in(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
     log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_SUB, xdc_set_in(NULL));
@@ -259,8 +267,16 @@ void *xdc_sub_socket(gaps_tag tag)
     return socket;
 }
 
+/*
+ * Open ZMQ Subscriber socket, connecting to HAL publisher listening at addreess set by xdc_set_in:
+ */
+void *xdc_sub_socket(gaps_tag tag)
+{
+  return (xdc_sub_socket_non_blocking(tag, -1));
+}
+
 /**********************************************************************/
-/* ZMQ Communication Send and Receive */
+/* F) ZMQ Communication Send and Receive */
 /**********************************************************************/
 /*
  * Send ADU to HAL (which should be listening on the ZMQ subscriber socket)
@@ -268,8 +284,8 @@ void *xdc_sub_socket(gaps_tag tag)
 void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   sdh_ha_v1    packet, *p=&packet;
   size_t       packet_len;
-  
-  size_t adu_len;         /* Size of ADU is calculated by encoder */
+  size_t       adu_len;         /* Size of ADU is calculated by encoder */
+
   gaps_data_encode(p, &packet_len, adu, &adu_len, tag);
   // fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
   // tag_print(&tag, stderr);
