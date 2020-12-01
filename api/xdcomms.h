@@ -30,6 +30,7 @@ typedef struct _tag {
 
 /*
  * CLOSURE packet (for comms between application and HAL)
+ * TODO: Do not pass Payload data inside packet:
  *   a) Immediate data is contained in the packet
  *   b) Direct Memory Access (DMA) data is an address in memory
  */
@@ -41,14 +42,13 @@ typedef struct _sdh_ha_v1 {
 //  void     *dma_address;            /* Driver will DMA from/to host memory */
 } sdh_ha_v1;
 
-/* Map of (encode and decode) function pointers for each data type */
-
-/* (Data type is the index into the codec_map) */
+/* Table of codec per data types (Max of DATA_TYP_MAX types) */
 typedef void (*codec_func_ptr)(void *, void *, size_t *);
 typedef struct _codec_map {
-  int valid;
-  codec_func_ptr encode;
-  codec_func_ptr decode;
+  int             valid;
+  uint32_t        data_type;
+  codec_func_ptr  encode;
+  codec_func_ptr  decode;
 } codec_map;
 extern codec_map  cmap[DATA_TYP_MAX];
 
@@ -61,9 +61,9 @@ extern void tag_cp        (gaps_tag *, gaps_tag *);
 extern void xdc_log_level (int new_level);
 // 1) Configure the ADU coders and addresses
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
-extern char *xdc_set_in (char *addr);  /* addr = non-NULL sets value, NULL returns value */
+extern char *xdc_set_in (char *addr);  /* addr = NULL returns value; else sets */
 extern char *xdc_set_out(char *addr);
-// 2) Initialize send and recv sockets
+// 2) Initialize XDC sockets
 extern void *xdc_ctx(void);
 extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout);
@@ -71,5 +71,6 @@ extern void *xdc_sub_socket(gaps_tag tag);
 // 3) Send and recv ADUs
 extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);
 extern void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag);
+extern int  xdc_recv(void *socket, void *adu, gaps_tag *tag);
 
 #endif

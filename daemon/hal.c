@@ -130,7 +130,7 @@ void opts_print(void) {
   printf("OPTIONS: are one of the following:\n");
   printf(" -f : log file name (default = no log file)\n");
   printf(" -h : print this message\n");
-  printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 0)\n");
+  printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -q : quiet: disable logging on stderr (default = enabled)\n");
 //  printf(" -s : statistics file name (default = no log file)\n");
   printf(" -w : device not ready (EAGAIN) wait time in microseconds (default = 1000us): -1 exits if not ready\n");
