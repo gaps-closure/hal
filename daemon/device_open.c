@@ -287,7 +287,7 @@ void ilp_open_data_devices(device *d) {
     }
     d->readfd  = fd_read;
 
-    log_debug("Opened read device (fd=%d) %s: %s", d->readfd, d->id, d->path_r);
+    log_trace("Opened read device (fd=%d) %s: %s", d->readfd, d->id, d->path_r);
   }
   
   if (strlen(d->path_w) > 0) {
@@ -299,7 +299,7 @@ void ilp_open_data_devices(device *d) {
     }
     d->writefd = fd_write;
 
-    log_debug("Opened write device (fd=%d) %s: %s", d->writefd, d->id, d->path_w);
+    log_trace("Opened write device (fd=%d) %s: %s", d->writefd, d->id, d->path_w);
   }
 }
 

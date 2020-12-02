@@ -97,9 +97,9 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
     log_trace("TODO: Openning Stats file: %s", file_name_stats);
   }
   
-  log_info("CONFIG-FILE = %s", file_name_config);
-  log_info("LOG = [file=%s, lev=%d, limit=%d, quiet=%d]", file_name_log, log_level, LOG_LEVEL_MIN, hal_quiet);
-  log_info("wait_us=%d", hal_wait_us);
+  log_trace("CONFIG-FILE = %s", file_name_config);
+  log_trace("LOG = [file=%s, lev=%d, limit=%d, quiet=%d]", file_name_log, log_level, LOG_LEVEL_MIN, hal_quiet);
+  log_trace("wait_us=%d", hal_wait_us);
 
   /* b) Load coniguration */
   cfg_read(&cfg, file_name_config);

@@ -1,9 +1,6 @@
 /*
  * Cross Domain (XD) Communication API between Applicaitons and GAP XD Guards
- *   November 2020, Perspecta Labs
- *
- * TODO:
- *  XXX: enclose data encode/decode API functions by passing data file description
+ *   December 2020, Perspecta Labs
  */
 
 #include "xdcomms.h"
@@ -38,8 +35,7 @@ void tag_cp (gaps_tag *tag_out, gaps_tag *tag_in) {
 }
 
 /**********************************************************************/
-/* B) Coding Application Data (using cmap table) */
-/* TODO, Use DFDL schema */
+/* B) CMAP table to store encoding and decoding function pointers */
 /**********************************************************************/
 /*
  * Print Codec Table entry
@@ -63,21 +59,22 @@ void cmap_print(void) {
 }
 
 /*
- * Find Codec Table (for given data type)
+ * Find Codec Table entry for a given data type
  */
 codec_map *cmap_find(int data_type) {
   codec_map  *cm;
   
 //  fprintf(stderr, "%s: typ=%d\n", __func__, data_type); cmap_print();
   for(cm = cmap; cm->valid != 0; cm++) {
-//    fprintf(stderr, "%s: XXXXX\n", __func__);
-//    cmap_print_one(cm);
     if (cm->data_type == data_type) return (cm);
   }
   log_warn("Could not find registered data typ = %d\n", data_type);
   return (NULL);
 }
 
+/*
+ * Initialize Codec Table
+ */
 void cmap_init(void) {
   int         i;
   static int  do_once = 1;
@@ -87,7 +84,7 @@ void cmap_init(void) {
     do_once = 0;
   }
 }
-  
+
 /*
  * Load Codec Table with ADU encode and decode functions
  */
@@ -108,6 +105,10 @@ void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
 // cmap_print();
 }
 
+/**********************************************************************/
+/* C) Encocde/decode data into/from a HAL packet */
+/* TODO, Use DFDL schema */
+/**********************************************************************/
 /*
  * Create packet (serialize data and add header)
  */
@@ -151,7 +152,7 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
 // Also xdc_provision function(s)
 
 /**********************************************************************/
-/* C) Set API Logging to a new level */
+/* D) Set API Logging to a new level */
 /**********************************************************************/
 void xdc_log_level(int new_level) {
   static int do_once = 1;
@@ -177,7 +178,7 @@ void xdc_log_level(int new_level) {
 }
 
 /**********************************************************************/
-/* D) Set and Get APP-HAL API Addresses */
+/* E) Set and Get APP-HAL API Addresses */
 /**********************************************************************/
 /*
  * Set static address (xdc_addr) if addr_in != NULL
@@ -226,7 +227,7 @@ char *xdc_set_out(char *addr_in) {
 }
 
 /**********************************************************************/
-/* E) ZMQ-based Communication Setup */
+/* F) ZMQ-based Communication Setup */
 /**********************************************************************/
 /*
  * Exit with ZMQ error message
@@ -308,7 +309,7 @@ void *xdc_sub_socket(gaps_tag tag)
 }
 
 /**********************************************************************/
-/* F) ZMQ Communication Send and Receive */
+/* G) ZMQ Communication Send and Receive */
 /**********************************************************************/
 /*
  * Send ADU to HAL (HAL is the ZMQ subscriber)
