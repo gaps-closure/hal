@@ -317,14 +317,15 @@ void ilp_root_check(int fd_root, root_device *rd) {
   
   /* For this test and this set of devices application ID is equal to session ID */
   for ( i=0; i<2; i++ ) {
+    log_trace("Write Application ID (%d) to Root Device", application_id[i]);
     write_bytes = write(fd_root, (const void *)&application_id[i], sizeof(application_id[i]));
     if ( write_bytes != sizeof(session_id[i])) {
-      perror( "Error in the write of the application ID");
+      perror( "Error in the write of the application ID: ");
       exit(EXIT_FAILURE);
     }
     read_bytes = read( fd_root, (void*)&session_id[i], sizeof(session_id[i]) );
     if ( read_bytes != sizeof(session_id[i])) {
-      perror( "Error in the read of the session ID");
+      perror( "Error in the read of the session ID: ");
       exit(EXIT_FAILURE);
     }
     

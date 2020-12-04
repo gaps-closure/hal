@@ -135,12 +135,11 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
  */
 void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len_out, gaps_tag *tag) {
   codec_map  *cm = cmap_find(tag->typ);
-
-//  fprintf(stderr, "%s: typ=%d\n", __func__, cm->data_type);
-
+  
   /* a) deserialize data from packet (TODO: remove NBO ha tag, len) */
   tag_cp(tag, &(p->tag));
   *len_out = (size_t) p->data_len;
+//  fprintf(stderr, "%s\n", __func__); cmap_print();
   cm->decode (buff_out, p->data, &p_len);
   log_buf_trace("API -> raw app data:", p->data,  *len_out);
   log_buf_trace("    <- decoded data:", buff_out, *len_out);
@@ -346,6 +345,7 @@ int xdc_recv(void *socket, void *adu, gaps_tag *tag)
   }
   else {
     log_buf_trace("API recv packet", (uint8_t *) p, size);
+//fprintf(stderr, "%s: xxxxx %d\n", __func__, size);
     gaps_data_decode(p, size, adu, &adu_len, tag);
   }
   return (size);

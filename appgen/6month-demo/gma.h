@@ -8,8 +8,9 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define DATA_TYP_POSITION    1
-#define DATA_TYP_DISTANCE    2
+#define DATA_TYP_POSITION     1
+#define DATA_TYP_DISTANCE     2
+#define DATA_TYP_RAW          3
 
 typedef struct _trailer_datatype {
 	uint32_t seq;
@@ -19,7 +20,7 @@ typedef struct _trailer_datatype {
 	uint16_t crc;
 } trailer_datatype;
 
-/* Data structure: PNT */
+/* Data structure: 1) Position */
 typedef struct _position_datatype {
     double x;
     double y;
@@ -34,6 +35,7 @@ typedef struct _position_output {
     trailer_datatype trailer;
 } position_output;
 
+/* Data structure: 2) Distance */
 typedef struct _distance_datatype {
     double x;
     double y;
@@ -48,6 +50,13 @@ typedef struct _distance_output {
     trailer_datatype trailer;
 } distance_output;
 
+/* Data structure: 3) raw_btyes (variable length data is after raw_datatype struct) */
+typedef struct _raw_datatype {
+    uint32_t data_len;
+    trailer_datatype trailer;
+} raw_datatype;
+
+
 extern void position_print (position_datatype *position);
 extern void position_data_encode (void *buff_out, void *buff_in, size_t *len_out);
 extern void position_data_decode (void *buff_out, void *buff_in, size_t *len_in);
@@ -55,6 +64,12 @@ extern void position_data_decode (void *buff_out, void *buff_in, size_t *len_in)
 extern void distance_print (distance_datatype *distance);
 extern void distance_data_encode (void *buff_out, void *buff_in, size_t *len_out);
 extern void distance_data_decode (void *buff_out, void *buff_in, size_t *len_in);
+
+extern void raw_print (raw_datatype *distance);
+extern void raw_data_encode (void *buff_out, void *buff_in, size_t *len_out);
+extern void raw_data_decode (void *buff_out, void *buff_in, size_t *len_in);
+
+
 
 // Guard Provisioning calls to be added here
 

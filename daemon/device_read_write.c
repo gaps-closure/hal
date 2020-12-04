@@ -195,7 +195,7 @@ int process_input(int ifd, halmap *map, device *devs) {
 
   h = halmap_find(ipdu, map);
   if(h == NULL) { 
-    log_warn("%s: No matching HAL map entry for: ", __func__);
+    log_warn("No matching HAL map entry");
     log_pdu_trace(ipdu, __func__);
     pdu_delete(ipdu);
     return (0);
@@ -203,7 +203,7 @@ int process_input(int ifd, halmap *map, device *devs) {
   
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
-    log_warn("%s: Device %s not found for output\n", __func__,  h->to.dev);
+    log_warn("Device %s not found for output", h->to.dev);
     pdu_delete(ipdu);
     return (0);
   }
