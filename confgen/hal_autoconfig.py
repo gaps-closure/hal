@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    July 24, 2020
+#    November, 2020
 #
 # Tested Examples:
 #  1) eri demo running in emulator (start.sh example1) with /dev/vcom devices (default inputs)
@@ -174,7 +174,7 @@ def create_maps(local_enclve_name, halmaps, dev_list):
     return(hal_config_map_list)
 
 ###############################################################
-# Combine dev and map lists into dictionariesof off tuples
+# Combine dev and map lists into dictionaries of tuples
 #   libconfig lists, enclosed by () parentheses, map to Python
 #     tuples and can contain arbitrary values
 #   libconfig array, enclosed by [] brackets, map to Python

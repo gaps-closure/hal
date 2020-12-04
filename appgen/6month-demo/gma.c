@@ -14,7 +14,7 @@
 
 /* 0) Common Trailer Functions */
 void trailer_print(trailer_datatype *tlr) {
-  fprintf(stderr, "%d, %d, %d, %d, %d\n",
+  fprintf(stderr, "%d, %d, %d, %d, %d",
           tlr->seq,
           tlr->rqr,
           tlr->oid,
@@ -45,6 +45,7 @@ void position_print (position_datatype *position) {
           position->y,
           position->z);
   trailer_print(&(position->trailer));
+  fprintf(stderr, "\n");
 }
 
 void position_data_encode (void *buff_out, void *buff_in, size_t *len_out) {
@@ -75,6 +76,8 @@ void distance_print (distance_datatype *distance) {
           distance->y,
           distance->z);
   trailer_print(&(distance->trailer));
+  fprintf(stderr, "\n");
+
 }
 
 void distance_data_encode (void *buff_out, void *buff_in, size_t *len_out) {
@@ -101,16 +104,17 @@ void distance_data_decode (void *buff_out, void *buff_in, size_t *len_in) {
 /* 3) Raw Functions */
 void raw_print (raw_datatype *raw) {
   int              i;
-  uint32_t  data_len = raw->data_len;
-  char         *d_in = (char *) (raw + 1);    /* data is after raw_datatype struct */
-  
-  fprintf(stderr, "raw (len=%ld): %08X", sizeof(*raw) + data_len, data_len);
+  uint32_t  data_len  = raw->data_len;
+  uint32_t  total_len = data_len + sizeof(*raw);
+  uint8_t       *d_in = (uint8_t *) (raw + 1);    /* data is after raw_datatype struct */
+
+  fprintf(stderr, "raw (len=%d): %08X, ", total_len, data_len);
+  trailer_print(&(raw->trailer));
   for (i = 0; i < data_len; i++) {
     if ((i%4)==0) fprintf(stderr, ", ");
     fprintf(stderr, "%02X", d_in[i]);
   }
-  fprintf(stderr, ", ");
-  trailer_print(&(raw->trailer));
+  fprintf(stderr, "\n");
 }
 
 void raw_data_encode (void *buff_out, void *buff_in, size_t *len_out) {

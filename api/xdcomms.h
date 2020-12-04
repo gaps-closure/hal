@@ -11,8 +11,8 @@
 #include <assert.h>
 #include "log.h"
 
-#define ADU_SIZE_MAX_C  208
-#define PACKET_MAX      2048        /* TODO: Increase for ILIP payload mode */
+#define ADU_SIZE_MAX_C  1000000     /* 1 MB - Increased for ILIP payload mode*/
+#define PACKET_MAX      1000000
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
 

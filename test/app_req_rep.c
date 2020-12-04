@@ -1,12 +1,38 @@
 /*
  * APP_EXAMPLE.C
- *   Simple Request-Reply application using latest HAL API.
+ *   Simple Request-Reply application to test new HAL API over MS loopback driver.
  *
  * December 2020, Perspecta Labs
  *
- * gcc -c app_req_rep.c -I ../log
- * gcc -o z app_req_rep.o ../api/xdcomms.o ../appgen/6month-demo/gma.o ../log/log.o ../appgen/6month-demo/float.o  -l zmq
+ * Compilation:
+ *   cd ~/gaps/build/src/hal/test/
+ *   gcc -c app_req_rep.c -I ../log
+ *   gcc -o z app_req_rep.o ../api/xdcomms.o ../appgen/6month-demo/gma.o ../log/log.o ../appgen/6month-demo/float.o  -l zmq
+ *
+ * HAL:
+ *      green:   ~/gaps/build/src/hal$ daemon/hal test/sample_eop_be_loopback_green.cfg
+ *      oprange: ~/gaps/build/src/hal$ daemon/hal test/sample_eop_be_loopback_orange.cfg
+ *
+ * Run:
+ *   0) Options:
+ *               ~/gaps/build/src/hal/test/app_req_rep -h
+ *
+ *   1) Default: Green enclave sends position <1,1,1>; Orange enclave replies with posiiton <2,2,1>
+ *      green:   ./app_req_rep
+ *      oprange: ./app_req_rep -e o
+ *
+ *   3) Reverse: Orange enclave sends position <2,2,1>; Green enclave replies with posiiton <1,1,1>
+ *      green:   ./app_req_rep -r
+ *      oprange: ./app_req_rep -e o -r
+ *
+ *   3) Timeout: Green enclave sends position <1,1,1> twice, with receive timeout of 3 seconds;
+ *               Orange replies with 100 bytes of raw data <2,2,3>, in two separate calls
+ *      green:   ./app_req_rep -n 2 -b 3000 -o 0
+ *      orange:  ./app_req_rep -e o -o 100
+ *      orange:  Waits to see timeouts at green
+ *      orange:  ./app_req_rep -e o -o 100
  */
+
 
 #include "../api/xdcomms.h"
 #include "../appgen/6month-demo/gma.h"
@@ -40,7 +66,7 @@ void opts_print(void) {
   printf("Usage: ./app_req_rep [Options]\n");
   printf("[Options]:\n");
   printf(" -b : Subscriber Blocking timeout (in milliseconds): default = -1 (blocking) \n");
-  printf(" -e : Enclave (single char): default = 'g'\n");
+  printf(" -e : Enclave (single char). Currently support 'g' or 'o': default = 'g'\n");
   printf(" -h : Print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -n : Number of request-response loops: Default = 1\n");
@@ -145,13 +171,19 @@ size_t position_set (uint8_t *adu) {
 }
 
 size_t raw_set (uint8_t *adu, size_t len) {
-  int                   i;
+  uint32_t            i;
   raw_datatype       *out = (raw_datatype *) adu;
-  char              *data = (char *) (out + 1);
+  uint8_t            *data = (uint8_t *) (out + 1);
   
-  out->data_len    = len;
+  out->data_len = len;
   trailer_set(&(out->trailer));
-  for (i=0; i<len; i++)  *(data+i) = i % 256;
+//  fprintf(stderr, "%s: out=%p dat0=%p dat1=$%p\n", __func__, out, data, data + 1);
+//  fprintf(stderr, "%s: max=%d len=%d (total=%ld)\n", __func__, ADU_SIZE_MAX_C, (int) len,  sizeof(*out) + len);
+  for (i=0; i<len; i++) {
+    data[i] = (uint8_t) (i % 256);
+//    fprintf(stderr, "i=%d d=%x ", i, data[i]);
+  }
+//  fprintf(stderr, "\nYYYYY data: %x %x %x %x\n", adu[216], adu[217], adu[218], adu[219]);
   return((size_t) sizeof(*out) + len);
 }
 
