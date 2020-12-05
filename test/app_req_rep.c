@@ -27,9 +27,9 @@
  *
  *   3) Timeout: Green enclave sends position <1,1,1> twice, with receive timeout of 3 seconds;
  *               Orange replies with 100 bytes of raw data <2,2,3>, in two separate calls
- *      green:   ./app_req_rep -n 2 -b 3000 -o 0
  *      orange:  ./app_req_rep -e o -o 100
- *      orange:  Waits to see timeouts at green
+ *      green:   ./app_req_rep -n 2 -b 3000 -o 0
+ *               Waits to see timeouts at green
  *      orange:  ./app_req_rep -e o -o 100
  */
 

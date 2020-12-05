@@ -311,7 +311,7 @@ void *xdc_sub_socket(gaps_tag tag)
 /* G) ZMQ Communication Send and Receive */
 /**********************************************************************/
 /*
- * Send ADU to HAL (HAL is the ZMQ subscriber)
+ * Send ADU to HAL (HAL is the ZMQ subscriber) in a sdh_ha_v1 packet
  */
 void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   sdh_ha_v1    packet, *p=&packet;
@@ -328,7 +328,7 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
 }
 
 /*
- * Receive ADU from HAL (HAL is the ZMQ publisher)
+ * Receive ADU from HAL (HAL is the ZMQ publisher) from a sdh_ha_v1 packet
  * Returs size of packet received (timeout/error if < 0)
  */
 int xdc_recv(void *socket, void *adu, gaps_tag *tag)

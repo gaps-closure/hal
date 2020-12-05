@@ -12,7 +12,6 @@
 #include "log.h"
 
 #define ADU_SIZE_MAX_C  1000000     /* 1 MB - Increased for ILIP payload mode*/
-#define PACKET_MAX      1000000
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
 

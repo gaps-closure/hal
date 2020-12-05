@@ -1,6 +1,6 @@
 /*
  * HAL device read and write (loop)
- *   April 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  */
 
 /**********************************************************************/
@@ -11,6 +11,8 @@
 #include "map.h"
 #include "device_open.h"
 #include "packetize.h"
+
+# define PACKET_MAX (ADU_SIZE_MAX_C + 256)
 
 int sel_verbose=1;
 /**********************************************************************/
@@ -58,7 +60,7 @@ void devs_stat_print(device *devs) {
 pdu *read_pdu(device *idev) {
   int                 pkt_len=0, valid;
   pdu                *ret = NULL;
-  static uint8_t      buf[PACKET_MAX];
+  static uint8_t      buf[PACKET_MAX];        /* Packet buffer when reading */
   int                 fd;
   const char         *com_type, *com_model;
   struct sockaddr_in  socaddr_in;
@@ -130,7 +132,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   int             fd;
   int             pkt_len=0;
   const char     *com_type;
-  static uint8_t  buf[PACKET_MAX];
+  static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
   log_trace("HAL writting to %s on fd=%d\n", odev->id, odev->writefd);
   /* a) Convert into packet based on interface packet model  */
