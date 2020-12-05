@@ -18,7 +18,7 @@ int sel_verbose=1;
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
-/* Transfform ADU data  */
+/* Transform ADU data  */
 pdu *codec(halmap *h, pdu *ipdu) {
   pdu *opdu = NULL;
 

@@ -26,7 +26,7 @@ void pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in) {
   tag_cp(&(out->psel.tag), &(pkt->tag));
   out->data_len = pkt->data_len;
 //  fprintf(stderr, "LEN=%ld\n", out->data_len);
-  memcpy(out->data, pkt->data, out->data_len);
+  memcpy(out->data, pkt->data, out->data_len);   /* TODO_PDU_PTR */
 }
 
 /* Put internal PDU (in) into closure packet (out) */

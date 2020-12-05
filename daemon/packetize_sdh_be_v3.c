@@ -29,12 +29,7 @@ void sdh_be_v3_print(pkt_sdh_be_v3 *p) {
 
 /* Put data address into an external packet */
 void put_dma_adresss (pkt_sdh_be_v3 *pkt, uint8_t *data_in) {
-//    uint64_t x = (uint64_t) data_in;
-//    pkt->dma_data_addr_lo = (uint32_t) (x & 0xFFFFFFFF);
-//    pkt->dma_data_addr_up = (uint32_t) (x >> 32);;
-//    fprintf(stderr, "addr = %p %lx (%x %x)\n",  data_in, x, pkt->dma_data_addr_up, pkt->dma_data_addr_lo);
-  
-  pkt->dma_data_addr_lo = (uint64_t) data_in;
+    pkt->dma_data_addr_lo = (uint64_t) data_in;
 }
 
 /* Get data fron an external packet (placed at end of packet) */
@@ -44,7 +39,7 @@ void get_dma_data (pkt_sdh_be_v3 *pkt, uint8_t *data_out, uint32_t  len) {
 //    data_print("Data",  (uint8_t *) pkt, 300);
     data_in = (uint8_t *) pkt + sizeof(*pkt);
 //    fprintf(stderr, "%s ready to copy %d bytes: (%p) %p -> %p\n", __func__, len, pkt, data_in, data_out);
-    memcpy (data_out, data_in, len);
+    memcpy (data_out, data_in, len);    /* TODO_PDU_PTR */
 }
 
 /* Put data from external packet (*in) into internal HAL PDU */
