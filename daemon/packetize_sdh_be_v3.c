@@ -27,31 +27,18 @@ void sdh_be_v3_print(pkt_sdh_be_v3 *p) {
     fprintf(stderr, "\n");
 }
 
-/* Put data address into an external packet */
-void put_dma_adresss (pkt_sdh_be_v3 *pkt, uint8_t *data_in) {
-    pkt->dma_data_addr_lo = (uint64_t) data_in;
-}
-
-/* Get data fron an external packet (placed at end of packet) */
-void get_dma_data (pkt_sdh_be_v3 *pkt, uint8_t *data_out, uint32_t  len) {
-    uint8_t  *data_in;
-
-//    data_print("Data",  (uint8_t *) pkt, 300);
-    data_in = (uint8_t *) pkt + sizeof(*pkt);
-//    fprintf(stderr, "%s ready to copy %d bytes: (%p) %p -> %p\n", __func__, len, pkt, data_in, data_out);
-    memcpy (data_out, data_in, len);    /* TODO_PDU_PTR */
-}
-
 /* Put data from external packet (*in) into internal HAL PDU */
 void pdu_from_sdh_be_v3 (pdu *out, uint8_t *in) {
     pkt_sdh_be_v3  *pkt = (pkt_sdh_be_v3 *) in;
+    uint8_t        *data_in;
 
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v3_print(pkt);
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
     out->data_len     = ntohl(pkt->dma_data_len);
-    get_dma_data(pkt, out->data, out->data_len);
+    data_in = (uint8_t *) pkt + sizeof(*pkt);
+    memcpy (out->data, data_in, out->data_len);    /* TODO_PDU_PTR */
 }
 
 /* Put data into external packet (*out) from internal HAL PDU */
@@ -79,7 +66,8 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->imm_data_len       = htonl(0);
     /* c2) Payload data: ILIP driver uses DMA to get data stored in PDU */
     pkt->dma_data_len       = htonl(in->data_len);
-    put_dma_adresss(pkt, in->data);
+    pkt->dma_data_addr_lo   = (uint64_t) in->data;
+  
 //  data_print("Data",  (uint8_t *) pkt->dma_data_addr_lo, in->data_len);
 //    sdh_be_v3_print(pkt); // exit(1);
     return (sizeof(*pkt));       /* v2+ always sends 256 byte packet */

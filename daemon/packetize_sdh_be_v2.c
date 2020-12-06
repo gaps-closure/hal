@@ -31,8 +31,6 @@ void sdh_be_v2_print(pkt_sdh_be_v2 *p) {
 size_t check_len_sdh_be_v2 (size_t len) {
     if (len > SDH_BE_V2_ADU_SIZE_MAX) {
         log_error("Sending immediate data of len (%ld) > MAX packet len (%d)", len, SDH_BE_V2_ADU_SIZE_MAX);
-//        log_error("...HAL truncating data to %d Bytes", SDH_BE_V2_ADU_SIZE_MAX);
-//        return (SDH_BE_V2_ADU_SIZE_MAX);
         log_error("...HAL deletes Bad packet");
         return (0);
     }
@@ -72,7 +70,6 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
     
     pkt->imm_data_len = htonl(len);
     memcpy((char *) pkt->imm_data, (char *) in->data, len);
-//    sdh_be_v2_print(pkt);
     
     // Set by Driver or ILIP device - Reset just to recognize any changes
     pkt->gaps_time_lo       = 0;
@@ -83,6 +80,7 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->linux_time_up      = 0;
     pkt->desc_sip_hash_lo   = 0;
     pkt->desc_sip_hash_up   = 0;
+//    sdh_be_v2_print(pkt);
 
-    return (sizeof(*pkt));       /* packet size in bytes (always 256B in v2) */
+    return (sizeof(*pkt));    /* packet size always 256B in v2 (unless too big) */
 }
