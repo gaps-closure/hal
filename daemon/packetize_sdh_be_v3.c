@@ -38,7 +38,8 @@ void pdu_from_sdh_be_v3 (pdu *out, uint8_t *in) {
     out->psel.tag.typ = ntohl(pkt->data_tag);
     out->data_len     = ntohl(pkt->dma_data_len);
     data_in = (uint8_t *) pkt + sizeof(*pkt);
-    memcpy (out->data, data_in, out->data_len);    /* TODO_PDU_PTR */
+//   memcpy (out->data, data_in, out->data_len);    /* TODO_PDU_PTR */
+    out->data = data_in;    /* TODO_PDU_PTR */
 }
 
 /* Put data into external packet (*out) from internal HAL PDU */

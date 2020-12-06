@@ -44,7 +44,8 @@ void pdu_from_sdh_be_v1 (pdu *out, uint8_t *in, int len) {
     tlv = &(pkt->tlv[0]);
     out->psel.tag.typ = ntohl(tlv->data_tag);
     out->data_len = ntohl(tlv->data_len);
-    memcpy (out->data, tlv->data, out->data_len);    /* TODO_PDU_PTR */
+//    memcpy (out->data, tlv->data, out->data_len);    /* TODO_PDU_PTR */
+    out->data = tlv->data;            /* TODO_PDU_PTR */
   }
 }
 

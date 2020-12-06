@@ -49,7 +49,9 @@ int pdu_from_sdh_be_v2 (pdu *out, uint8_t *in) {
     out->psel.tag.typ = ntohl(pkt->data_tag);
     len = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
     out->data_len     = len;
-    memcpy (out->data, pkt->imm_data, len);    /* TODO_PDU_PTR */
+//    memcpy (out->data, pkt->imm_data, len);    /* TODO_PDU_PTR */
+    out->data = pkt->imm_data;    /* TODO_PDU_PTR */
+
     return (len);       /* return data size in bytes (unless data is too long) */
 }
 

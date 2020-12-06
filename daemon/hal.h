@@ -74,7 +74,8 @@ typedef struct _hal {
 typedef struct _pdu {
   selector  psel;                   /* Input device and tag info */
   size_t    data_len;
-  uint8_t   data[ADU_SIZE_MAX_C];   /* TODO_PDU_PTR */
+//  uint8_t   data[ADU_SIZE_MAX_C];   /* TODO_PDU_PTR */
+  uint8_t   *data;                  /* TODO_PDU_PTR */
 } pdu;
 
 #endif
