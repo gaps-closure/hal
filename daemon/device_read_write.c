@@ -85,6 +85,7 @@ pdu *read_pdu(device *idev) {
     }
     else if (strcmp(com_model, "sdh_be_v3") == 0) {
       pkt_len = read(fd, buf, 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
+      pkt_len = 256;                    /* HACK to packet (256) - actually gets 512 */
     }
     else {
       pkt_len = read(fd, buf, PACKET_MAX);     /* read = recv for tcp with no flags */
@@ -136,9 +137,9 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 
   log_trace("HAL writting to %s on fd=%d\n", odev->id, odev->writefd);
   /* a) Convert into packet based on interface packet model  */
-  log_pdu_trace(p, __func__);
+//  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
-  log_buf_trace("Packet", buf, pkt_len);
+//  log_buf_trace("Packet", buf, pkt_len);
   if (pkt_len == 0) return;      // do not write if bad length
     
   /* b) Write to interface based on interface comms type */
