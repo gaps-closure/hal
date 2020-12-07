@@ -14,7 +14,7 @@
 
 # define PACKET_MAX (ADU_SIZE_MAX_C + 256)
 
-int sel_verbose=1;
+int sel_verbose=0;
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
