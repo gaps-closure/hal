@@ -34,7 +34,6 @@
  *      green:   ./app_req_rep -n 2 -b 3000 -o 0
  *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e o -o 100
- *
  */
 
 #include "../api/xdcomms.h"
@@ -79,7 +78,7 @@ void opts_print(void) {
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt;
-  while((opt =  getopt(argc, argv, "b:e:hl:n:o:rum:s:t:M:S:T:")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:hl:n:o:ru")) != EOF)
   {
     switch (opt)
     {
@@ -103,14 +102,14 @@ void opts_get(int argc, char **argv) {
         typ_o2g = DATA_TYP_RAW;
         sec_o2g = 3;               /* ILIP support <2 3 3> not <2 2 3> */
         break;
+      case 'r':
+        reverse_flow = 1;
+        break;
       case 'u':
         strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubbwgreen");
         strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubbwgreen");
         strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsubbworange");
         strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpubbworange");
-        break;
-      case 'r':
-        reverse_flow = 1;
         break;
       case ':':
         fprintf(stderr, "\noption needs a value\n");
@@ -122,8 +121,8 @@ void opts_get(int argc, char **argv) {
     }
   }
   fprintf(stderr, "g2o-tag = [%d, %d, %d] o2g-tag = [%d, %d, %d] ", mux_g2o, sec_g2o, typ_g2o, mux_o2g, sec_o2g, typ_o2g);
-  fprintf(stderr, "block_timeout=%d, loop_count=%d, enclave=%c, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, enclave, reverse_flow, copy_buf_size, log_level);
-  fprintf(stderr, "addresses: gsub=%s, gpub=%s, osub=%s, opub=%s\n", xdc_addr_sub_green, xdc_addr_pub_green, xdc_addr_sub_orange, xdc_addr_pub_orange);
+  fprintf(stderr, "timeout=%d, loop_count=%d, enclave=%c, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, enclave, reverse_flow, copy_buf_size, log_level);
+  fprintf(stderr, "API URIs: gsub=%s, gpub=%s, osub=%s, opub=%s\n", xdc_addr_sub_green, xdc_addr_pub_green, xdc_addr_sub_orange, xdc_addr_pub_orange);
 }
 
 /**********************************************************************/
