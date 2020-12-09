@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and SDH BW packet
- *   April 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * v1 uses compressed (April 2020) packet format
  */

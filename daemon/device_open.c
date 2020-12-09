@@ -1,6 +1,6 @@
 /*
  * HAL device Open, Find and Print
- *   November 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  *     a) IPC to application (unix pipe and ZMQ process)
  *     b) INET device (tcp or udp)

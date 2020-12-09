@@ -1,6 +1,6 @@
 /*
  * Hardware Abstraction Layer (HAL) between Applicaitons and GAP XD Guards
- *   April 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * TODO:
  *  XXX: Fix README.md and figure

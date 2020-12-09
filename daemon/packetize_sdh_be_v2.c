@@ -1,7 +1,7 @@
 /*
  * Convert between HAL PDU and external packet of the BookEnd (BE)
  * Security Device Hardware (SDH) packet
- *   November 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * v2 is the November 2020 EOP Immediate Mode packet format.
  * Similar to v1, but Descriptor Type replaces TLV count + new dst & SipHash fields

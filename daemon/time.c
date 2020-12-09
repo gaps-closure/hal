@@ -1,5 +1,6 @@
 /*
- * Get unix time, to put in packets in network byte order)
+ * Put unix time into packets in network byte order (only for testing)
+ *   December 2020, Perspecta Labs
  */
 
 #include "hal.h"

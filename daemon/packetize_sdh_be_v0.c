@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and SDH BE packet
- *   March 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * v0 is oringal (2019) packet format with no timestamps
  */

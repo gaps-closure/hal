@@ -16,7 +16,7 @@ The application needs to perform some initialization steps before it can send an
 The HAL architecture will support a multitude of application communication patterns. The current version of HAL implements the 0MQ pub/sub pattern, which has URIs associated with the 0MQ publish and subscribe endpoints bound to the HAL daemon. The application client API provides the following functions to set these endpoint URIs that the HAL daemon is configured with, so that they can be used to send and receive data.
 
 ```
-extern char *xdc_set_in(char * address);
+extern char *xdc_set_in (char *address);
 extern char *xdc_set_out(char *address);
 ```
 
@@ -38,9 +38,10 @@ The 0MQ pub/sub sockets must be initialized before sending and receiving cross-d
 extern void *xdc_ctx(void);
 extern void *xdc_pub_socket(void);
 extern void *xdc_sub_socket(gaps_tag tag);
+extern void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout);
 ```
 
-The first function creates the 0MQ context. The latter two functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) and  receive (on the API sub socket) data. With the sub socket, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter.
+The first function creates the 0MQ context (returning a pointer to the context). The other functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) or receive (on the API sub socket) data. In all cases the HAL-connect functions return a (void *) socket pointer. With the two sub sockets, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter (see below). With the non-blocking sub socket, the user specifies a timeout value (in milliseconds). If the timeout value is -1, then an xdc_recv() call will block until a message is available; else, for all positive timeout values, an xdc_recv() call will wait for a message for that amount of time before returning with -1 value.
 
 
 #### Send and Recv ADUs
@@ -54,16 +55,20 @@ typedef struct _tag {
 } gaps_tag;
 ```
 
-Although a number of communication patterns are envisioned, currently,  asynchronous send and a blocking receive (blocks until a message matching the specified tag is received) are supported. These client-side calls are mapped to the pub/sub endpoints that are supported by the HAL daemon.
+Although a number of communication patterns are envisioned, currently,  three are supported: a) an asynchronous send, b) a blocking receive (blocks until a message matching the specified tag is received), and c) a receive which supports a timeout (if specified in the xdc_sub_socket_non_blocking() call). These client-side calls are mapped to the pub/sub endpoints that are supported by the HAL daemon.
 
 ```
-extern void xdc_asyn_send(void *send_buf, gaps_tag tag);
-extern void xdc_blocking_recv(void *recv_buf, gaps_tag *tag);
+extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);
+extern void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag);
+extern int  xdc_recv(void *socket, void *adu, gaps_tag *tag);
 ```
+
+In additon to the selection of socket (e.g., returned by the xdc_pub_socket() call), the user specifies buffers for the Application Data Unit (adu) and tag. The tag data type (e.g., position or distance) specifies the adu structure (and which registered encode/decode function to use).
 
 In future versions of this API, we plan to support additional send and receive communication patterns including asynchronous receive calls using one-shot or repeated callbacks that can be registered by the application, sending a tagged request and receiving a reply matching the tag, suport for a stream of sequenced messages with in-order delivery, etc.
 
 #### Data API Summary
+
 In summary, the application links to the HAL data-plane client API library (`libxdcomms.a`). Upon startup, the application initializes the URIs for the 0MQ endpoints, registers codecs for the application datatypes, and initializes the send and recv sockets. The applicaiton can then sends and receives data using pointers to in-memory data structures and associated tags. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
 
 ### HAL Control-Plane API

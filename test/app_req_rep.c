@@ -7,7 +7,7 @@
  * Compilation:
  *   cd ~/gaps/build/src/hal/test/
  *   gcc -c app_req_rep.c -I ../log
- *   gcc -o z app_req_rep.o ../api/xdcomms.o ../appgen/6month-demo/gma.o ../log/log.o ../appgen/6month-demo/float.o  -l zmq
+ *   gcc -o app_req_rep app_req_rep.o ../api/xdcomms.o ../appgen/6month-demo/gma.o ../log/log.o ../appgen/6month-demo/float.o  -l zmq
  *
  * HAL:
  *      green:   ~/gaps/build/src/hal$ daemon/hal test/sample_eop_be_loopback_green.cfg
@@ -33,13 +33,10 @@
  *      orange:  ./app_req_rep -e o -o 100
  */
 
-
 #include "../api/xdcomms.h"
 #include "../appgen/6month-demo/gma.h"
 #include <stdio.h>
 #include <sys/time.h>
-
-# define IPC_ADDR_MAX 50
 
 /**********************************************************************/
 /* Get options */
@@ -55,9 +52,10 @@ int  loop_count           = 1;
 int  sub_block_timeout_ms = -1;
 int  copy_buf_size        = -1;
 
-char xdc_addr_sub_green[IPC_ADDR_MAX]   = "ipc:///tmp/halsubbegreen";
+# define IPC_ADDR_MAX 50
+char xdc_addr_sub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halsubbegreen";
 char xdc_addr_pub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halpubbegreen";
-char xdc_addr_sub_orange[IPC_ADDR_MAX]  = "ipc:///tmp/halsubbeorange";
+char xdc_addr_sub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halsubbeorange";
 char xdc_addr_pub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halpubbeorange";
 
 /* Print options */
@@ -70,9 +68,8 @@ void opts_print(void) {
   printf(" -h : Print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -n : Number of request-response loops: Default = 1\n");
+  printf(" -o : Copy Raw Buffer of specified size (in bytes): default = -1 (do not send)\n");
   printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
-  
-  printf(" -c : Copy Raw Buffer of specified size (in bytes): default = -1 (do not send)\n");
 
   printf(" -m : Green to Orange Multiplexing (mux) tag (int): Default = 1\n");
   printf(" -s : Green to Orange Security (sec)     tag (int): Default = 1\n");
@@ -107,7 +104,7 @@ void opts_get(int argc, char **argv) {
       case 'o':
         copy_buf_size = atoi(optarg);
         typ_o2g = DATA_TYP_RAW;
-        sec_o2g = 3;            /* ILIP support 2 3 3 not 2 2 3 */
+        sec_o2g = 3;               /* ILIP support <2 3 3> not <2 2 3> */
         break;
       case 'r':
         reverse_flow = 1;

@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and Security Device Hardware (SDH) BE packet
- *   November 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * v3 is the November 2020 EOP Payload Mode packet format.
  */

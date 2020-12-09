@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and external packet of the Security Device Hardware (SDH)
- *   Noember 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  */
 
 #include "hal.h"

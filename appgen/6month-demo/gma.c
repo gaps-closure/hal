@@ -2,9 +2,9 @@
  * gma.c
  *   Datatype functions
  *
- * March 2020
+ * December 2020
  *
- * For description and revision history see README.txt
+ * For description see README.txt
  */
 #include <stdint.h>
 #include <inttypes.h>
