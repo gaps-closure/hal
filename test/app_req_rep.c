@@ -84,7 +84,7 @@ void opts_print(void) {
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Copy Raw Buffer of specified size (in bytes): default = -1 (do not send)\n");
   printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
-  printf(" -u : URLs for HAL use BW options: Default = BE options\n");
+  printf(" -u : URLs for HAL use BW option (UDP/IP): Default = BE options\n");
 
   printf(" -m : Green to Orange Multiplexing (mux) tag (int): Default = 1\n");
   printf(" -s : Green to Orange Security (sec)     tag (int): Default = 1\n");
@@ -97,7 +97,7 @@ void opts_print(void) {
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt;
-  while((opt =  getopt(argc, argv, "b:e:hl:n:o:rm:s:t:M:S:T:")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:hl:n:o:rum:s:t:M:S:T:")) != EOF)
   {
     switch (opt)
     {
@@ -122,10 +122,10 @@ void opts_get(int argc, char **argv) {
         sec_o2g = 3;               /* ILIP support <2 3 3> not <2 2 3> */
         break;
       case 'u':
-        char xdc_addr_sub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halsubbwgreen";
-        char xdc_addr_pub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halpubbwgreen";
-        char xdc_addr_sub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halsubbworange";
-        char xdc_addr_pub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halpubbworange";
+        strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubbwgreen");
+        strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubbwgreen");
+        strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsubbworange");
+        strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpubbworange");
         break;
       case 'r':
         reverse_flow = 1;
@@ -160,6 +160,7 @@ void opts_get(int argc, char **argv) {
   }
   fprintf(stderr, "g2o-tag = [%d, %d, %d] o2g-tag = [%d, %d, %d] ", mux_g2o, sec_g2o, typ_g2o, mux_o2g, sec_o2g, typ_o2g);
   fprintf(stderr, "block_timeout=%d, loop_count=%d, enclave=%c, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, enclave, reverse_flow, copy_buf_size, log_level);
+  fprintf(stderr, "addresses: gsub=%s, gpub=%s, osub=%s, opub=%s\n", xdc_addr_sub_green, xdc_addr_pub_green, xdc_addr_sub_orange, xdc_addr_pub_orange);
 }
 
 /**********************************************************************/
