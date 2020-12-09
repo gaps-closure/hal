@@ -1,51 +1,40 @@
 /*
  * APP_EXAMPLE.C
- *   Simple Request-Reply application to test new HAL API
- * December 2020, Perspecta Labs
+ *   Simple Request-Reply (client-server) application to test the new HAL API
+ *   December 2020, Perspecta Labs
  *
- *
- * Compilation:
+ * 1) Compilation (with the necessary includes and libraries):
  *   cd ~/gaps/build/src/hal/test/
  *   make clean; make
  *
- * Run over ILIP device loopback driver (requires APP and HAL window for each enclave)
- *     1) Ensure device Loopback is running (if not insmod loopback and ILIP drivers):
- *               ls /dev/gaps_ilip_*
- *               /dev/gaps_ilip_0_root  /dev/gaps_ilip_1_write  /dev/gaps_ilip_2_write ...
- *               /dev/gaps_ilip_1_read  /dev/gaps_ilip_2_read ....
+ * 2) View APP Options:
+ *   cd ~/gaps/build/src/hal/test/
+ *   ./app_req_rep -h
  *
- *     2) Start HAL: run different commands in green and orange HAL windows where specified:
- *               cd ~/gaps/build/src/hal/test/
- *      green:   daemon/hal test/sample_eop_be_loopback_green.cfg
- *      oprange: daemon/hal test/sample_eop_be_loopback_orange.cfg
+ * 3) Run APP via HAL and Network (after HAL daemon is running and NET is up) in all enclaves
+ *    (currently support green and orange enclaves). Defaults to BE (ILIP device) Networking;
+ *    but can add -u option to all commands in order to run with BW (UDP/IP) Networking.
  *
- *     3) Run APPs: run different commands in green and orange APP windows where specified:
- *       a) View APP Options:
- *               cd ~/gaps/build/src/hal/test/
- *               ~/gaps/build/src/hal/test/app_req_rep -h
- *
- *       b) Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
+ *    a) Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep
  *      oprange: ./app_req_rep -e o
  *
- *       c) Reverse: Orange enclave sends position <2,2,1>; Green enclave replies with posiiton <1,1,1>
+ *    b) Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
  *      green:   ./app_req_rep -r
  *      oprange: ./app_req_rep -e o -r
  *
- *       d) Timeout: Green enclave sends position <1,1,1> twice, with receive timeout of 3 seconds;
- *                   Orange replies with 100 bytes of raw data <2,2,3>, in two separate calls
+ *    c) Timeout:
+ *          The Orange APP is set to reply to one request with raw data <2,2,3>, sending a
+ *          buffer of sequenctial numbers whose size (in Bytes) is defined by the -o option.
  *      orange:  ./app_req_rep -e o -o 230
+ *          The Green APP sends requests with position <1,1,1> information.
+ *          The -n 2 option configures the APP to send 2 sequential requests;
+ *          Green will report timeouts (set to 3 seconds using the -b option) and uses
+ *          the -o option, so it knows to expect raw data (without specifying the size).
  *      green:   ./app_req_rep -n 2 -b 3000 -o 0
- *               Waits to see timeouts at green
+ *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e o -o 100
  *
- *
- * Run over emulated IP loopback (requires APP and HAL window for each enclave)
- *     1) Ensure IP Loopback is running:
- *     2) Start HAL:
- *      green:   daemon/hal test/sample_eop_bw_loopback_green.cfg
- *      oprange: daemon/hal test/sample_eop_bw_loopback_orange.cfg
- *     3) Run APPs: See below, but add additional -u option to all commands:
  */
 
 #include "../api/xdcomms.h"
@@ -85,13 +74,6 @@ void opts_print(void) {
   printf(" -o : Copy Raw Buffer of specified size (in bytes): default = -1 (do not send)\n");
   printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
   printf(" -u : URLs for HAL use BW option (UDP/IP): Default = BE options\n");
-
-  printf(" -m : Green to Orange Multiplexing (mux) tag (int): Default = 1\n");
-  printf(" -s : Green to Orange Security (sec)     tag (int): Default = 1\n");
-  printf(" -t : Green to Orange Data type (typ)    tag (int): Default = 1\n");
-  printf(" -M : Orange to Green Multiplexing (mux) tag (int): Default = 2\n");
-  printf(" -S : Orange to Green Security (sec)     tag (int): Default = 2\n");
-  printf(" -T : Orange to Green Data type (typ)    tag (int): Default = 1\n");
 }
 
 /* Parse the configuration file */
@@ -130,25 +112,6 @@ void opts_get(int argc, char **argv) {
       case 'r':
         reverse_flow = 1;
         break;
-        
-      case 'm':
-        mux_g2o = atoi(optarg);
-        break;
-      case 's':
-        sec_g2o = atoi(optarg);
-        break;
-      case 't':
-        typ_g2o = atoi(optarg);
-        break;
-      case 'M':
-        mux_o2g = atoi(optarg);
-        break;
-      case 'S':
-        sec_o2g = atoi(optarg);
-        break;
-      case 'T':
-        typ_o2g = atoi(optarg);
-        break;
       case ':':
         fprintf(stderr, "\noption needs a value\n");
         opts_print();
@@ -167,7 +130,7 @@ void opts_get(int argc, char **argv) {
 /* Specify Application Data Unit (ADU) Information */
 /*********t************************************************************/
 void trailer_set (trailer_datatype *trl) {
-  static int            n = 1;
+  static int n = 1;
 
   trl->seq  =  n;
   trl->rqr  =  0;
@@ -176,7 +139,8 @@ void trailer_set (trailer_datatype *trl) {
   trl->crc  =  0;
   n += 1;
 }
-  
+
+/* Create Position ADU and return its length (changes z value for each call) */
 size_t position_set (uint8_t *adu) {
   static double         z = 102;     /* changing value intitialized */
   position_datatype  *out = (position_datatype *) adu;
@@ -189,27 +153,22 @@ size_t position_set (uint8_t *adu) {
   return((size_t) sizeof(*out));
 }
 
+/* Create Raw ADU and return its length  */
 size_t raw_set (uint8_t *adu, size_t len) {
-  uint32_t            i;
-  raw_datatype       *out = (raw_datatype *) adu;
-  uint8_t            *data = (uint8_t *) (out + 1);
+  uint32_t       i;
+  raw_datatype  *out  = (raw_datatype *) adu;
+  uint8_t       *data = (uint8_t *) (out + 1);
   
   out->data_len = len;
   trailer_set(&(out->trailer));
-//  fprintf(stderr, "%s: out=%p dat0=%p dat1=$%p\n", __func__, out, data, data + 1);
-//  fprintf(stderr, "%s: max=%d len=%d (total=%ld)\n", __func__, ADU_SIZE_MAX_C, (int) len,  sizeof(*out) + len);
-  for (i=0; i<len; i++) {
-    data[i] = (uint8_t) (i % 256);
-//    fprintf(stderr, "i=%d d=%x ", i, data[i]);
-  }
-//  fprintf(stderr, "\nYYYYY data: %x %x %x %x\n", adu[216], adu[217], adu[218], adu[219]);
+  for (i=0; i<len; i++) data[i] = (uint8_t) (i % 256);
   return((size_t) sizeof(*out) + len);
 }
 
 /**********************************************************************/
 /* Send and receive (or receive and send) one ADU */
 /*********t************************************************************/
-/* Create, send and print one message */
+/* Send and print one message */
 void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, int new_flag) {
   fprintf(stderr, "app tx: ");
   switch (tag_pub->typ) {
@@ -229,10 +188,10 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, in
 }
 
 
-/* Create, send and print one message */
+/* Receive and print one message */
 void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub) {
   int rv=-1;
-//  xdc_blocking_recv(socket_sub, adu, r_tag);
+//  xdc_blocking_recv(socket_sub, adu, r_tag);     /* 6month API only supports blocking receive */
   rv = xdc_recv(socket_sub, adu, tag_sub);
   if (rv > 0) {
     fprintf(stderr, "app rx: ");
@@ -255,10 +214,10 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_su
   }
 }
 
-/* One send & receive loop (or receive & send loop)  */
+/* One send & one receive (or one receive & one send)  */
 void send_and_recv(gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub, int receive_first) {
-  uint8_t            adu[ADU_SIZE_MAX_C];
-  size_t             adu_len;
+  uint8_t   adu[ADU_SIZE_MAX_C];
+  size_t    adu_len;
   
   if (receive_first == 0) send_one(adu, &adu_len, tag_pub, socket_pub, 1);
   recv_one(adu, &adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
@@ -306,12 +265,12 @@ int main(int argc, char **argv) {
     xdc_register(raw_data_encode, raw_data_decode, DATA_TYP_RAW);
   xdc_ctx();
   socket_pub = xdc_pub_socket();
-//  socket_sub = xdc_sub_socket(tag_sub);
+//  socket_sub = xdc_sub_socket(tag_sub);   /* 6month API does not support timeout parameter */
   socket_sub = xdc_sub_socket_non_blocking(tag_sub, sub_block_timeout_ms);
   
   // C) Run Experiment (Calculating delay and read-write loop rate)
   gettimeofday(&t0, NULL);
-  for (i=0; i<loop_count; i++) send_and_recv(&tag_pub, &tag_sub, socket_pub, socket_sub, receive_first);  // usleep(1111);
+  for (i=0; i<loop_count; i++) send_and_recv(&tag_pub, &tag_sub, socket_pub, socket_sub, receive_first);
   gettimeofday(&t1, NULL);
   elapsed_us = ((t1.tv_sec-t0.tv_sec)*1000000) + t1.tv_usec-t0.tv_usec;
   fprintf(stderr, "Elapsed = %ld us, rate = %f rw/sec\n", elapsed_us, (double) 1000000*loop_count/elapsed_us);
