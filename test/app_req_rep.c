@@ -1,36 +1,51 @@
 /*
  * APP_EXAMPLE.C
- *   Simple Request-Reply application to test new HAL API over MS loopback driver.
- *
+ *   Simple Request-Reply application to test new HAL API
  * December 2020, Perspecta Labs
+ *
  *
  * Compilation:
  *   cd ~/gaps/build/src/hal/test/
- *   gcc -c app_req_rep.c -I ../log
- *   gcc -o app_req_rep app_req_rep.o ../api/xdcomms.o ../appgen/6month-demo/gma.o ../log/log.o ../appgen/6month-demo/float.o  -l zmq
+ *   make clean; make
  *
- * HAL:
- *      green:   ~/gaps/build/src/hal$ daemon/hal test/sample_eop_be_loopback_green.cfg
- *      oprange: ~/gaps/build/src/hal$ daemon/hal test/sample_eop_be_loopback_orange.cfg
+ * Run over ILIP device loopback driver (requires APP and HAL window for each enclave)
+ *     1) Ensure device Loopback is running (if not insmod loopback and ILIP drivers):
+ *               ls /dev/gaps_ilip_*
+ *               /dev/gaps_ilip_0_root  /dev/gaps_ilip_1_write  /dev/gaps_ilip_2_write ...
+ *               /dev/gaps_ilip_1_read  /dev/gaps_ilip_2_read ....
  *
- * Run:
- *   0) Options:
+ *     2) Start HAL: run different commands in green and orange HAL windows where specified:
+ *               cd ~/gaps/build/src/hal/test/
+ *      green:   daemon/hal test/sample_eop_be_loopback_green.cfg
+ *      oprange: daemon/hal test/sample_eop_be_loopback_orange.cfg
+ *
+ *     3) Run APPs: run different commands in green and orange APP windows where specified:
+ *       a) View APP Options:
+ *               cd ~/gaps/build/src/hal/test/
  *               ~/gaps/build/src/hal/test/app_req_rep -h
  *
- *   1) Default: Green enclave sends position <1,1,1>; Orange enclave replies with posiiton <2,2,1>
+ *       b) Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep
  *      oprange: ./app_req_rep -e o
  *
- *   3) Reverse: Orange enclave sends position <2,2,1>; Green enclave replies with posiiton <1,1,1>
+ *       c) Reverse: Orange enclave sends position <2,2,1>; Green enclave replies with posiiton <1,1,1>
  *      green:   ./app_req_rep -r
  *      oprange: ./app_req_rep -e o -r
  *
- *   3) Timeout: Green enclave sends position <1,1,1> twice, with receive timeout of 3 seconds;
- *               Orange replies with 100 bytes of raw data <2,2,3>, in two separate calls
- *      orange:  ./app_req_rep -e o -o 100
+ *       d) Timeout: Green enclave sends position <1,1,1> twice, with receive timeout of 3 seconds;
+ *                   Orange replies with 100 bytes of raw data <2,2,3>, in two separate calls
+ *      orange:  ./app_req_rep -e o -o 230
  *      green:   ./app_req_rep -n 2 -b 3000 -o 0
  *               Waits to see timeouts at green
  *      orange:  ./app_req_rep -e o -o 100
+ *
+ *
+ * Run over emulated IP loopback (requires APP and HAL window for each enclave)
+ *     1) Ensure IP Loopback is running:
+ *     2) Start HAL:
+ *      green:   daemon/hal test/sample_eop_bw_loopback_green.cfg
+ *      oprange: daemon/hal test/sample_eop_bw_loopback_orange.cfg
+ *     3) Run APPs: See below, but add additional -u option to all commands:
  */
 
 #include "../api/xdcomms.h"
@@ -46,12 +61,11 @@ int  mux_g2o = 1, sec_g2o = 1, typ_g2o = DATA_TYP_POSITION;    /* one-way reques
 int  mux_o2g = 2, sec_o2g = 2, typ_o2g = DATA_TYP_POSITION;    /* one-way reply tag */
 int  log_level            = 2;
 char enclave              = 'g';
-int  reverse_flow         = 0;    // gree client; orange server
+int  reverse_flow         = 0;    // green client; orange server
 int  receive_first        = 0;
 int  loop_count           = 1;
 int  sub_block_timeout_ms = -1;
 int  copy_buf_size        = -1;
-
 # define IPC_ADDR_MAX 50
 char xdc_addr_sub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halsubbegreen";
 char xdc_addr_pub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halpubbegreen";
@@ -70,6 +84,7 @@ void opts_print(void) {
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Copy Raw Buffer of specified size (in bytes): default = -1 (do not send)\n");
   printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
+  printf(" -u : URLs for HAL use BW options: Default = BE options\n");
 
   printf(" -m : Green to Orange Multiplexing (mux) tag (int): Default = 1\n");
   printf(" -s : Green to Orange Security (sec)     tag (int): Default = 1\n");
@@ -105,6 +120,12 @@ void opts_get(int argc, char **argv) {
         copy_buf_size = atoi(optarg);
         typ_o2g = DATA_TYP_RAW;
         sec_o2g = 3;               /* ILIP support <2 3 3> not <2 2 3> */
+        break;
+      case 'u':
+        char xdc_addr_sub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halsubbwgreen";
+        char xdc_addr_pub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halpubbwgreen";
+        char xdc_addr_sub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halsubbworange";
+        char xdc_addr_pub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halpubbworange";
         break;
       case 'r':
         reverse_flow = 1;
