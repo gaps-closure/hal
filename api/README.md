@@ -69,7 +69,7 @@ In future versions of this API, we plan to support additional send and receive c
 
 #### Data API Summary
 
-In summary, the application links to the HAL data-plane client API library (`libxdcomms.a`). Upon startup, the application initializes the URIs for the 0MQ endpoints, registers codecs for the application datatypes, and initializes the send and recv sockets. The applicaiton can then sends and receives data using pointers to in-memory data structures and associated tags. An example test program that makes uses of this client API can be found in `hal\test\halperf.py`.
+In summary, the application initializes the URIs for the 0MQ endpoints, registers codecs for the application datatypes, and initializes the send and recv sockets. The applicaiton can then sends and receives data using pointers to in-memory data structures and associated tags. An example python test program that makes uses of this client API can be found in `hal\test\halperf.py`, which links to the HAL data-plane client API library (`libxdcomms.sa`). A second C test program, which makes use of the recv timeouts,  can be found in [hal\test\app_req_rep.c](../test\app_req_rep.c), which links to HAL data-plane client API library (`libxdcomms.a`).
 
 ### HAL Control-Plane API
 
