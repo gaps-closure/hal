@@ -11,6 +11,7 @@
 #define DATA_TYP_POSITION     1
 #define DATA_TYP_DISTANCE     2
 #define DATA_TYP_RAW          3
+#define DATA_TYP_BIG          0x01234567    /* Test Big Data Type ID (must set in ILIP ACM) */
 
 typedef struct _trailer_datatype {
 	uint32_t seq;

@@ -50,11 +50,18 @@ void sigintHandler(int sig_num)
   exit(0);
 }
 
+#define CTAG_MOD   256
 /* convert tag into compressed tag if not set */
 void convert_into_ctag(const char *id, selector *s) {
   if ( (strcmp(id, s->dev) == 0) && (s->ctag == -1) ) {
-    s->ctag = (256 * ((256 * (s->tag.mux)) + (s->tag.sec))) + (s->tag.typ);
-//    fprintf(stderr, "converted %s m=%d s=%d t=%d -> ctag=%d (0x%06x)\n", s->dev, s->tag.mux, s->tag.sec, s->tag.typ, s->ctag, s->ctag);
+//    s->ctag = (256 * ((256 * (s->tag.mux)) + (s->tag.sec))) + (s->tag.typ);
+      s->ctag = (CTAG_MOD * (
+                    (CTAG_MOD * ((s->tag.mux) % CTAG_MOD)) +
+                                ((s->tag.sec) % CTAG_MOD)
+                            )
+                ) +             ((s->tag.typ) % CTAG_MOD);
+
+    fprintf(stderr, "converted %s m=%d s=%d t=%d -> ctag=%d (0x%06x)\n", s->dev, s->tag.mux, s->tag.sec, s->tag.typ, s->ctag, s->ctag);
   }
 }
 
