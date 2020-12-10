@@ -8,7 +8,7 @@ Partitioned application programs use the HAL API to communicate data through the
 
 ### HAL Data-Plane Client API
 
-The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, providing a single high-level interace to support all cross-domain communication (xdc) between security enclaves. The client API is available as a library that cross-domain applications can link to. We describe the high level API here, and several lower-level calls are available (see `xdcomms.h`).
+The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, providing a single high-level interace to support all cross-domain communication (xdc) between security enclaves. The client API is available as a library that cross-domain applications can link to. We describe the high level API here, and several lower-level calls are available (see [xdcomms.c](xdcomms.c),).
 
 The application needs to perform some initialization steps before it can send and receive data.
 
@@ -26,7 +26,7 @@ Additionally, the application must register (de-)serialization codec functions f
 extern void xdc_register(codec_func_ptr encoder, codec_func_ptr decoder, int type);
 ```
 
-Currently, the HAL API supports two codecs, which allow sending position and distance information. These codecs are available by linking the application with the appgen/libgma.a (or appgen/libgma.so) library and including [appgen/gma.h](../appgen/gma.h).
+The HAL API supports currently includes codecs to send and receive position and distance information. These codecs are available by linking the application with the appgen/libgma.a (or appgen/libgma.so) library and including [appgen/gma.h](../appgen/gma.h).
 ```
 xdc_register(position_data_encode, position_data_decode, DATA_TYP_POSITION);
 xdc_register(distance_data_encode, distance_data_decode, DATA_TYP_DISTANCE);
@@ -41,7 +41,7 @@ extern void *xdc_sub_socket(gaps_tag tag);
 extern void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout);
 ```
 
-The first function creates the 0MQ context (returning a pointer to the context). The other functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) or receive (on the API sub socket) data. In all cases the HAL-connect functions return a (void *) socket pointer. With the two sub sockets, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter (see below). With the non-blocking sub socket, the user specifies a timeout value (in milliseconds). If the timeout value is -1, then an xdc_recv() call will block until a message is available; else, for all positive timeout values, an xdc_recv() call will wait for a message for that amount of time before returning with -1 value.
+The xdc_ctx() function creates the 0MQ context (returning a pointer to the context). The other functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) or receive (on the API sub socket) data. In all cases the HAL-connect functions return a (void *) socket pointer. With the two sub sockets, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter (see below). With the non-blocking sub socket, the user specifies a timeout value (in milliseconds). If the timeout value is -1, then an xdc_recv() call will block until a message is available; else, for all positive timeout values, an xdc_recv() call will wait for a message for that amount of time before returning with -1 value.
 
 
 #### Send and Recv ADUs

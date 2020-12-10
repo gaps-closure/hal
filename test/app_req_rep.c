@@ -19,11 +19,7 @@
  *      green:   ./app_req_rep
  *      oprange: ./app_req_rep -e o
  *
- *    b) Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
- *      green:   ./app_req_rep -r
- *      oprange: ./app_req_rep -e o -r
- *
- *    c) Timeout:
+ *    b) Timeout:
  *          The Orange APP is set to reply to one request with raw data <2,2,3>, sending a
  *          buffer of sequenctial numbers whose size (in Bytes) is defined by the -o option.
  *      orange:  ./app_req_rep -e o -o 230
@@ -34,6 +30,18 @@
  *      green:   ./app_req_rep -n 2 -b 3000 -o 0
  *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e o -o 100
+ *
+ *    c) Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
+ *      green:   ./app_req_rep -r
+ *      oprange: ./app_req_rep -e o -r
+ *
+ *    d) Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *      green:   ./app_req_rep -g
+ *      oprange: ./app_req_rep -e o -g
+ *
+ *    e) Use UDP: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *      green:   ./app_req_rep -g -u
+ *      oprange: ./app_req_rep -e o -g -u
  */
 
 #include "../api/xdcomms.h"
@@ -124,8 +132,8 @@ void opts_get(int argc, char **argv) {
         fprintf(stderr, "\nSkipping undefined option (%c)\n", opt);
     }
   }
-  fprintf(stderr, "g2o-tag = [%d, %d, %d] o2g-tag = [%d, %d, %d] ", mux_g2o, sec_g2o, typ_g2o, mux_o2g, sec_o2g, typ_o2g);
-  fprintf(stderr, "timeout=%d, loop_count=%d, enclave=%c, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, enclave, reverse_flow, copy_buf_size, log_level);
+  fprintf(stderr, "%c channels: g2o-tag=[%d, %d, %d] o2g-tag=[%d, %d, %d]\n", enclave, mux_g2o, sec_g2o, typ_g2o, mux_o2g, sec_o2g, typ_o2g);
+  fprintf(stderr, "Params: timeout=%d, loop_count=%d, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, reverse_flow, copy_buf_size, log_level);
   fprintf(stderr, "API URIs: gsub=%s, gpub=%s, osub=%s, opub=%s\n", xdc_addr_sub_green, xdc_addr_pub_green, xdc_addr_sub_orange, xdc_addr_pub_orange);
 }
 
@@ -176,6 +184,7 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, in
   fprintf(stderr, "app tx: ");
   switch (tag_pub->typ) {
     case DATA_TYP_POSITION:
+    case DATA_TYP_BIG:
       if (new_flag == 1) *adu_len = position_set(adu);
       position_print((position_datatype *) adu);
       break;
@@ -200,6 +209,7 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_su
     fprintf(stderr, "app rx: ");
     switch (tag_sub->typ) {
       case DATA_TYP_POSITION:
+      case DATA_TYP_BIG:
         position_print((position_datatype *) adu);
         break;
       case DATA_TYP_RAW:
