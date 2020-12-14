@@ -1,5 +1,5 @@
 /*
- * APP_EXAMPLE.C
+ * APP_REQ_REP.C
  *   Simple Request-Reply (client-server) application to test the new HAL API
  *   December 2020, Perspecta Labs
  *
@@ -8,38 +8,37 @@
  *   make clean; make
  *
  * 2) View APP Options:
- *   cd ~/gaps/build/src/hal/test/
  *   ./app_req_rep -h
  *
  * 3) Run APP via HAL and Network (after HAL daemon is running and NET is up) in all enclaves
  *    (currently support green and orange enclaves). Defaults to BE (ILIP device) Networking;
- *    but can add -u option to all commands in order to run with BW (UDP/IP) Networking.
+ *    but can add -u option (see example [e] below) in order to run with BW (UDP/IP) Networking.
  *
- *    a) Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
+ *    [a] Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep
  *      oprange: ./app_req_rep -e o
  *
- *    b) Timeout:
- *          The Orange APP is set to reply to one request with raw data <2,2,3>, sending a
- *          buffer of sequenctial numbers whose size (in Bytes) is defined by the -o option.
+ *    [b] Timeout:
+ *          The Orange APP replies to one request with raw data <2,2,3>, sending a buffer of
+ *          sequenctial numbers whose size (in Bytes) is defined by the '-o' option.
  *      orange:  ./app_req_rep -e o -o 230
  *          The Green APP sends requests with position <1,1,1> information.
- *          The -n 2 option configures the APP to send 2 sequential requests;
- *          Green will report timeouts (set to 3 seconds using the -b option) and uses
- *          the -o option, so it knows to expect raw data (without specifying the size).
+ *          The '-n 2' option configures the APP to send 2 sequential requests;
+ *          Green will report timeouts (set to 3 seconds using the '-b' option) and uses the
+ *          '-o' option, so it knows to expect raw data (without specifying the size).
  *      green:   ./app_req_rep -n 2 -b 3000 -o 0
  *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e o -o 100
  *
- *    c) Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
+ *    [c] Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
  *      green:   ./app_req_rep -r
  *      oprange: ./app_req_rep -e o -r
  *
- *    d) Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *    [d] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep -g
  *      oprange: ./app_req_rep -e o -g
  *
- *    e) Use UDP: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *    [e] Use UDP: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep -g -u
  *      oprange: ./app_req_rep -e o -g -u
  */
