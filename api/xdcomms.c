@@ -124,6 +124,9 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
 
   /* b) Create CLOSURE packet header (TODO: remove NBO ha tag, len) */
   tag_cp(&(p->tag), tag);
+
+// fprintf(stderr, "%s: mux = %d = %d\n", __func__, tag->mux, *((uint32_t *) p));
+
   p->data_len = (uint32_t) *buff_len;
   /* TODO: preplace last two with  sizeof(*p) - ADU_SIZE_MAX_C  */
   *p_len = (*buff_len) + sizeof(p->tag) + sizeof(p->data_len);

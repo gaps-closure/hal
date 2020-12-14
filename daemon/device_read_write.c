@@ -114,6 +114,8 @@ pdu *read_pdu(device *idev) {
 
   log_debug("HAL reads  %s from %s (fd=%02d) rv=%d", idev->model, idev->id, fd, pkt_len);
   log_buf_trace("Packet", buf, pkt_len);
+  
+//log_trace("mux=%d", *((uint32_t *) buf));
 
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));

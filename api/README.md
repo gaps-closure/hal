@@ -8,7 +8,7 @@ Partitioned application programs use the HAL API to communicate data through the
 
 ### HAL Data-Plane Client API
 
-The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, providing a single high-level interace to support all cross-domain communication (xdc) between security enclaves. The client API is available as a library that cross-domain applications can link to. We describe the high level API here, and several lower-level calls are available (see [xdcomms.c](xdcomms.c),).
+The HAL Data-Plane API abstracts the different hardware APIs used by CDGs, providing a single high-level interace to support all cross-domain communication (xdc) between security enclaves. The client API is available as a library that cross-domain applications can link to. 
 
 The application needs to perform some initialization steps before it can send and receive data.
 
@@ -66,6 +66,17 @@ extern int  xdc_recv(void *socket, void *adu, gaps_tag *tag);
 In additon to the selection of socket (e.g., returned by the xdc_pub_socket() call), the user specifies buffers for the Application Data Unit (adu) and tag. The tag data type (e.g., position or distance) specifies the adu structure (and which registered encode/decode function to use).
 
 In future versions of this API, we plan to support additional send and receive communication patterns including asynchronous receive calls using one-shot or repeated callbacks that can be registered by the application, sending a tagged request and receiving a reply matching the tag, suport for a stream of sequenced messages with in-order delivery, etc.
+
+#### Other API Calls
+In addition to the main API configuration and send/receive calls, there are several lower-level calls  available (see [xdcomms.h](xdcomms.h),). There include copying the tag structure and setting the API log level.
+
+```
+extern void tag_cp(gaps_tag *tag_out, gaps_tag *tag_in); 
+extern void xdc_log_level(int new_level);
+```
+
+The log level can be set from level 0 (trace) to level 5 (fatal). The default is level 2 (info), which prints no debug (level 1) or trace (level 0) information.
+
 
 #### Data API Summary
 

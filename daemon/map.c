@@ -36,9 +36,8 @@ void log_log_pdu(int level, pdu *pdu, const char *fn) {
     if (fd[i] != NULL) {
       if (pdu == NULL)  log_warn("Cannot print NULL PDU");
       else {
-        fprintf(fd[i], "PDU dev=%s (from %s)", pdu->psel.dev, fn);
+        fprintf(fd[i], "PDU dev=%s (from %s) ", pdu->psel.dev, fn);
         selector_print(&(pdu->psel), fd[i]);
-//TODO
         data_print("Encoded-Data", pdu->data, pdu->data_len);
       }
     }
