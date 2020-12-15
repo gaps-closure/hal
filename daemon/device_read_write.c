@@ -84,7 +84,8 @@ pdu *read_pdu(device *idev) {
       pkt_len = read(fd, buf, 256);     /* HACK, max to exact size of of ILIP packet */
     }
     else if (strcmp(com_model, "sdh_be_v3") == 0) {
-      pkt_len = read(fd, buf, 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
+      //      pkt_len = read(fd, buf, 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
+      pkt_len = read(fd, buf, 2304);    /* v12  bigger packets (buffer big en */
       pkt_len = 256;                    /* HACK to packet (256) - actually gets 512 */
     }
     else {

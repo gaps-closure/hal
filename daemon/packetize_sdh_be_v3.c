@@ -71,5 +71,6 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
   
 //  data_print("Data",  (uint8_t *) pkt->dma_data_addr_lo, in->data_len);
 //    sdh_be_v3_print(pkt); // exit(1);
-    return (sizeof(*pkt));       /* v2+ always sends 256 byte packet */
+//    return (sizeof(*pkt));       /* v2+ always sends 256 byte packet */
+    return (sizeof(*pkt) + in->data_len);     /* v3 (Mercury12) sends payload PLUS 256 byte packet */
 }
