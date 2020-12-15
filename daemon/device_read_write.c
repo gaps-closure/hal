@@ -138,7 +138,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   const char     *com_type;
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
-  log_trace("HAL writing to %s on fd=%d\n", odev->id, odev->writefd);
+  log_trace("HAL writing to %s on fd=%d (using buf=%p)\n", odev->id, odev->writefd, (void *) buf);
   /* a) Convert into packet based on interface packet model  */
 //  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
