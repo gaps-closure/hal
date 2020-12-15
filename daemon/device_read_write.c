@@ -138,7 +138,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   const char     *com_type;
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
-  log_trace("HAL writting to %s on fd=%d\n", odev->id, odev->writefd);
+  log_trace("HAL writing to %s on fd=%d\n", odev->id, odev->writefd);
   /* a) Convert into packet based on interface packet model  */
 //  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
@@ -149,7 +149,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   fd = odev->writefd;
   com_type = odev->comms;
 
-  log_trace("HAL writing using comms type %s", com_type);
+  log_trace("HAL writing using comms type %s (len=%d buf=%p)", com_type, pkt_len, (void *)buf);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "ilp") == 0)
