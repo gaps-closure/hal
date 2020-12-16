@@ -168,7 +168,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   (odev->count_w)++;
 
   (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
-  log_debug("HAL writes %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
+  log_debug("HAL written %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
   log_buf_trace("Packet", buf, pkt_len);
 }
 
