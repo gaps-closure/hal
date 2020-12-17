@@ -18,7 +18,18 @@
  *      green:   ./app_req_rep
  *      oprange: ./app_req_rep -e o
  *
- *    [b] Timeout:
+ *    [b] Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
+ *      green:   ./app_req_rep -r
+ *      oprange: ./app_req_rep -e o -r
+ *
+ *    [c] Raw Data: Green enclave sends raw data <1,1,3>; Orange replies with posiiton <2,2,1>
+ *          The '-g 0' option, means orange expect to receive a request with raw data (of any size)
+ *      orange:  ./app_req_rep -e o -g 0
+ *          The Green APP sends raw data <1,1,3>, sending a buffer of sequenctial numbers
+ *          whose size (in Bytes) is defined by the '-g' option.
+ *      green:   ./app_req_rep -g 1000
+ *
+ *    [d] Timeout: Green enclave sends posiiton <1,1,1>; Orange replies with raw data <2,2,3>
  *          The Orange APP replies to one request with raw data <2,2,3>, sending a buffer of
  *          sequenctial numbers whose size (in Bytes) is defined by the '-o' option.
  *      orange:  ./app_req_rep -e o -o 230
@@ -30,17 +41,13 @@
  *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e o -o 100
  *
- *    [c] Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
- *      green:   ./app_req_rep -r
- *      oprange: ./app_req_rep -e o -r
+ *    [e] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *      green:   ./app_req_rep -G
+ *      oprange: ./app_req_rep -e o -G
  *
- *    [d] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
- *      green:   ./app_req_rep -g
- *      oprange: ./app_req_rep -e o -g
- *
- *    [e] Use UDP: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
- *      green:   ./app_req_rep -g -u
- *      oprange: ./app_req_rep -e o -g -u
+ *    [f] Use UDP: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *      green:   ./app_req_rep -G -u
+ *      oprange: ./app_req_rep -e o -G -u
  */
 
 #include "../api/xdcomms.h"
@@ -74,19 +81,20 @@ void opts_print(void) {
   printf("[Options]:\n");
   printf(" -b : Subscriber Blocking timeout (in milliseconds): default = -1 (blocking) \n");
   printf(" -e : Enclave (single char). Currently support 'g' or 'o': default = 'g'\n");
-  printf(" -g : Green sends BIG data type (0x01234567): default to send position type (1) \n");
+  printf(" -g : Green sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
+  printf(" -G : Green sends BIG data type (0x01234567): default = position type (1) \n");
   printf(" -h : Print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -n : Number of request-response loops: Default = 1\n");
-  printf(" -o : Orange sends Raw data of specified size (in bytes): default to send position type (1) \n");
+  printf(" -o : Orange sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
   printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
   printf(" -u : URLs for HAL use BW option (UDP/IP): Default = BE options\n");
 }
 
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
-  int opt;
-  while((opt =  getopt(argc, argv, "b:e:ghl:n:o:ru")) != EOF)
+  int opt, v;
+  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:ru")) != EOF)
   {
     switch (opt)
     {
@@ -97,6 +105,11 @@ void opts_get(int argc, char **argv) {
         enclave = *optarg;      /* e.g.. green = 'g', orange = 'o' */
         break;
       case 'g':
+        v = atoi(optarg);
+        if (v > 0) copy_buf_size = v;
+        typ_g2o = DATA_TYP_RAW;     /* ILIP ACM supports <1 1 3> */
+        break;
+      case 'G':
         typ_g2o = DATA_TYP_BIG;     /* Must have added <1 1 0x01234567> into ILIP ACM */
         break;
       case 'h':
@@ -109,7 +122,8 @@ void opts_get(int argc, char **argv) {
         loop_count = atoi(optarg);
         break;
       case 'o':
-        copy_buf_size = atoi(optarg);
+        v = atoi(optarg);
+        if (v > 0) copy_buf_size = v;
         typ_o2g = DATA_TYP_RAW;
         sec_o2g = 3;               /* ILIP ACM supports <2 3 3> not <2 2 3> */
         break;
