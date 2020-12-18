@@ -199,6 +199,8 @@ gapstyp = {
 }
   
 class DFDLWriter:
+  def __init__(self, typbase=0):
+    self.typbase = typbase
   def make_array(self, f):
     appstr = ''
     if f[0] in gapstyp:
@@ -218,7 +220,7 @@ class DFDLWriter:
     return appstr
     
   def make_appdata(self,tree,pdutype):
-    dtypid = 0
+    dtypid = self.typbase
     appstr = ''
     appstr += '<xs:element name="ApplicationData">' + '\n'
     appstr += '<xs:complexType>' + '\n'

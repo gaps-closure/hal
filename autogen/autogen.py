@@ -135,6 +135,7 @@ def get_args():
   p.add_argument('-g', '--gaps_devtyp', required=True, type=str, help='GAPS device type [bw_v1 or be_v1]')
   p.add_argument('-d', '--dfdl_outfile', required=True, type=str, help='Output DFDL file')
   p.add_argument('-e', '--encoder_outfile', required=False, default='codectest', type=str, help='Output codec filename without .c/.h suffix')
+  p.add_argument('-T','--typ_base', required=False, type=int, default=0, help='Application typ base index for tags (must match RPC Generator)')
   #p.add_argument('-j', '--json_cle_file', required=True, type=str, help='Input CLE-JSON file')
   p.add_argument('-c', '--clang_args', required=False, type=str, 
                  default='-x,c++,-stdlib=libc++', help='Arguments for clang')
@@ -155,12 +156,12 @@ def main():
   for x in ttree: print(x)
 
   print('Writing DFDL file ' + args.dfdl_outfile + ' for ' + args.gaps_devtyp)
-  DFDLWriter().write(args.dfdl_outfile, ttree, args.gaps_devtyp)
+  DFDLWriter(args.typ_base).write(args.dfdl_outfile, ttree, args.gaps_devtyp)
 
   print('Writing codec files and extras: ' + args.encoder_outfile + '.c/.h, float754.c/.h')
-  CodecWriter().writeheader(args.encoder_outfile, ttree)
-  CodecWriter().writecodecc(args.encoder_outfile, ttree)
-  CodecWriter().writextras()
+  CodecWriter(args.typ_base).writeheader(args.encoder_outfile, ttree)
+  CodecWriter(args.typ_base).writecodecc(args.encoder_outfile, ttree)
+  CodecWriter(args.typ_base).writextras()
 
 if __name__ == '__main__':
   main()

@@ -244,6 +244,8 @@ decfn = {
 }
   
 class CodecWriter:
+  def __init__(self,typbase=0):
+    self.typbase=typbase
   def make_scalar(self,d,f,ser,inp):
     appstr  = ''
     if ser == 'header':
@@ -281,15 +283,19 @@ class CodecWriter:
     elif ser == 'sizeof':
       appstr += 'sizeof(' + cintyp[f[0]] + ') * ' + str(f[2]) + ' + '
     else:
-      raise Exception('Unknown serializarion: ' + ser)
+      raise Exception('Unknown serialization: ' + ser)
     return appstr
 
   def make_dtyp_enum(self,tree):
     dtypid = 0
     appstr = ''
+    appstr += '#ifndef TYP_BASE' + '\n'
+    appstr += '#define TYP_BASE ' + str(self.typbase) + '\n'
+    appstr += '#endif /* TYP_BASE */' + '\n'
+
     for dtypnm in [l[0] for l in tree]:
       dtypid += 1
-      appstr += '#define DATA_TYP_' + dtypnm.upper() + ' ' + str(dtypid) + '\n'
+      appstr += '#define DATA_TYP_' + dtypnm.upper() + ' TYP_BASE + ' + str(dtypid) + '\n'
     return appstr + '\n'
 
   def make_structs(self,dtypnm,flds,inp=True):
