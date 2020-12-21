@@ -5,7 +5,8 @@
 
 #include "../api/xdcomms.h"
 
-#include <unistd.h>	
+#include <getopt.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <libconfig.h>
@@ -73,7 +74,8 @@ typedef struct _hal {
 typedef struct _pdu {
   selector  psel;                   /* Input device and tag info */
   size_t    data_len;
-  uint8_t   data[ADU_SIZE_MAX_C];   /* opaque to HAL - serialized by APP */
+//  uint8_t   data[ADU_SIZE_MAX_C];   /* TODO_PDU_PTR */
+  uint8_t   *data;                  /* TODO_PDU_PTR */
 } pdu;
 
 #endif

@@ -1,6 +1,6 @@
 /*
  * HAL device read and write (loop)
- *   April 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  */
 
 /**********************************************************************/
@@ -12,11 +12,13 @@
 #include "device_open.h"
 #include "packetize.h"
 
-int sel_verbose=1;
+# define PACKET_MAX (ADU_SIZE_MAX_C + 256)
+
+int sel_verbose=0;
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
-/* Transfform ADU data  */
+/* Transform ADU data  */
 pdu *codec(halmap *h, pdu *ipdu) {
   pdu *opdu = NULL;
 
@@ -56,25 +58,40 @@ void devs_stat_print(device *devs) {
 /* Read device and return pdu */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
 pdu *read_pdu(device *idev) {
-  int                 pkt_len=0;
+  int                 pkt_len=0, valid;
   pdu                *ret = NULL;
-  static uint8_t      buf[PACKET_MAX];
+  static uint8_t      buf[PACKET_MAX];        /* Packet buffer when reading */
   int                 fd;
-  const char         *com_type;
+  const char         *com_type, *com_model;
   struct sockaddr_in  socaddr_in;
   socklen_t           sock_len = sizeof(socaddr_in);
 
   /* a) read input into buf and get its length (with input dev_id and fd) */
-  fd = idev->readfd;
-  com_type = idev->comms;
+  fd        = idev->readfd;
+  com_type  = idev->comms;
+  com_model = idev->model;
 //exit (21);
-  if (sel_verbose) log_trace("HAL reading using comms type %s", com_type);
+  if (sel_verbose) log_trace("HAL reading using comms type %s (model=%s)", com_type, com_model);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "ilp") == 0)
       || (strcmp(com_type, "tcp") == 0)
       ) {
-    pkt_len = read(fd, buf, PACKET_MAX);     /* write = send for tcp with no flags */
+      
+    // Temporary HACK (NOV 2020) to give ILIP buffer of right sizes for sdh_be_v2 and sdh_be_v3
+    if (strcmp(com_model, "sdh_be_v2") == 0) {
+//      log_fatal("Temporary HACK to give ILIP buffer of 256 on fd=%d: buf=%p len=%d max=%d->256 err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
+      pkt_len = read(fd, buf, 256);     /* HACK, max to exact size of of ILIP packet */
+    }
+    else if (strcmp(com_model, "sdh_be_v3") == 0) {
+      //      pkt_len = read(fd, buf, 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
+      pkt_len = read(fd, buf, 2304);    /* v12  bigger packets (buffer big en */
+      pkt_len = 256;                    /* HACK to packet (256) - actually gets 512 */
+    }
+    else {
+      pkt_len = read(fd, buf, PACKET_MAX);     /* read = recv for tcp with no flags */
+    }
+          
     if (pkt_len < 0) {
       if (sel_verbose) log_trace("read error on fd=%d: rv=%d errno=%d", fd, pkt_len, errno);
       if (errno == EAGAIN) {
@@ -93,15 +110,19 @@ pdu *read_pdu(device *idev) {
     }
   }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
-  
+
   (idev->count_r)++;
 
-  log_debug("HAL reads %s from %s, fd=%02d:", idev->model, idev->id, fd);
+  log_debug("HAL reads  %s from %s (fd=%02d) rv=%d", idev->model, idev->id, fd, pkt_len);
   log_buf_trace("Packet", buf, pkt_len);
+  
+//log_trace("mux=%d", *((uint32_t *) buf));
 
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));
-  pdu_from_packet(ret, buf, pkt_len, idev);
+  valid = pdu_from_packet(ret, buf, pkt_len, idev);
+  if  (valid == 0) return(NULL);
+    
   log_trace("HAL created new PDU");
   log_pdu_trace(ret, __func__);
   return(ret);
@@ -115,20 +136,20 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   int             fd;
   int             pkt_len=0;
   const char     *com_type;
-  static uint8_t  buf[PACKET_MAX];
+  static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
-  log_trace("HAL writting to %s", odev->id);
+  log_trace("HAL writing to %s on fd=%d (using buf=%p)\n", odev->id, odev->writefd, (void *) buf);
   /* a) Convert into packet based on interface packet model  */
-  log_pdu_trace(p, __func__);
+//  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
-  log_buf_trace("Packet", buf, pkt_len);
-  
+//  log_buf_trace("Packet", buf, pkt_len);
+  if (pkt_len == 0) return;      // do not write if bad length
+    
   /* b) Write to interface based on interface comms type */
   fd = odev->writefd;
   com_type = odev->comms;
 
-
-  log_trace("HAL writing using comms type %s", com_type);
+  log_trace("HAL writing using comms type %s (len=%d buf=%p)", com_type, pkt_len, (void *)buf);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "ilp") == 0)
@@ -147,7 +168,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   (odev->count_w)++;
 
   (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
-  log_debug("HAL writes %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
+  log_debug("HAL written %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
   log_buf_trace("Packet", buf, pkt_len);
 }
 
@@ -180,7 +201,7 @@ int process_input(int ifd, halmap *map, device *devs) {
 
   h = halmap_find(ipdu, map);
   if(h == NULL) { 
-    log_warn("%s: No matching HAL map entry for: ", __func__);
+    log_warn("No matching HAL map entry");
     log_pdu_trace(ipdu, __func__);
     pdu_delete(ipdu);
     return (0);
@@ -188,7 +209,7 @@ int process_input(int ifd, halmap *map, device *devs) {
   
   odev = find_device_by_id(devs, h->to.dev);
   if(odev == NULL) { 
-    log_warn("%s: Device %s not found for output\n", __func__,  h->to.dev);
+    log_warn("Device %s not found for output", h->to.dev);
     pdu_delete(ipdu);
     return (0);
   }
@@ -224,14 +245,14 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   FD_ZERO(readfds);
   maxrfd = -1;
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
-    if (d->enabled != 0) {
+    if ((d->enabled != 0) && (d->readfd >= 0)) {
       select_add(d->readfd, &maxrfd, readfds);
       sprintf(str_new, "%s(fd=%d) ", d->id, d->readfd);
       strcat(s, str_new);
       i++;
     }
   }
-  log_debug("HAL Waiting for input from %d device(s): %s", i, s);
+  log_debug("HAL Waiting for first input from %d device(s): %s", i, s);
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 

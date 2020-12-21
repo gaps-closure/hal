@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
@@ -153,7 +154,7 @@ void log_get_fds(int level, FILE **fd_std, FILE **fd_file) {
 void log_log_buf(int level, char *str, void *data, size_t data_len) {
   FILE      *fd[2];
   int        i, j;
-  u_int8_t  *d = (u_int8_t *) data;
+  uint8_t   *d = (uint8_t *) data;
   
   log_get_fds(level, &fd[0], &fd[1]);
   for (i=0; i<2; i++) {

@@ -10,9 +10,7 @@
   #define log_halmap_debug(root, fn)
 #endif
 
-void selector_print(selector *, FILE *);
-void halmap_print_one(halmap *);
-void halmap_print_all(halmap *, int, const char *);
+extern void data_print (const char *, uint8_t *, size_t);
 halmap *halmap_find(pdu *, halmap *);
 void log_log_pdu(int level, pdu *pdu, const char *fn);
 void log_log_halmap(int level, halmap *map_root, const char *fn);

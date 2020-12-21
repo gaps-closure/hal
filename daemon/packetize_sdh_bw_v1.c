@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and SDH BW packet
- *   April 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * v1 uses compressed (April 2020) packet format
  */
@@ -10,6 +10,7 @@
 #include "hal.h"
 #include "crc.h"
 #include "packetize_sdh_bw_v1.h"
+#include "map.h"            /* get data_print */
 
 /* Print Packet */
 void sdh_bw_v1_print(sdh_bw_v1 *p) {
@@ -32,7 +33,8 @@ void pdu_from_sdh_bw_v1 (pdu *out, uint8_t *in , int len) {
   out->psel.ctag = ntohl(pkt->message_tag_ID);
   out->data_len     = ntohs(pkt->data_len);
   // fprintf(stderr, "%s: ctag=%d crc: in=%02x recalc=%02x\n", __func__, out->psel.ctag, ntohs(pkt->crc16), sdh_bw_v1_crc_calc(pkt));
-  memcpy (out->data, pkt->data, out->data_len);
+//  memcpy (out->data, pkt->data, out->data_len);    /* TODO_PDU_PTR */
+  out->data = pkt->data;    /* TODO_PDU_PTR */
 }
 
 /* Put data into buf (using sdh_bw_v1 model) from internal HAL PDU */

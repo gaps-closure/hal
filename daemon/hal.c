@@ -1,6 +1,6 @@
 /*
  * Hardware Abstraction Layer (HAL) between Applicaitons and GAP XD Guards
- *   April 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  * TODO:
  *  XXX: Fix README.md and figure
@@ -50,10 +50,15 @@ void sigintHandler(int sig_num)
   exit(0);
 }
 
+#define CTAG_MOD   256
 /* convert tag into compressed tag if not set */
 void convert_into_ctag(const char *id, selector *s) {
   if ( (strcmp(id, s->dev) == 0) && (s->ctag == -1) ) {
-    s->ctag = (256 * ((256 * (s->tag.mux)) + (s->tag.sec))) + (s->tag.typ);
+      s->ctag = (CTAG_MOD * (
+                    ( CTAG_MOD * ((s->tag.mux) % CTAG_MOD)) +
+                                 ((s->tag.sec) % CTAG_MOD)
+                             )
+                ) +              ((s->tag.typ) % CTAG_MOD);
 //    fprintf(stderr, "converted %s m=%d s=%d t=%d -> ctag=%d (0x%06x)\n", s->dev, s->tag.mux, s->tag.sec, s->tag.typ, s->ctag, s->ctag);
   }
 }
@@ -97,9 +102,9 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
     log_trace("TODO: Openning Stats file: %s", file_name_stats);
   }
   
-  log_info("CONFIG-FILE = %s", file_name_config);
-  log_info("LOG = [file=%s, lev=%d, limit=%d, quiet=%d]", file_name_log, log_level, LOG_LEVEL_MIN, hal_quiet);
-  log_info("wait_us=%d", hal_wait_us);
+  log_trace("CONFIG-FILE = %s", file_name_config);
+  log_trace("LOG = [file=%s, lev=%d, limit=%d, quiet=%d]", file_name_log, log_level, LOG_LEVEL_MIN, hal_quiet);
+  log_trace("wait_us=%d", hal_wait_us);
 
   /* b) Load coniguration */
   cfg_read(&cfg, file_name_config);
@@ -130,7 +135,7 @@ void opts_print(void) {
   printf("OPTIONS: are one of the following:\n");
   printf(" -f : log file name (default = no log file)\n");
   printf(" -h : print this message\n");
-  printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 0)\n");
+  printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -q : quiet: disable logging on stderr (default = enabled)\n");
 //  printf(" -s : statistics file name (default = no log file)\n");
   printf(" -w : device not ready (EAGAIN) wait time in microseconds (default = 1000us): -1 exits if not ready\n");

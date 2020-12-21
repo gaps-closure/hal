@@ -20,7 +20,7 @@ void cfg_read (config_t *cfg, char  *file_name) {
   config_init(cfg);
   if(! config_read_file(cfg, file_name))
   {
-    log_fatal("Exiting: HAL config error in file (%s), line (%d) text(%s)\n", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
+    log_fatal("Exiting: HAL config error in file (%s) on line %d: %s\n", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
     config_destroy(cfg);
     exit(EXIT_FAILURE);
   }

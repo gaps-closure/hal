@@ -1,23 +1,22 @@
-/* Define GAPS Packet Format for SDH BE */
+#define SDH_BE_V2_ADU_SIZE_MAX   208    /* 0x028 – 0x0f7 */
 
-#define SDH_BE_V2_MAX_TLVS         4
-#define SDH_BE_V2_ADU_SIZE_MAX   236
-
-/* TLV */
-typedef struct _tlv_sdh_be_v2 {
-  uint32_t  data_tag;                       /* Type of data */
-  uint32_t  data_len;                       /* Length (in bytes) */
-  uint8_t   data[SDH_BE_V2_ADU_SIZE_MAX];   /* 256 - 5*4 bytes */
-} tlv_sdh_be_v2;
-
-/* packet */
+/* GAPS packet Format ($ = filed is modified from v1, % = field is new in v2) */
 typedef struct _pkt_sdh_be_v2 {
-  uint32_t        session_tag;              /* App Mux */
-  uint32_t        message_tag;              /* Security */
-  uint32_t        message_tlv_count;        /* TLV count (1 for demo) */
-  tlv_sdh_be_v2   tlv[SDH_BE_V2_MAX_TLVS];  /* TLV */
+    uint32_t  session_tag;              /*   Application Mux TAG */
+    uint32_t  message_tag;              /*   Security TAG */
+    uint32_t  descriptor_type;          /* $ Packet type (DMA channel) v3=1-3 */
+    uint32_t  data_tag;                 /*   Type TAG (e.g., DATA_PAYLOAD_1) */
+    uint32_t  gaps_time_lo;             /*   ILIP GAPS Time (set by ILIP) */
+    uint32_t  gaps_time_up;             /*   -- uint64_t causes struct padding */
+    uint32_t  linux_time_lo;            /*   Time Set by Driver */
+    uint32_t  linux_time_up;            /*   (Secs & micro-seconds since 1970) */
+    uint32_t  destination_tag;          /* % Multipurpose */
+    uint32_t  imm_data_len;             /*   Immediate Data Length (in bytes) */
+    uint8_t   imm_data[SDH_BE_V2_ADU_SIZE_MAX];     /* Optional Immediate Data */
+    uint32_t  desc_sip_hash_lo;          /* % 64-bit message description SipHash */
+    uint32_t  desc_sip_hash_up;          /* % Two 32-bit words are set by ILIP */
 } pkt_sdh_be_v2;
 
 /* exported functions */
-void pdu_from_sdh_be_v2 (pdu *, uint8_t *, int);
-int  pdu_into_sdh_be_v2 (uint8_t *, pdu *, gaps_tag *);
+int pdu_from_sdh_be_v2 (pdu *, uint8_t *);
+int pdu_into_sdh_be_v2 (uint8_t *, pdu *, gaps_tag *);

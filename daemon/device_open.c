@@ -1,6 +1,6 @@
 /*
  * HAL device Open, Find and Print
- *   June 2020, Perspecta Labs
+ *   December 2020, Perspecta Labs
  *
  *     a) IPC to application (unix pipe and ZMQ process)
  *     b) INET device (tcp or udp)
@@ -17,10 +17,12 @@
 #define CHILD_IN   pipe_h2a[0]
 
 /* Store information on ILP devices associated with serial root device */
+#define ILP_MAX_DEVICES_PER_ROOT 16
+#define ILP_MAX_ROOT_DEVICES  8
 typedef struct _root_device {
   const char   *root_path;
   int           data_dev_count;
-  device       *data_dev_list[10];
+  device       *data_dev_list[ILP_MAX_DEVICES_PER_ROOT];
 } root_device;
 
 /**********************************************************************/
@@ -285,7 +287,7 @@ void ilp_open_data_devices(device *d) {
     }
     d->readfd  = fd_read;
 
-    log_debug("Opened device %s: %s", d->id, d->path_r);
+    log_trace("Opened read device (fd=%d) %s: %s", d->readfd, d->id, d->path_r);
   }
   
   if (strlen(d->path_w) > 0) {
@@ -297,7 +299,7 @@ void ilp_open_data_devices(device *d) {
     }
     d->writefd = fd_write;
 
-    log_debug("Opened device %s: %s", d->id, d->path_w);
+    log_trace("Opened write device (fd=%d) %s: %s", d->writefd, d->id, d->path_w);
   }
 }
 
@@ -315,14 +317,15 @@ void ilp_root_check(int fd_root, root_device *rd) {
   
   /* For this test and this set of devices application ID is equal to session ID */
   for ( i=0; i<2; i++ ) {
+    log_trace("Write Application ID (%d) to Root Device", application_id[i]);
     write_bytes = write(fd_root, (const void *)&application_id[i], sizeof(application_id[i]));
     if ( write_bytes != sizeof(session_id[i])) {
-      perror( "Error in the write of the application ID");
+      perror( "Error in the write of the application ID: ");
       exit(EXIT_FAILURE);
     }
     read_bytes = read( fd_root, (void*)&session_id[i], sizeof(session_id[i]) );
     if ( read_bytes != sizeof(session_id[i])) {
-      perror( "Error in the read of the session ID");
+      perror( "Error in the read of the session ID: ");
       exit(EXIT_FAILURE);
     }
     
@@ -380,7 +383,7 @@ void ilp_root_device_save_conig(device *d, int *root_count, root_device *root_li
 /* Open ILIP interface */
 void interface_open_ilp(device *d) {
   static int          root_count=0;
-  static root_device  root_list[8], *rd;
+  static root_device  root_list[ILP_MAX_ROOT_DEVICES], *rd;
   int                 i, j;
   
   if (d != NULL) {        /* adding new devces */
