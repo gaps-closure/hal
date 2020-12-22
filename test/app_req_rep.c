@@ -29,14 +29,14 @@
  *          whose size (in Bytes) is defined by the '-g' option.
  *      green:   ./app_req_rep -g 1000
  *
- *    [d] Raw Bidirectional:
- *      orange:  ./app_req_rep -e o -o 800 -g 0
- *      green:   ./app_req_rep -o 0 -g 400
+ *    [d] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
+ *      green:   ./app_req_rep -G
+ *      oprange: ./app_req_rep -e o -G
  *
  *    [e] Timeout: Green enclave sends posiiton <1,1,1>; Orange replies with raw data <2,2,3>
  *          The Orange APP replies to one request with raw data <2,2,3>, sending a buffer of
  *          sequenctial numbers whose size (in Bytes) is defined by the '-o' option.
- *      orange:  ./app_req_rep -e o -o 600
+ *      orange:  ./app_req_rep -e o -o 150
  *          The Green APP sends requests with position <1,1,1> information.
  *          The '-n 2' option configures the APP to send 2 sequential requests;
  *          Green will report timeouts (set to 3 seconds using the '-b' option) and uses the
@@ -45,13 +45,15 @@
  *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e o -o 100
  *
- *    [f] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
- *      green:   ./app_req_rep -G
- *      oprange: ./app_req_rep -e o -G
+ *    [f] Big: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
+ *             (HAL must be configured to use BE (ILIP device) Pyaload Mode in both directions)
+ *      orange:  ./app_req_rep -e o -o 800 -g 0
+ *      green:   ./app_req_rep -o 0 -o 0 -g 400
  *
- *    [g] Use UDP: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
- *      green:   ./app_req_rep -G -u
- *      oprange: ./app_req_rep -e o -G -u
+ *    [g] Big UDP: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
+ *                 (HAL must be configured to use BW (UDP) in both directions)
+ *      green:   ./app_req_rep -u -o 0 -g 700
+ *      oprange: ./app_req_rep -e o -u -o 900 -g 0
  */
 
 #include "../api/xdcomms.h"

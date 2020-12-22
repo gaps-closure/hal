@@ -41,7 +41,7 @@ extern void *xdc_sub_socket(gaps_tag tag);
 extern void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout);
 ```
 
-The xdc_ctx() function creates the 0MQ context (returning a pointer to the context). The other functions connect to [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) or receive (on the API sub socket) data. In all cases the HAL-connect functions return a (void *) socket pointer. With the two sub sockets, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter (see below). With the non-blocking sub socket, the user specifies a timeout value (in milliseconds). If the timeout value is -1, then an xdc_recv() call will block until a message is available; else, for all positive timeout values, an xdc_recv() call will wait for a message for that amount of time before returning with -1 value.
+The xdc_ctx() function creates the 0MQ context (returning a pointer to the context). The other functions connect to the  [HAL daemon listening 0MQ sockets](../daemon#hal-interfaces), in order to send (on the API pub socket) or receive (on the API sub socket) data. In all cases the HAL-connect functions return a (void *) socket pointer. With the two sub sockets, the user specifies which HAL packets it wants to receive, using the HAL tag as a filter (see below). With the non-blocking sub socket, the user specifies a timeout value (in milliseconds). If the timeout value is -1, then an xdc_recv() call will block until a message is available; else, for all positive timeout values, an xdc_recv() call will wait for a message for that amount of time before returning with -1 value.
 
 
 #### Send and Recv ADUs

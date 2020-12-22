@@ -201,7 +201,7 @@ int process_input(int ifd, halmap *map, device *devs) {
 
   h = halmap_find(ipdu, map);
   if(h == NULL) { 
-    log_warn("No matching HAL map entry");
+    log_trace("No matching HAL map entry");
     log_pdu_trace(ipdu, __func__);
     pdu_delete(ipdu);
     return (0);

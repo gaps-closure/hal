@@ -100,5 +100,6 @@ halmap *halmap_find(pdu *p, halmap *map_root) {
       }
     }
   }
+  log_warn("Could not find tag <%d, %d, %d> from %s", tag->mux, tag->sec, tag->typ, p->psel.dev);
   return (halmap *) NULL;
 }
