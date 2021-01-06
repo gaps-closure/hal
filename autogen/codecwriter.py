@@ -4,6 +4,7 @@
 
 HHEAD='''#ifndef GMA_HEADER_FILE
 #define GMA_HEADER_FILE
+#pragma pack(1)
 
 #include <stdio.h>
 #include <stdint.h>
