@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    November, 2020
+#    January, 2021
 #
 # Tested Examples:
 #  1) eri demo running in emulator (start.sh example1) with /dev/vcom devices (default inputs)
@@ -118,7 +118,7 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
         # skip if network device other than tty does not mention local_enclve_name (needed for ilip)
         if ( (dev['comms'] != "ipc") and (dev['comms'] != "tty") ):
             if (local_enclve_name not in dev.values()):
-                if (args.verbose): print('skip this device in:', local_enclve_name)
+                if (args.verbose): print('skip this device in enclave', local_enclve_name)
                 break
         d={}
         if 'enabled' in dev: d['enabled'] = dev['enabled']
@@ -137,7 +137,10 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
             add_tty(local_enclve_name, d, dev)
         index += 1
         hal_config_dev_list.append(dict(d))
-    if (args.verbose): print ('\nNET Device(s) list =', hal_config_dev_list)
+    if (args.verbose): print ('\nNET Device(s) list (', index, 'devices ) =', hal_config_dev_list)
+    if (index < 2):
+      print('\nEXITING: Could not find device info about enclave', local_enclve_name)
+      sys.exit()
     return (hal_config_dev_list)
 
 # Create HAL maps as a list of python dictionaries
@@ -183,9 +186,9 @@ def create_maps(local_enclve_name, halmaps, dev_list):
 ###############################################################
 def combine_lists_into_dict(dev_list, map_list):
     dev_dict  = {'devices': tuple(dev_list)}
-    if (args.verbose):  print(libconf.dumps(dev_dict))
+#    if (args.verbose):  print(libconf.dumps(dev_dict))
     map_dict  = {'maps': tuple(map_list)}
-    if (args.verbose):  print(libconf.dumps(map_dict))
+#    if (args.verbose):  print(libconf.dumps(map_dict))
     map_dict.update(dev_dict)
     return(map_dict)
 

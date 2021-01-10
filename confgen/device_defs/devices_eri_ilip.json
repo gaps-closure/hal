@@ -1,0 +1,26 @@
+{
+  "devices": [
+    {
+      "model":    "sdh_ha_v1",
+      "path":     "./zc/zc",
+      "comms":    "ipc",
+      "mode_in":  "sub",
+      "mode_out": "pub"
+    },
+    {
+      "model":          "sdh_be_v3",
+      "path":           "/dev/gaps_ilip_0_root",
+      "comms":          "ilp",
+      "enclave_name_1": "purple",
+      "path_r_1":       "/dev/gaps_ilip_2_read",
+      "path_w_1":       "/dev/gaps_ilip_2_write",
+      "from_mux_1":     1,
+      "init_at_1":      1,
+      "enclave_name_2": "orange",
+      "path_r_2":       "/dev/gaps_ilip_2_read",
+      "path_w_2":       "/dev/gaps_ilip_2_write",
+      "from_mux_2":     2,
+      "init_at_2":      1
+    }
+  ]
+}

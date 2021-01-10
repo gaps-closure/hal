@@ -11,8 +11,7 @@
  *   ./app_req_rep -h
  *
  * 3) Run APP via HAL and Network (after HAL daemon is running and NET is up) in all enclaves
- *    (currently support green and orange enclaves). Defaults to BE (ILIP device) Networking;
- *    but can add -u option (see example [g] below) in order to run with BW (UDP/IP) Networking.
+ *    (-u option (see example [g] below) in order to run with alternative URIs.
  *
  *    [a] Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep
@@ -51,9 +50,9 @@
  *      green:   ./app_req_rep -o 0 -o 0 -g 400
  *
  *    [g] Big UDP: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
- *                 (HAL must be configured to use BW (UDP) in both directions)
- *      green:   ./app_req_rep -u -o 0 -g 700
- *      oprange: ./app_req_rep -e o -u -o 900 -g 0
+ *                 (HAL is configured to 'bw' URIs)
+ *      green:   ./app_req_rep -u 1 -o 0 -g 700
+ *      oprange: ./app_req_rep -e o -u 1 -o 900 -g 0
  */
 
 #include "../api/xdcomms.h"
@@ -94,13 +93,13 @@ void opts_print(void) {
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Orange sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
   printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
-  printf(" -u : URLs for HAL use BW option (UDP/IP): Default = BE options\n");
+  printf(" -u : URL index for HAL API: Default = be, 1=bw 2='' \n");
 }
 
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt, v;
-  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:ru")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:ru:")) != EOF)
   {
     switch (opt)
     {
@@ -137,10 +136,19 @@ void opts_get(int argc, char **argv) {
         reverse_flow = 1;
         break;
       case 'u':
-        strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubbwgreen");
-        strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubbwgreen");
-        strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsubbworange");
-        strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpubbworange");
+        v = atoi(optarg);
+        if (v==1) {
+          strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubbwgreen");
+          strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubbwgreen");
+          strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsubbworange");
+          strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpubbworange");
+        }
+        else if (v==2) {
+          strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubgreen");
+          strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubgreen");
+          strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsuborange");
+          strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpuborange");
+        }
         break;
       case ':':
         fprintf(stderr, "\noption needs a value\n");
@@ -153,7 +161,17 @@ void opts_get(int argc, char **argv) {
   }
   fprintf(stderr, "%c channels: g2o-tag=[%d, %d, %d] o2g-tag=[%d, %d, %d]\n", enclave, mux_g2o, sec_g2o, typ_g2o, mux_o2g, sec_o2g, typ_o2g);
   fprintf(stderr, "Params: timeout=%d, loop_count=%d, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, reverse_flow, copy_buf_size, log_level);
-  fprintf(stderr, "API URIs: gsub=%s, gpub=%s, osub=%s, opub=%s\n", xdc_addr_sub_green, xdc_addr_pub_green, xdc_addr_sub_orange, xdc_addr_pub_orange);
+  fprintf(stderr, "API URIs: ");
+  switch(enclave) {
+    case 'g':
+      fprintf(stderr, "gsub=%s, gpub=%s", xdc_addr_sub_green, xdc_addr_pub_green);
+      break;
+    case 'o':
+      fprintf(stderr, "osub=%s, opub=%s", xdc_addr_sub_orange, xdc_addr_pub_orange);
+      break;
+  }
+  fprintf(stderr, "\n");
+
 }
 
 /**********************************************************************/
