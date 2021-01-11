@@ -172,7 +172,7 @@ void opts_get(int argc, char **argv) {
       fprintf(stderr, "enc1_sub=%s, enc1_pub=%s", xdc_addr_sub_enc1, xdc_addr_pub_enc1);
       break;
     case 2:
-      fprintf(stderr, "wnc2_sub=%s, enc2_pub=%s", xdc_addr_sub_enc2, xdc_addr_pub_enc2);
+      fprintf(stderr, "enc2_sub=%s, enc2_pub=%s", xdc_addr_sub_enc2, xdc_addr_pub_enc2);
       break;
   }
   fprintf(stderr, "\n");
@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
       if (reverse_flow == 0) receive_first = 1;
       break;
     default:
-      fprintf(stderr, "Undefined enclave: %s\n", enclave);
+      fprintf(stderr, "Undefined enclave index: %d\n", enclave);
       exit(3);
   }
   
