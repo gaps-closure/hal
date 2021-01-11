@@ -23,11 +23,11 @@ import sys
         
 def get_args():
     parser = argparse.ArgumentParser(description='Create HAL configuration file')
-    parser.add_argument('-d', '--json_devices_file',  help='Input JSON file name of HAL device conig', type=str, default='devices_eri_be.json')
+    parser.add_argument('-d', '--json_devices_file',  help='Input JSON file name of HAL device conig', type=str, default='device_defs/devices_socat.json')
     parser.add_argument('-o', '--output_dir', help='Output directory path', type=str, default='')
     parser.add_argument('-p', '--output_file_prefix', help='Output HAL configuration file name prefix', type=str, default='hal')
     parser.add_argument('-v', '--verbose', help="run in verbose mode", action='store_true', default=False)
-    parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of HAL API and tag-maps', type=str, default='xdconf_eri.json')
+    parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of HAL API and tag-maps', type=str, default='map_defs/xdconf_6modemo.json')
     return parser.parse_args()
 
 # Read JSON file into a python dictionary (data)

@@ -1,7 +1,7 @@
 /*
  * APP_REQ_REP.C
  *   Simple Request-Reply (client-server) application to test the new HAL API
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  *
  * 1) Compilation (with the necessary includes and libraries):
  *   cd ~/gaps/build/src/hal/test/
@@ -11,48 +11,47 @@
  *   ./app_req_rep -h
  *
  * 3) Run APP via HAL and Network (after HAL daemon is running and NET is up) in all enclaves
- *    (-u option (see example [g] below) in order to run with alternative URIs.
  *
- *    [a] Default Flow: Green enclave sends position <1,1,1>; Orange replies with posiiton <2,2,1>
+ *    [a] Default Flow: Green enclave-1 sends position <1,1,1>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep
- *      oprange: ./app_req_rep -e o
+ *      oprange: ./app_req_rep -e 2
  *
- *    [b] Reverse: Orange enclave sends position <2,2,1>; Green replies with posiiton <1,1,1>
+ *    [b] Reverse: Orange enclave-2 sends position <2,2,1>; Green replies with posiiton <1,1,1>
  *      green:   ./app_req_rep -r
- *      oprange: ./app_req_rep -e o -r
+ *      oprange: ./app_req_rep -e 2 -r
  *
- *    [c] Raw Data: Green enclave sends raw data <1,1,3>; Orange replies with posiiton <2,2,1>
+ *    [c] Raw Data: Green enclave-1 sends raw data <1,1,3>; Orange replies with posiiton <2,2,1>
  *          The '-g 0' option, means orange expect to receive a request with raw data (of any size)
- *      orange:  ./app_req_rep -e o -g 0
+ *      orange:  ./app_req_rep -e 2 -g 0
  *          The Green APP sends raw data <1,1,3>, sending a buffer of sequenctial numbers
  *          whose size (in Bytes) is defined by the '-g' option.
  *      green:   ./app_req_rep -g 1000
  *
  *    [d] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
  *      green:   ./app_req_rep -G
- *      oprange: ./app_req_rep -e o -G
+ *      oprange: ./app_req_rep -e 2 -G
  *
  *    [e] Timeout: Green enclave sends posiiton <1,1,1>; Orange replies with raw data <2,2,3>
  *          The Orange APP replies to one request with raw data <2,2,3>, sending a buffer of
  *          sequenctial numbers whose size (in Bytes) is defined by the '-o' option.
- *      orange:  ./app_req_rep -e o -o 150
+ *      orange:  ./app_req_rep -e 2 -o 150
  *          The Green APP sends requests with position <1,1,1> information.
  *          The '-n 2' option configures the APP to send 2 sequential requests;
  *          Green will report timeouts (set to 3 seconds using the '-b' option) and uses the
  *          '-o' option, so it knows to expect raw data (without specifying the size).
  *      green:   ./app_req_rep -n 2 -b 3000 -o 0
  *          We can repeat the orange's command to respond to the second request:
- *      orange:  ./app_req_rep -e o -o 100
+ *      orange:  ./app_req_rep -e 2 -o 100
  *
  *    [f] Big: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
  *             (HAL must be configured to use BE (ILIP device) Pyaload Mode in both directions)
- *      orange:  ./app_req_rep -e o -o 800 -g 0
+ *      orange:  ./app_req_rep -e 2 -o 800 -g 0
  *      green:   ./app_req_rep -o 0 -o 0 -g 400
  *
  *    [g] Big UDP: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
- *                 (HAL is configured to 'bw' URIs)
+ *                 (HAL is configured to 'be' URIs)
  *      green:   ./app_req_rep -u 1 -o 0 -g 700
- *      oprange: ./app_req_rep -e o -u 1 -o 900 -g 0
+ *      oprange: ./app_req_rep -e 2 -u 1 -o 900 -g 0
  */
 
 #include "../api/xdcomms.h"
@@ -64,20 +63,20 @@
 /* Get options */
 /*********t************************************************************/
 /* Default option values */
-int  mux_g2o = 1, sec_g2o = 1, typ_g2o = DATA_TYP_POSITION;    /* one-way request tag */
-int  mux_o2g = 2, sec_o2g = 2, typ_o2g = DATA_TYP_POSITION;    /* one-way reply tag */
+int  mux_1_2 = 1, sec_1_2 = 1, typ_1_2 = DATA_TYP_POSITION;    /* one-way request tag */
+int  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* one-way reply tag */
 int  log_level            = 2;
-char enclave              = 'g';
-int  reverse_flow         = 0;    // green client; orange server
+int  enclave              = 1;
+int  reverse_flow         = 0;    // normally enclave1 = client; enclave-2 = server
 int  receive_first        = 0;
 int  loop_count           = 1;
 int  sub_block_timeout_ms = -1;
 int  copy_buf_size        = -1;
 # define IPC_ADDR_MAX 50
-char xdc_addr_sub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halsubbegreen";
-char xdc_addr_pub_green[IPC_ADDR_MAX]  = "ipc:///tmp/halpubbegreen";
-char xdc_addr_sub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halsubbeorange";
-char xdc_addr_pub_orange[IPC_ADDR_MAX] = "ipc:///tmp/halpubbeorange";
+char xdc_addr_sub_enc1[IPC_ADDR_MAX] = "ipc:///tmp/halsubgreen";
+char xdc_addr_pub_enc1[IPC_ADDR_MAX] = "ipc:///tmp/halpubgreen";
+char xdc_addr_sub_enc2[IPC_ADDR_MAX] = "ipc:///tmp/halsuborange";
+char xdc_addr_pub_enc2[IPC_ADDR_MAX] = "ipc:///tmp/halpuborange";
 
 /* Print options */
 void opts_print(void) {
@@ -85,15 +84,15 @@ void opts_print(void) {
   printf("Usage: ./app_req_rep [Options]\n");
   printf("[Options]:\n");
   printf(" -b : Subscriber Blocking timeout (in milliseconds): default = -1 (blocking) \n");
-  printf(" -e : Enclave (single char). Currently support 'g' or 'o': default = 'g'\n");
+  printf(" -e : Enclave index. Currently support 1 or 2: default = 1\n");
   printf(" -g : Green sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
   printf(" -G : Green sends BIG data type (0x01234567): default = position type (1) \n");
   printf(" -h : Print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Orange sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
-  printf(" -r : Reverse Client and Server: default = Green client, orange server\n");
-  printf(" -u : URL index for HAL API: Default = be, 1=bw 2='' \n");
+  printf(" -r : Reverse Client and Server: default = Enclave 1 client, Enclave 2 server\n");
+  printf(" -u : URL index for HAL API: Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen");
 }
 
 /* Parse the configuration file */
@@ -107,15 +106,15 @@ void opts_get(int argc, char **argv) {
         sub_block_timeout_ms = atoi(optarg);
         break;
       case 'e':
-        enclave = *optarg;      /* e.g.. green = 'g', orange = 'o' */
+        enclave = atoi(optarg);      /* default = 1 */
         break;
       case 'g':
         v = atoi(optarg);
         if (v > 0) copy_buf_size = v;
-        typ_g2o = DATA_TYP_RAW;     /* ILIP ACM supports <1 1 3> */
+        typ_1_2 = DATA_TYP_RAW;     /* ILIP ACM supports <1 1 3> */
         break;
       case 'G':
-        typ_g2o = DATA_TYP_BIG;     /* Must have added <1 1 0x01234567> into ILIP ACM */
+        typ_1_2 = DATA_TYP_BIG;     /* Must have added <1 1 0x01234567> into ILIP ACM */
         break;
       case 'h':
         opts_print();
@@ -129,8 +128,8 @@ void opts_get(int argc, char **argv) {
       case 'o':
         v = atoi(optarg);
         if (v > 0) copy_buf_size = v;
-        typ_o2g = DATA_TYP_RAW;
-        sec_o2g = 3;               /* ILIP ACM supports <2 3 3> not <2 2 3> */
+        typ_2_1 = DATA_TYP_RAW;
+        sec_2_1 = 3;               /* ILIP ACM supports <2 3 3> not <2 2 3> */
         break;
       case 'r':
         reverse_flow = 1;
@@ -138,16 +137,22 @@ void opts_get(int argc, char **argv) {
       case 'u':
         v = atoi(optarg);
         if (v==1) {
-          strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubbwgreen");
-          strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubbwgreen");
-          strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsubbworange");
-          strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpubbworange");
+          strcpy(xdc_addr_sub_enc1,  "ipc:///tmp/example1suborange");
+          strcpy(xdc_addr_pub_enc1,  "ipc:///tmp/example1puborange");
+          strcpy(xdc_addr_sub_enc2, "ipc:///tmp/example1subpurple");
+          strcpy(xdc_addr_pub_enc2, "ipc:///tmp/example1pubpurple");
         }
-        else if (v==2) {
-          strcpy(xdc_addr_sub_green,  "ipc:///tmp/halsubgreen");
-          strcpy(xdc_addr_pub_green,  "ipc:///tmp/halpubgreen");
-          strcpy(xdc_addr_sub_orange, "ipc:///tmp/halsuborange");
-          strcpy(xdc_addr_pub_orange, "ipc:///tmp/halpuborange");
+        if (v==5) {
+          strcpy(xdc_addr_sub_enc1,  "ipc:///tmp/halsubbegreen");
+          strcpy(xdc_addr_pub_enc1,  "ipc:///tmp/halpubbegreen");
+          strcpy(xdc_addr_sub_enc2, "ipc:///tmp/halsubbeorange");
+          strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbeorange");
+        }
+        if (v==6) {
+          strcpy(xdc_addr_sub_enc1,  "ipc:///tmp/halsubbwgreen");
+          strcpy(xdc_addr_pub_enc1,  "ipc:///tmp/halpubbwgreen");
+          strcpy(xdc_addr_sub_enc2, "ipc:///tmp/halsubbworange");
+          strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbworange");
         }
         break;
       case ':':
@@ -159,15 +164,15 @@ void opts_get(int argc, char **argv) {
         fprintf(stderr, "\nSkipping undefined option (%c)\n", opt);
     }
   }
-  fprintf(stderr, "%c channels: g2o-tag=[%d, %d, %d] o2g-tag=[%d, %d, %d]\n", enclave, mux_g2o, sec_g2o, typ_g2o, mux_o2g, sec_o2g, typ_o2g);
+  fprintf(stderr, "Enclave-%d channels: 1-to-2-tag=[%d, %d, %d] 2-to-1-tag=[%d, %d, %d]\n", enclave, mux_1_2, sec_1_2, typ_1_2, mux_2_1, sec_2_1, typ_2_1);
   fprintf(stderr, "Params: timeout=%d, loop_count=%d, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, reverse_flow, copy_buf_size, log_level);
   fprintf(stderr, "API URIs: ");
   switch(enclave) {
-    case 'g':
-      fprintf(stderr, "gsub=%s, gpub=%s", xdc_addr_sub_green, xdc_addr_pub_green);
+    case 1:
+      fprintf(stderr, "enc1_sub=%s, enc1_pub=%s", xdc_addr_sub_enc1, xdc_addr_pub_enc1);
       break;
-    case 'o':
-      fprintf(stderr, "osub=%s, opub=%s", xdc_addr_sub_orange, xdc_addr_pub_orange);
+    case 2:
+      fprintf(stderr, "wnc2_sub=%s, enc2_pub=%s", xdc_addr_sub_enc2, xdc_addr_pub_enc2);
       break;
   }
   fprintf(stderr, "\n");
@@ -289,31 +294,31 @@ int main(int argc, char **argv) {
 
   /* A) Configure TAGS and ADDRESSES (values depend on the enclave) */
   switch(enclave) {
-    case 'g':
-      tag_write(&tag_pub, mux_g2o, sec_g2o, typ_g2o);
-      tag_write(&tag_sub, mux_o2g, sec_o2g, typ_o2g);
-      xdc_set_in(xdc_addr_sub_green);
-      xdc_set_out(xdc_addr_pub_green);
+    case 1:
+      tag_write(&tag_pub, mux_1_2, sec_1_2, typ_1_2);
+      tag_write(&tag_sub, mux_2_1, sec_2_1, typ_2_1);
+      xdc_set_in(xdc_addr_sub_enc1);
+      xdc_set_out(xdc_addr_pub_enc1);
       if (reverse_flow == 1) receive_first = 1;
       break;
-    case 'o':
-      tag_write(&tag_sub, mux_g2o, sec_g2o, typ_g2o);
-      tag_write(&tag_pub, mux_o2g, sec_o2g, typ_o2g);
-      xdc_set_in(xdc_addr_sub_orange);
-      xdc_set_out(xdc_addr_pub_orange);
+    case 2:
+      tag_write(&tag_sub, mux_1_2, sec_1_2, typ_1_2);
+      tag_write(&tag_pub, mux_2_1, sec_2_1, typ_2_1);
+      xdc_set_in(xdc_addr_sub_enc2);
+      xdc_set_out(xdc_addr_pub_enc2);
       if (reverse_flow == 0) receive_first = 1;
       break;
     default:
-      fprintf(stderr, "Undefined enclave: %c\n", enclave);
+      fprintf(stderr, "Undefined enclave: %s\n", enclave);
       exit(3);
   }
   
   /* B) Configure Encoders and Decoders for all data types (same for both enclaves) */
-  if ((typ_g2o == DATA_TYP_POSITION) || (typ_o2g = DATA_TYP_POSITION))
+  if ((typ_1_2 == DATA_TYP_POSITION) || (typ_2_1 = DATA_TYP_POSITION))
     xdc_register(position_data_encode, position_data_decode, DATA_TYP_POSITION);
-  if ((typ_g2o == DATA_TYP_RAW) || (typ_o2g = DATA_TYP_RAW))
+  if ((typ_1_2 == DATA_TYP_RAW) || (typ_2_1 = DATA_TYP_RAW))
     xdc_register(raw_data_encode, raw_data_decode, DATA_TYP_RAW);
-  if ((typ_g2o == DATA_TYP_BIG) || (typ_o2g = DATA_TYP_BIG))
+  if ((typ_1_2 == DATA_TYP_BIG) || (typ_2_1 = DATA_TYP_BIG))
     xdc_register(position_data_encode, position_data_decode, DATA_TYP_BIG);
 
   /* C) Configure ZMQ Pub and Sub Interfaces (same for both enclaves) */
