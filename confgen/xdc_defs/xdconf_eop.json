@@ -1,0 +1,178 @@
+{
+  "enclaves": [
+    {
+      "enclave": "green",
+      "inuri": "ipc:///tmp/sock_subgreen",
+      "outuri": "ipc:///tmp/sock_pubgreen",
+      "halmaps": [
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 11,
+          "name": "NEXTRPC"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 12,
+          "name": "OKAY"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 13,
+          "name": "REQUEST_ECHO_COMPONENT_HEARTBEATS"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 14,
+          "name": "RESPONSE_ECHO_COMPONENT_HEARTBEATS"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 15,
+          "name": "REQUEST_ECHO_PNT"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 16,
+          "name": "RESPONSE_ECHO_PNT"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 17,
+          "name": "REQUEST_ECHO_REQUESTISRMDETECTIONS"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 18,
+          "name": "RESPONSE_ECHO_REQUESTISRMDETECTIONS"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 19,
+          "name": "REQUEST_ECHO_UPDATEMISSIONPLAN"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 20,
+          "name": "RESPONSE_ECHO_UPDATEMISSIONPLAN"
+        }
+      ]
+    },
+    {
+      "enclave": "orange",
+      "inuri": "ipc:///tmp/sock_suborange",
+      "outuri": "ipc:///tmp/sock_puborange",
+      "halmaps": [
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 11,
+          "name": "NEXTRPC"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 12,
+          "name": "OKAY"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 13,
+          "name": "REQUEST_ECHO_COMPONENT_HEARTBEATS"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 14,
+          "name": "RESPONSE_ECHO_COMPONENT_HEARTBEATS"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 15,
+          "name": "REQUEST_ECHO_PNT"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 16,
+          "name": "RESPONSE_ECHO_PNT"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 17,
+          "name": "REQUEST_ECHO_REQUESTISRMDETECTIONS"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 18,
+          "name": "RESPONSE_ECHO_REQUESTISRMDETECTIONS"
+        },
+        {
+          "from": "orange",
+          "to": "green",
+          "mux": 12,
+          "sec": 12,
+          "typ": 19,
+          "name": "REQUEST_ECHO_UPDATEMISSIONPLAN"
+        },
+        {
+          "from": "green",
+          "to": "orange",
+          "mux": 11,
+          "sec": 11,
+          "typ": 20,
+          "name": "RESPONSE_ECHO_UPDATEMISSIONPLAN"
+        }
+      ]
+    }
+  ]
+}
