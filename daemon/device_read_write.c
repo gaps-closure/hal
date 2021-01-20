@@ -12,7 +12,8 @@
 #include "device_open.h"
 #include "packetize.h"
 
-# define PACKET_MAX (ADU_SIZE_MAX_C + 256)
+#define PACKET_MAX (ADU_SIZE_MAX_C + 256)
+#define PACKET_BUFFERS_MAX 2
 
 int sel_verbose=0;
 /**********************************************************************/
@@ -60,7 +61,8 @@ void devs_stat_print(device *devs) {
 pdu *read_pdu(device *idev) {
   int                 pkt_len=0, valid;
   pdu                *ret = NULL;
-  static uint8_t      buf[PACKET_MAX];        /* Packet buffer when reading */
+  static int          buf_index=0;              /* Multiple buffers to keep data until read */
+  static uint8_t      buf[PACKET_BUFFERS_MAX][PACKET_MAX];   /* Packet buffers when reading */
   int                 fd;
   const char         *com_type, *com_model;
   struct sockaddr_in  socaddr_in;
@@ -81,15 +83,15 @@ pdu *read_pdu(device *idev) {
     // Temporary HACK (NOV 2020) to give ILIP buffer of right sizes for sdh_be_v2 and sdh_be_v3
     if (strcmp(com_model, "sdh_be_v2") == 0) {
 //      log_fatal("Temporary HACK to give ILIP buffer of 256 on fd=%d: buf=%p len=%d max=%d->256 err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
-      pkt_len = read(fd, buf, 256);     /* HACK, max to exact size of of ILIP packet */
+      pkt_len = read(fd, buf[buf_index], 256);     /* HACK, max to exact size of of ILIP packet */
     }
     else if (strcmp(com_model, "sdh_be_v3") == 0) {
-      //      pkt_len = read(fd, buf, 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
-      pkt_len = read(fd, buf, 2304);    /* v12  bigger packets (buffer big en */
+      //      pkt_len = read(fd, buf[buf_index], 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
+      pkt_len = read(fd, buf[buf_index], 2304);    /* v12  bigger packets (buffer big en */
       pkt_len = 256;                    /* HACK to packet (256) - actually gets 512 */
     }
     else {
-      pkt_len = read(fd, buf, PACKET_MAX);     /* read = recv for tcp with no flags */
+      pkt_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     }
           
     if (pkt_len < 0) {
@@ -103,7 +105,7 @@ pdu *read_pdu(device *idev) {
     }
   }
   else if (strcmp(com_type, "udp") == 0) {
-    pkt_len = recvfrom(fd, buf, PACKET_MAX, PACKET_MAX, (struct sockaddr *) &socaddr_in, &sock_len);
+    pkt_len = recvfrom(fd, buf[buf_index], PACKET_MAX, PACKET_MAX, (struct sockaddr *) &socaddr_in, &sock_len);
     if (pkt_len < 0) {
       log_fatal("recvfrom errno code: %d", errno);
       exit(EXIT_FAILURE);
@@ -114,17 +116,18 @@ pdu *read_pdu(device *idev) {
   (idev->count_r)++;
 
   log_debug("HAL reads  %s from %s (fd=%02d) rv=%d", idev->model, idev->id, fd, pkt_len);
-  log_buf_trace("Packet", buf, pkt_len);
+  log_buf_trace("Packet", buf[buf_index], pkt_len);
   
-//log_trace("mux=%d", *((uint32_t *) buf));
+//log_trace("mux=%d", *((uint32_t *) buf[buf_index]));
 
   /* b) Write input into internal PDU */
   ret = malloc(sizeof(pdu));
-  valid = pdu_from_packet(ret, buf, pkt_len, idev);
+  valid = pdu_from_packet(ret, buf[buf_index], pkt_len, idev);
   if  (valid == 0) return(NULL);
     
-  log_trace("HAL created new PDU");
+  log_trace("HAL created new PDU (buf-%d)", buf_index);
   log_pdu_trace(ret, __func__);
+  buf_index = (buf_index + 1) % PACKET_BUFFERS_MAX;
   return(ret);
 }
 

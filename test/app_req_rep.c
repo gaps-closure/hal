@@ -51,7 +51,12 @@
  *    [g] Big UDP: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
  *                 (HAL is configured to 'be' URIs)
  *      green:   ./app_req_rep -u 1 -o 0 -g 700
- *      oprange: ./app_req_rep -e 2 -u 1 -o 900 -g 0
+ *      orange:  ./app_req_rep -e 2 -u 1 -o 900 -g 0
+ 
+ *    [x] EOP: Green enclave sends raw data <12,12,12>; Orange replies with raw data <11,11,11>
+ *                 (HAL is configured to 'be' URIs)
+ *      green:   ./app_req_rep -v 2 -x
+ *      orange:  ./app_req_rep -v 2 -x -e 2
  */
 
 #include "../api/xdcomms.h"
@@ -92,7 +97,7 @@ void opts_print(void) {
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Orange sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
   printf(" -r : Reverse Client and Server: default = Enclave 1 client, Enclave 2 server\n");
-  printf(" -u : URL index for HAL API: Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen");
+  printf(" -u : URL index for HAL API : Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 2=ipc:///tmp/sock_suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen\n");
 }
 
 /* Parse the configuration file */
@@ -137,20 +142,28 @@ void opts_get(int argc, char **argv) {
       case 'u':
         v = atoi(optarg);
         if (v==1) {
-          strcpy(xdc_addr_sub_enc1,  "ipc:///tmp/example1suborange");
-          strcpy(xdc_addr_pub_enc1,  "ipc:///tmp/example1puborange");
+          strcpy(xdc_addr_sub_enc1, "ipc:///tmp/example1suborange");
+          strcpy(xdc_addr_pub_enc1, "ipc:///tmp/example1puborange");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/example1subpurple");
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/example1pubpurple");
         }
+        if (v==2) {
+          strcpy(xdc_addr_sub_enc1, "ipc:///tmp/sock_subgreen");
+          strcpy(xdc_addr_pub_enc1, "ipc:///tmp/sock_pubgreen");
+          strcpy(xdc_addr_sub_enc2, "ipc:///tmp/sock_suborange");
+          strcpy(xdc_addr_pub_enc2, "ipc:///tmp/sock_puborange");
+//          mux_1_2 = 11; sec_2_1 = 11; typ_2_1 = 12;
+//          mux_2_1 = 12; sec_1_2 = 12; typ_1_2 = 11;
+        }
         if (v==5) {
-          strcpy(xdc_addr_sub_enc1,  "ipc:///tmp/halsubbegreen");
-          strcpy(xdc_addr_pub_enc1,  "ipc:///tmp/halpubbegreen");
+          strcpy(xdc_addr_sub_enc1, "ipc:///tmp/halsubbegreen");
+          strcpy(xdc_addr_pub_enc1, "ipc:///tmp/halpubbegreen");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/halsubbeorange");
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbeorange");
         }
         if (v==6) {
-          strcpy(xdc_addr_sub_enc1,  "ipc:///tmp/halsubbwgreen");
-          strcpy(xdc_addr_pub_enc1,  "ipc:///tmp/halpubbwgreen");
+          strcpy(xdc_addr_sub_enc1, "ipc:///tmp/halsubbwgreen");
+          strcpy(xdc_addr_pub_enc1, "ipc:///tmp/halpubbwgreen");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/halsubbworange");
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbworange");
         }
