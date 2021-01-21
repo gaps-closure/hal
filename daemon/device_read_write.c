@@ -12,8 +12,10 @@
 #include "device_open.h"
 #include "packetize.h"
 
-#define PACKET_MAX (ADU_SIZE_MAX_C + 256)
-#define PACKET_BUFFERS_MAX 2
+#define DATA_ALIGNMENT 32       /* Must be power of 2 */
+// PACKET MAX covers max data (ADU_SIZE_MAX_C) + max header (256), and it is multiple of DATA_ALIGNMENT
+#define PACKET_MAX ((ADU_SIZE_MAX_C + 255 + DATA_ALIGNMENT) - ((ADU_SIZE_MAX_C + 255) % DATA_ALIGNMENT))
+#define PACKET_BUFFERS_MAX 2    /* Increase to allow more time for driver to read data from input buffer in payload mode */
 
 int sel_verbose=0;
 /**********************************************************************/
@@ -61,13 +63,17 @@ void devs_stat_print(device *devs) {
 pdu *read_pdu(device *idev) {
   int                 pkt_len=0, valid;
   pdu                *ret = NULL;
-  static int          buf_index=0;              /* Multiple buffers to keep data until read */
-  static uint8_t      buf[PACKET_BUFFERS_MAX][PACKET_MAX];   /* Packet buffers when reading */
   int                 fd;
   const char         *com_type, *com_model;
   struct sockaddr_in  socaddr_in;
   socklen_t           sock_len = sizeof(socaddr_in);
+  
+  static int          buf_index=0;              /* Multiple buffers to keep data until read */
+  static uint8_t      buf[PACKET_BUFFERS_MAX][PACKET_MAX]  __attribute__((aligned(DATA_ALIGNMENT)));   /* Input Packet buffers */
 
+//  assert((PACKET_MAX%DATA_ALIGNMENT) == 0); /*
+//  log_fatal("DATA_ALIGNMENT = %d, PACKET_MAX = %d, PACKET_MAX % DATA_ALIGNMENT = %d, b0=%p b1=%p", DATA_ALIGNMENT, PACKET_MAX, (PACKET_MAX % DATA_ALIGNMENT), (void *) buf[0], (void *) buf[1]);
+  
   /* a) read input into buf and get its length (with input dev_id and fd) */
   fd        = idev->readfd;
   com_type  = idev->comms;
@@ -266,6 +272,7 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   fd_set    readfds, readfds_saved;   /* File descriptor set for select */
 
   maxrfd = select_init(devs,  &readfds_saved);
+
   while (1) {
 //    maxrfd = select_init(devs,  &readfds);
     readfds = readfds_saved;
