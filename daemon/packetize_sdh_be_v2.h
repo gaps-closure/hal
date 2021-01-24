@@ -18,5 +18,5 @@ typedef struct _pkt_sdh_be_v2 {
 } pkt_sdh_be_v2;
 
 /* exported functions */
-int pdu_from_sdh_be_v2 (pdu *, uint8_t *);
+int pdu_from_sdh_be_v2 (pdu *, uint8_t *, int);
 int pdu_into_sdh_be_v2 (uint8_t *, pdu *, gaps_tag *);

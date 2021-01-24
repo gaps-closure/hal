@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and Security Device Hardware (SDH) BE packet
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  *
  * v3 is the November 2020 EOP Payload Mode packet format.
  */
@@ -29,12 +29,19 @@ void sdh_be_v3_print(pkt_sdh_be_v3 *p) {
     fprintf(stderr, "\n");
 }
 
+/* get size of packet (= header length + data length) */
+/*   v3 (Mercury12) sends payload PLUS 256 byte packet */
+int get_packet_length_sdh_be_v3(pkt_sdh_be_v3 *pkt, int data_len) {
+  return (sizeof(*pkt) + data_len);
+}
+
 /* Put data from external packet (*in) into internal HAL PDU */
-void pdu_from_sdh_be_v3 (pdu *out, uint8_t *in) {
+int pdu_from_sdh_be_v3 (pdu *out, uint8_t *in, int len_in) {
     pkt_sdh_be_v3  *pkt = (pkt_sdh_be_v3 *) in;
     uint8_t        *data_in;
 
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v3_print(pkt);
+    if (get_packet_length_sdh_be_v3(pkt, 0) > len_in)  return (-1);
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
@@ -42,6 +49,7 @@ void pdu_from_sdh_be_v3 (pdu *out, uint8_t *in) {
     data_in = (uint8_t *) pkt + sizeof(*pkt);
 //   memcpy (out->data, data_in, out->data_len);    /* TODO_PDU_PTR */
     out->data = data_in;    /* TODO_PDU_PTR */
+  return (get_packet_length_sdh_be_v3(pkt, out->data_len));
 }
 
 /* Put data into external packet (*out) from internal HAL PDU */
@@ -77,5 +85,5 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
 //  data_print("Data",  (uint8_t *) pkt->dma_data_addr_lo, in->data_len);
 //  sdh_be_v3_print(pkt); // exit(1);
 //    return (sizeof(*pkt));       /* v2+ always sends 256 byte packet */
-    return (sizeof(*pkt) + in->data_len);     /* v3 (Mercury12) sends payload PLUS 256 byte packet */
+    return (get_packet_length_sdh_be_v3(pkt, in->data_len));
 }

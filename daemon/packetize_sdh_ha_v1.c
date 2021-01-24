@@ -1,6 +1,6 @@
 /*
  * Convert between Internal HAL PDU and closure packet
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  */
 
 #include "hal.h"
@@ -17,24 +17,29 @@ void sda_ha_v1_print(sdh_ha_v1 *p) {
   fprintf(stderr, "\n");
 }
 
+/* get size of packet (= header length + data length) */
+int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt, int data_len) {
+  return (sizeof(pkt->tag) + sizeof(pkt->data_len) + data_len);
+}
+
 /* Put closure packet (in) into internal HAL PDU structure (out) */
-void pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in) {
+int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) in;
   
+  if (get_packet_length_sdh_ha_v1(pkt, 0) > len_in)  return (-1);
   tag_cp(&(out->psel.tag), &(pkt->tag));
   out->data_len = pkt->data_len;
-//  memcpy(out->data, pkt->data, out->data_len);   /* TODO_PDU_PTR */
   out->data = pkt->data;   /* TODO_PDU_PTR */
+  return (get_packet_length_sdh_ha_v1(pkt, out->data_len));
 }
 
 /* Put internal PDU (in) into closure packet (out) */
 int pdu_into_sdh_ha_v1 (uint8_t *out, pdu *in, gaps_tag *otag) {
-  size_t    pkt_len;
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) out;
 
   pkt->data_len = in->data_len;
   memcpy(pkt->data, in->data, in->data_len);
   tag_cp(&(pkt->tag), otag);
-  pkt_len = in->data_len + sizeof(pkt->tag) + sizeof(pkt->data_len);
-  return (pkt_len);
+  return (get_packet_length_sdh_ha_v1(pkt, in->data_len));
+
 }

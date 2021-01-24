@@ -31,5 +31,5 @@ typedef struct _pkt_sdh_be_v3 {
 } pkt_sdh_be_v3;
 
 /* exported functions */
-void pdu_from_sdh_be_v3 (pdu *, uint8_t *);
+int  pdu_from_sdh_be_v3 (pdu *, uint8_t *, int);
 int  pdu_into_sdh_be_v3 (uint8_t *, pdu *, gaps_tag *);

@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and external packet of the Security Device Hardware (SDH)
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  */
 
 #include "hal.h"
@@ -8,19 +8,19 @@
 
 /* Write packet into internal PDU */
 int pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
-  int valid = 1;        // PDU contents default to valid
+  int pdu_len = 0;        // PDU contents default to invalid
     
   out->psel.dev  = strdup(idev->id);
   out->psel.ctag = -1;
     
-  if      (strcmp(idev->model, "sdh_ha_v1") == 0) pdu_from_sdh_ha_v1 (out, in);
-  else if (strcmp(idev->model, "sdh_socat_v1") == 0) pdu_from_sdh_ha_v1 (out, in);
-  else if (strcmp(idev->model, "sdh_be_v1") == 0) pdu_from_sdh_be_v1 (out, in, len_in);
-  else if (strcmp(idev->model, "sdh_be_v2") == 0) valid = pdu_from_sdh_be_v2 (out, in);
-  else if (strcmp(idev->model, "sdh_be_v3") == 0) pdu_from_sdh_be_v3 (out, in);
-  else if (strcmp(idev->model, "sdh_bw_v1") == 0) pdu_from_sdh_bw_v1 (out, in, len_in);
+  if      (strcmp(idev->model, "sdh_ha_v1")    == 0) pdu_len = pdu_from_sdh_ha_v1 (out, in, len_in);
+  else if (strcmp(idev->model, "sdh_socat_v1") == 0) pdu_len = pdu_from_sdh_ha_v1 (out, in, len_in);
+  else if (strcmp(idev->model, "sdh_be_v1")    == 0) pdu_len = pdu_from_sdh_be_v1 (out, in, len_in);
+  else if (strcmp(idev->model, "sdh_be_v2")    == 0) pdu_len = pdu_from_sdh_be_v2 (out, in, len_in);
+  else if (strcmp(idev->model, "sdh_be_v3")    == 0) pdu_len = pdu_from_sdh_be_v3 (out, in, len_in);
+  else if (strcmp(idev->model, "sdh_bw_v1")    == 0) pdu_len = pdu_from_sdh_bw_v1 (out, in, len_in);
   else {log_fatal("%s: unknown interface model: %s", __func__, idev->model); exit(EXIT_FAILURE);}
-  return (valid);
+  return (pdu_len);
 }
 
 /* Write packet from internal PDU into packet */

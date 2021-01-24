@@ -1,6 +1,6 @@
 /*
  * Convert between HAL PDU and SDH BE packet
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  *
  * v0 is oringal (2019) packet format with no timestamps
  */
@@ -27,7 +27,7 @@ void sdh_be_v0_print(pkt_sdh_be_v0 *p) {
 }
 
 /* Put data from buf (using M1 model) into internal HAL PDU */
-void pdu_from_sdh_be_v0 (pdu *out, uint8_t *in, int len) {
+int pdu_from_sdh_be_v0 (pdu *out, uint8_t *in, int len) {
   pkt_sdh_be_v0  *pkt = (pkt_sdh_be_v0 *) in;
   tlv_sdh_be_v0  *tlv;
     
@@ -42,6 +42,7 @@ void pdu_from_sdh_be_v0 (pdu *out, uint8_t *in, int len) {
 //    memcpy (out->data, tlv->data, out->data_len);  /* TODO_PDU_PTR */
     out->data = tlv->data;  /* TODO_PDU_PTR */
   }
+  return(out->data_len);
 }
 
 /* Put data into buf (using M1 model) from internal HAL PDU */

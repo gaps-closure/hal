@@ -10,5 +10,5 @@ typedef struct _sdh_bw_v1 {
   uint8_t   data[PKT_G1_ADU_SIZE_MAX];
 } sdh_bw_v1;
 
-void pdu_from_sdh_bw_v1 (pdu *, uint8_t * , int);
+int  pdu_from_sdh_bw_v1 (pdu *, uint8_t * , int);
 int  pdu_into_sdh_bw_v1 (uint8_t *, pdu *, uint32_t);

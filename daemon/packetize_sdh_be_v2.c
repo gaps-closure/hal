@@ -1,7 +1,7 @@
 /*
  * Convert between HAL PDU and external packet of the BookEnd (BE)
  * Security Device Hardware (SDH) packet
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  *
  * v2 is the November 2020 EOP Immediate Mode packet format.
  * Similar to v1, but Descriptor Type replaces TLV count + new dst & SipHash fields
@@ -37,22 +37,26 @@ size_t check_len_sdh_be_v2 (size_t len) {
     return (len);
 }
 
-/* Put data from external packet (*in) into internal HAL PDU */
-int pdu_from_sdh_be_v2 (pdu *out, uint8_t *in) {
-    pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) in;
-    size_t          len = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
+/* get size of packet (= header length + data length) */
+/*   v3 (Mercury12+) sends payload PLUS 256 byte packet */
+int get_packet_length_sdh_be_v2(pkt_sdh_be_v2 *pkt, int data_len) {
+  return (sizeof(*pkt));
+}
 
-    if (len == 0) return (0);
+/* Put data from external packet (*in) into internal HAL PDU */
+int pdu_from_sdh_be_v2 (pdu *out, uint8_t *in, int len_in) {
+    pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) in;
+
+    if (get_packet_length_sdh_be_v2(pkt, 0) > len_in)  return (-1);
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v2_print(pkt);
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
-    len = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
-    out->data_len     = len;
+    out->data_len     = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
 //    memcpy (out->data, pkt->imm_data, len);    /* TODO_PDU_PTR */
     out->data = pkt->imm_data;    /* TODO_PDU_PTR */
 
-    return (len);       /* return data size in bytes (unless data is too long) */
+    return (get_packet_length_sdh_be_v2(pkt, 0));
 }
 
 /* Put data into external packet (*out) from internal HAL PDU */

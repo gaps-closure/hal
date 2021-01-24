@@ -1,6 +1,6 @@
 /*
  * HAL device read and write (loop)
- *   December 2020, Perspecta Labs
+ *   January 2021, Perspecta Labs
  */
 
 /**********************************************************************/
@@ -58,17 +58,15 @@ void devs_stat_print(device *devs) {
   log_debug("%s", s);
 }
 
-/* Read device and return pdu */
+/* Read device and return buffer pointer and length */
 /* Uses idev to determines how to parse, then extracts selector info and fill psel */
-pdu *read_pdu(device *idev) {
-  int                 pkt_len=0, valid;
-  pdu                *ret = NULL;
+uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
   int                 fd;
   const char         *com_type, *com_model;
   struct sockaddr_in  socaddr_in;
   socklen_t           sock_len = sizeof(socaddr_in);
   
-  static int          buf_index=0;              /* Multiple buffers to keep data until read */
+  static int          buf_index=0, buf_index_current;              /* Multiple buffers to keep data until read */
   static uint8_t      buf[PACKET_BUFFERS_MAX][PACKET_MAX]  __attribute__((aligned(DATA_ALIGNMENT)));   /* Input Packet buffers */
 
 //  assert((PACKET_MAX%DATA_ALIGNMENT) == 0); /*
@@ -88,31 +86,31 @@ pdu *read_pdu(device *idev) {
       
     // Temporary HACK (NOV 2020) to give ILIP buffer of right sizes for sdh_be_v2 and sdh_be_v3
     if (strcmp(com_model, "sdh_be_v2") == 0) {
-//      log_fatal("Temporary HACK to give ILIP buffer of 256 on fd=%d: buf=%p len=%d max=%d->256 err=%d\n", fd, buf, pkt_len, PACKET_MAX, errno);
-      pkt_len = read(fd, buf[buf_index], 256);     /* HACK, max to exact size of of ILIP packet */
+//      log_fatal("Temporary HACK to give ILIP buffer of 256 on fd=%d: buf=%p len=%d max=%d->256 err=%d\n", fd, buf, *buf_len, PACKET_MAX, errno);
+      *buf_len = read(fd, buf[buf_index], 256);     /* HACK, max to exact size of of ILIP packet */
     }
     else if (strcmp(com_model, "sdh_be_v3") == 0) {
-      //      pkt_len = read(fd, buf[buf_index], 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
-      pkt_len = read(fd, buf[buf_index], 2304);    /* v12  bigger packets (buffer big en */
-      pkt_len = 256;                    /* HACK to packet (256) - actually gets 512 */
+      //      *buf_len = read(fd, buf[buf_index], 512);     /* HACK to packet (256) + data (?); but not too high (e.g., 1350 fails) */
+      *buf_len = read(fd, buf[buf_index], 2304);    /* v12  bigger packets (buffer big en */
+      *buf_len = 256;                    /* HACK to packet (256) - actually gets 512 */
     }
     else {
-      pkt_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
+      *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     }
           
-    if (pkt_len < 0) {
-      if (sel_verbose) log_trace("read error on fd=%d: rv=%d errno=%d", fd, pkt_len, errno);
+    if (*buf_len < 0) {
+      if (sel_verbose) log_trace("read error on fd=%d: rv=%d errno=%d", fd, *buf_len, errno);
       if (errno == EAGAIN) {
         if (sel_verbose) log_trace("EAGAIN: device unavaiable or read would block");
         return (NULL);
       }
-      log_fatal("read error on fd=%d: rv=%d errno=%d", fd, pkt_len, errno);
+      log_fatal("read error on fd=%d: rv=%d errno=%d", fd, *buf_len, errno);
       exit(EXIT_FAILURE);
     }
   }
   else if (strcmp(com_type, "udp") == 0) {
-    pkt_len = recvfrom(fd, buf[buf_index], PACKET_MAX, PACKET_MAX, (struct sockaddr *) &socaddr_in, &sock_len);
-    if (pkt_len < 0) {
+    *buf_len = recvfrom(fd, buf[buf_index], PACKET_MAX, PACKET_MAX, (struct sockaddr *) &socaddr_in, &sock_len);
+    if (*buf_len < 0) {
       log_fatal("recvfrom errno code: %d", errno);
       exit(EXIT_FAILURE);
     }
@@ -121,21 +119,29 @@ pdu *read_pdu(device *idev) {
 
   (idev->count_r)++;
 
-  log_debug("HAL reads  %s from %s (fd=%02d) rv=%d", idev->model, idev->id, fd, pkt_len);
-  log_buf_trace("Packet", buf[buf_index], pkt_len);
+  log_debug("HAL reads  %s from %s (fd=%02d) into buffer (ptr=%p, index=%d) of len=%d", idev->model, idev->id, fd, (void *) buf[buf_index], buf_index, *buf_len);
+  log_buf_trace("Packet", buf[buf_index], *buf_len);
   
 //log_trace("mux=%d", *((uint32_t *) buf[buf_index]));
 
-  /* b) Write input into internal PDU */
-  ret = malloc(sizeof(pdu));
-  valid = pdu_from_packet(ret, buf[buf_index], pkt_len, idev);
-  if  (valid == 0) return(NULL);
-    
-  log_trace("HAL created new PDU (buf-%d)", buf_index);
-  log_pdu_trace(ret, __func__);
+  buf_index_current = buf_index;
   buf_index = (buf_index + 1) % PACKET_BUFFERS_MAX;
-  return(ret);
+  return(buf[buf_index_current]);
 }
+
+/* Read input buffer and return into internal PDU */
+pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len) {
+  pdu                *pdu_ptr = NULL;
+  
+  pdu_ptr = malloc(sizeof(pdu));
+  *pkt_len = pdu_from_packet(pdu_ptr, buf, buf_len, idev);
+  if  (*pkt_len <= 0) return(NULL);
+    
+  log_trace("HAL created new PDUs of len=%d from Input buf (%p) of len=%d", pkt_len, (void *) buf, buf_len);
+  log_pdu_trace(pdu_ptr, __func__);
+  return(pdu_ptr);
+}
+  
 
 /* Write pdu to specified fd */
 void write_pdu(device *odev, selector *selector_to, pdu *p) {
@@ -192,45 +198,65 @@ void pdu_delete(pdu *pdu) {
 
 /* Process input from device (with 'input_fd') and send to output */
 int process_input(int ifd, halmap *map, device *devs) {
-  pdu    *ipdu; //, *opdu;
+  pdu    *ipdu;
   device *idev, *odev;
   halmap *h;
+  int    buf_len, pkt_len=0;
+  uint8_t *buf;
   
   idev = find_device_by_readfd(devs, ifd);
   if(idev == NULL) { 
     log_warn("%s: Device not found for input fd\n", __func__);
     return (0);
-  } 
-
-  ipdu = read_pdu(idev);
-  if(ipdu == NULL) { 
+  }
+  buf = read_input_dev_into_buffer(idev, &buf_len);
+  
+  /* Process one or more packets in the input buffer */
+  if(buf_len <= 0) {
+    log_trace("==================== No data from %s ====================\n", idev->id);
 //    if (sel_verbose==1) fprintf(stderr, "%s: Input PDU is NULL\n", __func__);
     return (1);
   }
-
-  h = halmap_find(ipdu, map);
-  if(h == NULL) { 
-    log_trace("No matching HAL map entry");
-    log_pdu_trace(ipdu, __func__);
-    pdu_delete(ipdu);
-    return (0);
-  }
   
-  odev = find_device_by_id(devs, h->to.dev);
-  if(odev == NULL) { 
-    log_warn("Device %s not found for output", h->to.dev);
-    pdu_delete(ipdu);
-    return (0);
-  }
+  while (buf_len > 0) {
+    
+// log_trace("Dev %s Input Buffer: ptr=%p, len=%d\n", idev->id, buf, buf_len);
+    ipdu = read_pdu_from_buffer(idev, buf, buf_len, &pkt_len);
+    if(ipdu == NULL) {
+      log_trace("==================== No packet in Input Buffer from %s ====================\n", idev->id);
+      return (0);
+    }
+// log_trace("PDU buffer: ptr=%p, len=%d\n", ipdu->data, ipdu->data_len);
 
-  /* Avoid race between send and receive */
-  if (strcmp(idev->id, h->to.dev) == 0) {
-    log_trace("%s: Loopback (%s -> %s) sleep = 50ms", __func__, idev->id, h->to.dev);
-    usleep(50000);
+    h = halmap_find(ipdu, map);
+    if(h == NULL) {
+      log_trace("==================== No matching HAL map entry from %s ====================\n", idev->id);
+      log_pdu_trace(ipdu, __func__);
+      pdu_delete(ipdu);
+      return (0);
+    }
+    
+    odev = find_device_by_id(devs, h->to.dev);
+    if(odev == NULL) {
+      log_warn("Device %s not found for output", h->to.dev);
+      pdu_delete(ipdu);
+      return (0);
+    }
+
+    /* Avoid race between send and receive */
+    if (strcmp(idev->id, h->to.dev) == 0) {
+      log_trace("%s: Loopback (%s -> %s) sleep = 50ms", __func__, idev->id, h->to.dev);
+      usleep(50000);
+    }
+    
+    write_pdu(odev, &(h->to), ipdu);
+    pdu_delete(ipdu);
+
+    buf      += pkt_len;
+    buf_len  -= pkt_len;
+// log_trace("length remaining in buffer after pdu removed = %d bytes", buf_len);
   }
-  
-  write_pdu(odev, &(h->to), ipdu);
-  pdu_delete(ipdu);
+  log_trace("==================== Successfully processed input from %s ====================\n", idev->id);
   return (0);
 }
 
@@ -261,7 +287,7 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
       i++;
     }
   }
-  log_debug("HAL Waiting for first input from %d device(s): %s", i, s);
+  log_debug("==================== HAL Waiting for first input from %d device(s): %s ====================\n", i, s);
   return (maxrfd);     /* Maximum file descriptor number for select */
 }
 
