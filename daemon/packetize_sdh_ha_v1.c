@@ -18,7 +18,7 @@ void sda_ha_v1_print(sdh_ha_v1 *p) {
 }
 
 /* get size of packet (= header length + data length) */
-int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt, int data_len) {
+int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt, size_t data_len) {
   return (sizeof(pkt->tag) + sizeof(pkt->data_len) + data_len);
 }
 
@@ -26,9 +26,9 @@ int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt, int data_len) {
 int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) in;
   
-  if (get_packet_length_sdh_ha_v1(pkt, 0) > len_in)  return (-1);
-  tag_cp(&(out->psel.tag), &(pkt->tag));
   out->data_len = pkt->data_len;
+  if (get_packet_length_sdh_ha_v1(pkt, out->data_len) > len_in)  return (-1);   /* incomplete packet */
+  tag_cp(&(out->psel.tag), &(pkt->tag));
   out->data = pkt->data;   /* TODO_PDU_PTR */
   return (get_packet_length_sdh_ha_v1(pkt, out->data_len));
 }

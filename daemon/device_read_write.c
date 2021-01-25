@@ -6,7 +6,6 @@
 /**********************************************************************/
 /* HAL Library Includes and Deinitions */
 /**********************************************************************/
-
 #include "hal.h"
 #include "map.h"
 #include "device_open.h"
@@ -15,9 +14,10 @@
 #define DATA_ALIGNMENT 32       /* Must be power of 2 */
 // PACKET MAX covers max data (ADU_SIZE_MAX_C) + max header (256), and it is multiple of DATA_ALIGNMENT
 #define PACKET_MAX ((ADU_SIZE_MAX_C + 255 + DATA_ALIGNMENT) - ((ADU_SIZE_MAX_C + 255) % DATA_ALIGNMENT))
-#define PACKET_BUFFERS_MAX 2    /* Increase to allow more time for driver to read data from input buffer in payload mode */
+#define PACKET_BUFFERS_MAX 2    /* Increase to give driver more time to read data from input buffer (payload mode) */
 
-int sel_verbose=0;
+int sel_verbose=0;      /* help debug of device saying it is ready when it is not */
+
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
@@ -129,24 +129,20 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
   return(buf[buf_index_current]);
 }
 
-/* Read input buffer and return into internal PDU */
+/* Read input buffer into internal PDU (and return packet length) */
 pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len) {
-  pdu                *pdu_ptr = NULL;
+  pdu *pdu_ptr;
   
   pdu_ptr = malloc(sizeof(pdu));
   *pkt_len = pdu_from_packet(pdu_ptr, buf, buf_len, idev);
   if  (*pkt_len <= 0) return(NULL);
-    
-  log_trace("HAL created new PDUs of len=%d from Input buf (%p) of len=%d", pkt_len, (void *) buf, buf_len);
+  log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", pkt_len, (void *) buf, buf_len);
   log_pdu_trace(pdu_ptr, __func__);
   return(pdu_ptr);
 }
-  
 
 /* Write pdu to specified fd */
 void write_pdu(device *odev, selector *selector_to, pdu *p) {
-  
-  // old gaps_tag *otag
   int             rv=-1;
   int             fd;
   int             pkt_len=0;
@@ -209,25 +205,22 @@ int process_input(int ifd, halmap *map, device *devs) {
     log_warn("%s: Device not found for input fd\n", __func__);
     return (0);
   }
+
   buf = read_input_dev_into_buffer(idev, &buf_len);
-  
-  /* Process one or more packets in the input buffer */
   if(buf_len <= 0) {
     log_trace("==================== No data from %s ====================\n", idev->id);
 //    if (sel_verbose==1) fprintf(stderr, "%s: Input PDU is NULL\n", __func__);
     return (1);
   }
   
+  /* Process one or more packets: input buffer -> internal PDU -> output device */
   while (buf_len > 0) {
-    
-// log_trace("Dev %s Input Buffer: ptr=%p, len=%d\n", idev->id, buf, buf_len);
     ipdu = read_pdu_from_buffer(idev, buf, buf_len, &pkt_len);
     if(ipdu == NULL) {
       log_trace("==================== No packet in Input Buffer from %s ====================\n", idev->id);
       return (0);
     }
-// log_trace("PDU buffer: ptr=%p, len=%d\n", ipdu->data, ipdu->data_len);
-
+    
     h = halmap_find(ipdu, map);
     if(h == NULL) {
       log_trace("==================== No matching HAL map entry from %s ====================\n", idev->id);
@@ -238,7 +231,7 @@ int process_input(int ifd, halmap *map, device *devs) {
     
     odev = find_device_by_id(devs, h->to.dev);
     if(odev == NULL) {
-      log_warn("Device %s not found for output", h->to.dev);
+      log_warn("==================== Device %s not found for output ====================\n", h->to.dev);
       pdu_delete(ipdu);
       return (0);
     }
@@ -251,10 +244,9 @@ int process_input(int ifd, halmap *map, device *devs) {
     
     write_pdu(odev, &(h->to), ipdu);
     pdu_delete(ipdu);
-
     buf      += pkt_len;
     buf_len  -= pkt_len;
-// log_trace("length remaining in buffer after pdu removed = %d bytes", buf_len);
+// log_trace("length remaining in buffer after one packet removed = %d bytes", buf_len);
   }
   log_trace("==================== Successfully processed input from %s ====================\n", idev->id);
   return (0);

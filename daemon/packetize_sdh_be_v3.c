@@ -31,7 +31,7 @@ void sdh_be_v3_print(pkt_sdh_be_v3 *p) {
 
 /* get size of packet (= header length + data length) */
 /*   v3 (Mercury12) sends payload PLUS 256 byte packet */
-int get_packet_length_sdh_be_v3(pkt_sdh_be_v3 *pkt, int data_len) {
+int get_packet_length_sdh_be_v3(pkt_sdh_be_v3 *pkt, size_t data_len) {
   return (sizeof(*pkt) + data_len);
 }
 
@@ -41,11 +41,12 @@ int pdu_from_sdh_be_v3 (pdu *out, uint8_t *in, int len_in) {
     uint8_t        *data_in;
 
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v3_print(pkt);
-    if (get_packet_length_sdh_be_v3(pkt, 0) > len_in)  return (-1);
+    out->data_len     = ntohl(pkt->dma_data_len);
+    if (get_packet_length_sdh_be_v3(pkt, out->data_len) > len_in)  return (-1);  /* incomplete packet */
+  
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
-    out->data_len     = ntohl(pkt->dma_data_len);
     data_in = (uint8_t *) pkt + sizeof(*pkt);
 //   memcpy (out->data, data_in, out->data_len);    /* TODO_PDU_PTR */
     out->data = data_in;    /* TODO_PDU_PTR */

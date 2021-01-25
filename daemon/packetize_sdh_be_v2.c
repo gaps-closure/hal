@@ -47,12 +47,12 @@ int get_packet_length_sdh_be_v2(pkt_sdh_be_v2 *pkt, int data_len) {
 int pdu_from_sdh_be_v2 (pdu *out, uint8_t *in, int len_in) {
     pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) in;
 
+    out->data_len     = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
     if (get_packet_length_sdh_be_v2(pkt, 0) > len_in)  return (-1);
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v2_print(pkt);
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
-    out->data_len     = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
 //    memcpy (out->data, pkt->imm_data, len);    /* TODO_PDU_PTR */
     out->data = pkt->imm_data;    /* TODO_PDU_PTR */
 
