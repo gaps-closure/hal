@@ -42,7 +42,7 @@ int pdu_from_sdh_be_v3 (pdu *out, uint8_t *in, int len_in) {
 
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v3_print(pkt);
     out->data_len     = ntohl(pkt->dma_data_len);
-    if (get_packet_length_sdh_be_v3(pkt, out->data_len) > len_in)  return (-1);  /* incomplete packet */
+    if (get_packet_length_sdh_be_v3(pkt, 0) > len_in)  return (-1);  /* incomplete packet */
   
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
