@@ -125,11 +125,16 @@ void ipc_child_run(int *pipe_a2h, int *pipe_h2a, const char *path, const char *m
 /* Open HAL child process to read or write using the Application API (using zcat) */
 int ipc_open_process(int *pipe_a2h, int *pipe_h2a, const char *path, const char *mode, const char *addr) {
   int  pid=-1;
-
+  
   if( access(path, X_OK ) == -1 ) {
-    log_fatal("HAL API path (%s) from conig file is not executable", path);
+    log_fatal("HAL Exiting: ZCAT path (%s) from config file is not executable", path);
     exit(EXIT_FAILURE);
   }
+  if( (access(strstr(addr, "//"), F_OK ) == 0) && (access(strstr(addr, "//"), W_OK ) == -1) ) {
+    log_fatal("HAL Exiting: Cannot write to IPC address %s", addr);
+    exit(EXIT_FAILURE);
+  }
+
   if (strlen(addr) > 0) {
     if ((pid = fork()) < 0) {
       log_fatal("Fork failed");
