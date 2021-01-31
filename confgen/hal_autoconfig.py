@@ -20,6 +20,10 @@ import json
 import argparse
 import libconf
 import sys
+
+# Money patching to avoid dumping L suffix for integers > 32-bit signed
+def is_long_int(i): return False
+libconf.is_long_int = is_long_int
         
 def get_args():
     parser = argparse.ArgumentParser(description='Create HAL configuration file')
