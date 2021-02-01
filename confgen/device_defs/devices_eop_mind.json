@@ -1,0 +1,26 @@
+{
+  "devices": [
+    {
+      "model":    "sdh_ha_v1",
+      "path":     "./zc/zc",
+      "comms":    "ipc",
+      "mode_in":  "sub",
+      "mode_out": "pub"
+    },
+    {
+      "model":          "sdh_bw_v1",
+      "path":           "lo",
+      "comms":          "udp",
+      "enclave_name_1": "green",
+      "listen_addr_1":  "192.168.10.21",
+      "listen_port_1":  6788,
+      "connect_addr_1": "192.168.10.11",
+      "connect_port_1": 6788,
+      "enclav_name_2":  "orange",
+      "listen_addr_2":  "192.168.10.11",
+      "listen_port_2":  6788,
+      "connect_addr_2": "192.168.10.21",
+      "connect_port_2": 6788
+    }
+  ]
+}
