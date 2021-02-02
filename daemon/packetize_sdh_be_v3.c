@@ -62,10 +62,11 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->session_tag        = htonl(otag->mux);
     pkt->message_tag        = htonl(otag->sec);
     pkt->data_tag           = htonl(otag->typ);
-    pkt->descriptor_tag     = htonl(otag->typ);     // Mercury 12 says  should equal typ
-    pkt->descriptor_type    = 0x01000000;           // Payload Mode (in Mercury 11 test example)
-    pkt->descriptor_type    = 0x10000000;           // Payload Mode in Mercury 12 test example
-
+    /* CDG Allow rule is mux, sec, type , but Redact rule is mux, sec, desc */
+    pkt->descriptor_tag     = htonl((otag->typ) | 0x80000000);
+    pkt->descriptor_type    = (1u & 0xF) << 28;
+  
+  
     // b) Timestamps set by driver (linux) or ILIP (gaps)
 //    pkt->gaps_time_lo = htonl(0x01234567);  /* XXX: Just set for testing */
 //    pkt->gaps_time_up = htonl(0x89abcdef);  /* XXX: Just set for testing */
