@@ -46,7 +46,8 @@ int pdu_from_sdh_be_v3 (pdu *out, uint8_t *in, int len_in) {
   
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
-    out->psel.tag.typ = ntohl(pkt->data_tag);
+    out->psel.tag.typ = ntohl(pkt->descriptor_tag);
+
     data_in = (uint8_t *) pkt + sizeof(*pkt);
 //   memcpy (out->data, data_in, out->data_len);    /* TODO_PDU_PTR */
     out->data = data_in;    /* TODO_PDU_PTR */
@@ -72,7 +73,7 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->descriptor_type    = (1u & 0xF) << 28;
   
     // b) Timestamps set by driver (linux) or ILIP (gaps)
-//    pkt->gaps_time_lo = htonl(0x01234567);  /* XXX: Just set for testing */
+//    pkt->gaps_time_lo = htonl(0x0123456criptor_tagc);  /* XXX: Just set for testing */
 //    pkt->gaps_time_up = htonl(0x89abcdef);  /* XXX: Just set for testing */
     pkt->gaps_time_lo       = 0;
     pkt->gaps_time_up       = 0;
