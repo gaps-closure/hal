@@ -61,11 +61,15 @@ int pdu_into_sdh_be_v3 (uint8_t *out, pdu *in, gaps_tag *otag) {
     // a) Copy tag info and descriptor into packet
     pkt->session_tag        = htonl(otag->mux);
     pkt->message_tag        = htonl(otag->sec);
-    pkt->data_tag           = htonl(otag->typ);
+    pkt->descriptor_tag     = htonl(otag->typ);
+    
+    // Data tag is the payload data tag distinct from mux/sec/typ
+    // High order bit must be 1
+    pkt->data_tag           = htonl((otag->typ) | 0x80000000);
+
     /* CDG Allow rule is mux, sec, type , but Redact rule is mux, sec, desc */
-    pkt->descriptor_tag     = htonl((otag->typ) | 0x80000000);
+    // Descriptor_type determines immediate vs. payload mode
     pkt->descriptor_type    = (1u & 0xF) << 28;
-  
   
     // b) Timestamps set by driver (linux) or ILIP (gaps)
 //    pkt->gaps_time_lo = htonl(0x01234567);  /* XXX: Just set for testing */
