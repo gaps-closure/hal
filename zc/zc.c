@@ -11,7 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define STDIN_READ_SIZE 8192
+#define STDIN_READ_SIZE 1100000
 
 int verbose = 0;
 
