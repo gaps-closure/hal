@@ -1,7 +1,7 @@
 /*
  * APP_REQ_REP.C
  *   Simple Request-Reply (client-server) application to test the new HAL API
- *   January 2021, Perspecta Labs
+ *   February 2021, Perspecta Labs
  *
  * 1) Compilation (with the necessary includes and libraries):
  *   cd ~/gaps/build/src/hal/test/
@@ -53,10 +53,9 @@
  *      green:   ./app_req_rep -u 1 -o 0 -g 700
  *      orange:  ./app_req_rep -e 2 -u 1 -o 900 -g 0
  
- *    [x] EOP: Green enclave sends raw data <12,12,12>; Orange replies with raw data <11,11,11>
- *                 (HAL is configured to 'be' URIs)
- *      green:   ./app_req_rep -v 2 -x
- *      orange:  ./app_req_rep -v 2 -x -e 2
+ *    [x] EOP: Orange enclave sends HB/position <12,12,13>; Green replies with HB/position <111,111,113>
+ *      green:   ./app_req_rep -r -q
+ *      orange:  ./app_req_rep -r -q -e 2
  */
 
 #include "../api/xdcomms.h"
@@ -103,7 +102,7 @@ void opts_print(void) {
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt, v;
-  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:ru:")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:qru:")) != EOF)
   {
     switch (opt)
     {
@@ -135,6 +134,14 @@ void opts_get(int argc, char **argv) {
         if (v > 0) copy_buf_size = v;
         typ_2_1 = DATA_TYP_RAW;
         sec_2_1 = 3;               /* ILIP ACM supports <2 3 3> not <2 2 3> */
+        break;
+      case 'q':
+        mux_2_1 = 12;
+        sec_2_1 = 12;
+        typ_2_1 = DATA_TYP_HB_ORANGE;
+        mux_1_2 = 111;
+        sec_1_2 = 111;
+        typ_1_2 = DATA_TYP_HB_GREEN;
         break;
       case 'r':
         reverse_flow = 1;
@@ -240,6 +247,8 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, in
   switch (tag_pub->typ) {
     case DATA_TYP_POSITION:
     case DATA_TYP_BIG:
+    case DATA_TYP_HB_ORANGE:
+    case DATA_TYP_HB_GREEN:
       if (new_flag == 1) *adu_len = position_set(adu);
       position_print((position_datatype *) adu);
       break;
@@ -265,6 +274,8 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_su
     switch (tag_sub->typ) {
       case DATA_TYP_POSITION:
       case DATA_TYP_BIG:
+      case DATA_TYP_HB_ORANGE:
+      case DATA_TYP_HB_GREEN:
         position_print((position_datatype *) adu);
         break;
       case DATA_TYP_RAW:
@@ -333,6 +344,10 @@ int main(int argc, char **argv) {
     xdc_register(raw_data_encode, raw_data_decode, DATA_TYP_RAW);
   if ((typ_1_2 == DATA_TYP_BIG) || (typ_2_1 = DATA_TYP_BIG))
     xdc_register(position_data_encode, position_data_decode, DATA_TYP_BIG);
+  if ((typ_1_2 == DATA_TYP_HB_ORANGE) || (typ_2_1 = DATA_TYP_HB_ORANGE))
+    xdc_register(position_data_encode, position_data_decode, DATA_TYP_HB_ORANGE);
+  if ((typ_1_2 == DATA_TYP_HB_GREEN)  || (typ_2_1 = DATA_TYP_HB_GREEN))
+    xdc_register(position_data_encode, position_data_decode, DATA_TYP_HB_GREEN);
 
   /* C) Configure ZMQ Pub and Sub Interfaces (same for both enclaves) */
   xdc_ctx();
