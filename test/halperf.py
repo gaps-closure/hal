@@ -75,7 +75,7 @@ def send(m, s, t, r, interval):
     global_stats[key] = Stats()
     slock = Lock()
     
-    if int(t) == 1:
+    if int(t) in {DATA_TYP_POS, DATA_TYP_HB_ORANGE, DATA_TYP_HB_GREEN}:
         adu = Position(pos.x, pos.y, pos.z, ClosureTrailer(0,0,0,0,0))
     elif int(t) == 2:
         adu = Distance(dis.x, dis.y, dis.z, ClosureTrailer(0,0,0,0,0))
