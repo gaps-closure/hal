@@ -17,6 +17,8 @@ plock = Lock()
 
 DATA_TYP_POS = 1
 DATA_TYP_DIS = 2
+DATA_TYP_HB_ORANGE = 13
+DATA_TYP_HB_GREEN = 113
 
 class GapsTag(Structure):
     _fields_ = [("mux", c_uint),
@@ -108,7 +110,7 @@ def send(m, s, t, r, interval):
     stmr.start()
         
 def recv(m, s, t, interval):
-    if int(t) == DATA_TYP_POS:
+    if int(t) in {DATA_TYP_POS, DATA_TYP_HB_ORANGE, DATA_TYP_HB_GREEN}:
         adu = Position()
     elif int(t) == DATA_TYP_DIS:
         adu = Distance()
@@ -175,6 +177,8 @@ if __name__ == '__main__':
     # Register encode/decode functions; TODO: make spec-driven
     xdc_so.xdc_register(gma_so.position_data_encode, gma_so.position_data_decode, DATA_TYP_POS)
     xdc_so.xdc_register(gma_so.distance_data_encode, gma_so.distance_data_decode, DATA_TYP_DIS)
+    xdc_so.xdc_register(gma_so.position_data_encode, gma_so.position_data_decode, DATA_TYP_HB_ORANGE)
+    xdc_so.xdc_register(gma_so.position_data_encode, gma_so.position_data_decode, DATA_TYP_HB_GREEN)
 
     start = time.time()
     if args.send:
