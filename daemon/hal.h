@@ -3,6 +3,8 @@
 #ifndef HAL_HEADER_FILE
 #define HAL_HEADER_FILE
 
+#define HAVE_ARCH_STRUCT_FLOCK 
+
 #include "../api/xdcomms.h"
 
 #include <getopt.h>
@@ -12,6 +14,7 @@
 #include <libconfig.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <linux/fcntl.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>

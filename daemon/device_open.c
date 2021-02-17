@@ -15,6 +15,7 @@
 #define PARENT_OUT pipe_h2a[1]
 #define CHILD_OUT  pipe_a2h[1]
 #define CHILD_IN   pipe_h2a[0]
+#define PIPE_BUFFER_CAP  655360
 
 /* Store information on ILP devices associated with serial root device */
 #define ILP_MAX_DEVICES_PER_ROOT 16
@@ -154,6 +155,16 @@ int ipc_open_process(int *pipe_a2h, int *pipe_h2a, const char *path, const char 
   return(pid);
 }
 
+/* Set the pipe capacity */
+static void pipe_cap_set(int fd, long sz) {
+  int ret;
+  ret = fcntl(fd, F_SETPIPE_SZ, sz);
+  if (ret < 0) {
+    log_fatal("Pipe capacity could not be set");
+    exit(EXIT_FAILURE);
+  }
+}
+
 /* Open IPC interfaces (on device specified in d structure) for app to hal (a2h) and/or hal to app (h2a) communication
  *   For each (_in or _out) address specified in the configuration, HQL creates one processs, with:
  *      a) 1 pipe (unidirectional comms) for PUB/SUB
@@ -169,6 +180,11 @@ void interface_open_ipc(device *d) {
     log_fatal("Pipe creation failed");
     exit(EXIT_FAILURE);
   }
+
+  pipe_cap_set(pipe_a2h[0],PIPE_BUFFER_CAP);
+  pipe_cap_set(pipe_a2h[1],PIPE_BUFFER_CAP);
+  pipe_cap_set(pipe_h2a[0],PIPE_BUFFER_CAP);
+  pipe_cap_set(pipe_h2a[1],PIPE_BUFFER_CAP);
 
   /* b) Fork HAL-ZMQ-API child processes (using ipc communication pipes with HAL) */
   log_trace("Openning API i=[%s:%s] o=[%s:%s]", d->addr_in, d->mode_in, d->addr_out, d->mode_out);
