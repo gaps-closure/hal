@@ -39,7 +39,7 @@ void tag_cp (gaps_tag *tag_out, gaps_tag *tag_in) {
 /**********************************************************************/
 void xdc_log_level(int new_level) {
   static int do_once = 1;
-
+  
   // set to default if User has not already set
   if (new_level == -1) {
     if (do_once == 1) {
@@ -269,7 +269,7 @@ void *xdc_pub_socket()
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
     err = zmq_connect(socket, xdc_set_out(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
-    log_trace("API connects (s=%p t=%d) to %s\n", socket, ZMQ_PUB, xdc_set_out(NULL));
+    log_trace("API connects (s=%p t=%d) to %s", socket, ZMQ_PUB, xdc_set_out(NULL));
     /*
      * HAL subscriber binds to address (usually publisher would bind).
      * The APP-API cannot send immediately after a connect, as there
@@ -299,7 +299,7 @@ void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
   
     err = zmq_connect(socket, xdc_set_in(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
-    log_trace("API connects to %s (sock=%p timeout(ms)=%d matchLen=%d)\n", xdc_set_in(NULL), socket, timeout, RX_FILTER_LEN);
+    log_trace("API connects to %s (sock=%p timeout(ms)=%d matchLen=%d)", xdc_set_in(NULL), socket, timeout, RX_FILTER_LEN);
     tag_cp(&tag4filter, &tag);
     err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
     assert(err == 0);
