@@ -73,7 +73,7 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
 //  log_fatal("DATA_ALIGNMENT = %d, PACKET_MAX = %d, PACKET_MAX % DATA_ALIGNMENT = %d, b0=%p b1=%p", DATA_ALIGNMENT, PACKET_MAX, (PACKET_MAX % DATA_ALIGNMENT), (void *) buf[0], (void *) buf[1]);
   
   /* a) read input into buf and get its length (with input dev_id and fd) */
-  fd        = idev->readfd;
+  fd        = idev->read_fd;
   com_type  = idev->comms;
   com_model = idev->model;
 //exit (21);
@@ -94,6 +94,7 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
       *buf_len = read(fd, buf[buf_index], 2304);    /* v12  bigger packets (buffer big en */
       *buf_len = 256;                    /* HACK to packet (256) - actually gets 512 */
     }
+    // TODOz - read from ZMQ socket instread of file descriptor
     else {
       *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     }
@@ -149,7 +150,8 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   const char     *com_type;
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
-  log_trace("HAL writing to %s on fd=%d (using buf=%p)\n", odev->id, odev->writefd, (void *) buf);
+  // TODOz - write to ZMQ socket
+  log_trace("HAL writing to %s on fd=%d (using buf=%p)\n", odev->id, odev->write_fd, (void *) buf);
   /* a) Convert into packet based on interface packet model  */
 //  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
@@ -157,7 +159,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   if (pkt_len == 0) return;      // do not write if bad length
     
   /* b) Write to interface based on interface comms type */
-  fd = odev->writefd;
+  fd = odev->write_fd;
   com_type = odev->comms;
 
   log_trace("HAL writing using comms type %s (len=%d buf=%p)", com_type, pkt_len, (void *)buf);
@@ -192,7 +194,7 @@ void pdu_delete(pdu *pdu) {
   free(pdu);
 }
 
-/* Process input from device (with 'input_fd') and send to output */
+/* Process input from device (using file descriptor ifd or socket isoc) and send to output */
 int process_input(int ifd, halmap *map, device *devs) {
   pdu    *ipdu;
   device *idev, *odev;
@@ -200,7 +202,8 @@ int process_input(int ifd, halmap *map, device *devs) {
   int    buf_len, pkt_len=0;
   uint8_t *buf;
   
-  idev = find_device_by_readfd(devs, ifd);
+  // TODOz - find by socket
+  idev = find_device_by_read_fd(devs, ifd);
   if(idev == NULL) { 
     log_warn("%s: Device not found for input fd\n", __func__);
     return (0);
@@ -255,6 +258,7 @@ int process_input(int ifd, halmap *map, device *devs) {
 /**********************************************************************/
 /* Listen for input from any open device                              */
 /**********************************************************************/
+/* TODOz - replace with ZMQ POLL */
 void select_add(int fd, int *maxrfd, fd_set *readfds){
   if (fd > 0) {
     if (fd >= *maxrfd) *maxrfd = fd + 1;
@@ -271,10 +275,11 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
   
   FD_ZERO(readfds);
   maxrfd = -1;
+  // TODOz - search for ZMQ sockets
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
-    if ((d->enabled != 0) && (d->readfd >= 0)) {
-      select_add(d->readfd, &maxrfd, readfds);
-      sprintf(str_new, "%s(fd=%d) ", d->id, d->readfd);
+    if ((d->enabled != 0) && (d->read_fd >= 0)) {
+      select_add(d->read_fd, &maxrfd, readfds);
+      sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
       strcat(s, str_new);
       i++;
     }
@@ -288,6 +293,9 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   int       nunready, nready;
   int       maxrfd;                   /* Maximum file descriptor number for select */
   fd_set    readfds, readfds_saved;   /* File descriptor set for select */
+
+  log_error("TODOz - select using ZMQ POLL\n");
+  exit(EXIT_FAILURE);
 
   maxrfd = select_init(devs,  &readfds_saved);
 

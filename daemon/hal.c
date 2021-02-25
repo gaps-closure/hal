@@ -92,7 +92,8 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   /* a) Logging */
   log_set_quiet(hal_quiet);
   if (log_level < LOG_TRACE) log_level = LOG_TRACE;
-  log_set_level(log_level);
+  xdc_log_level(log_level);
+//  log_set_level(log_level);
   if (file_name_log != NULL) {
     log_trace("Openning Log file: %s", file_name_log);
     fp = fopen(file_name_log, "w+");
@@ -105,7 +106,6 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   log_trace("CONFIG-FILE = %s", file_name_config);
   log_trace("LOG = [file=%s, lev=%d, limit=%d, quiet=%d]", file_name_log, log_level, LOG_LEVEL_MIN, hal_quiet);
   log_trace("wait_us=%d", hal_wait_us);
-
   /* b) Load coniguration */
   cfg_read(&cfg, file_name_config);
   devs = get_devices(&cfg);
@@ -119,7 +119,6 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   /* c) Open devices */
   devices_open(devs);
   log_devs_debug(devs, __func__);
-  
   /* d) Initialize signal handler, then Wait for input */
   signal(SIGINT, sigintHandler);
   root_dev = devs;

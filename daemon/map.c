@@ -51,7 +51,8 @@ void halmap_print_one(halmap *hm, FILE *fd) {
   selector_print(&(hm->from), fd);
   fprintf(fd, "-> ");
   selector_print(&(hm->to), fd);
-  fprintf(fd, ", codec=%s\n", hm->codec);
+  if (strlen(hm->codec) > 0)  fprintf(fd, ", codec=%s", hm->codec);
+  fprintf(fd, "\n");
 }
 
 /* Print list of HAL map entries for debugging */

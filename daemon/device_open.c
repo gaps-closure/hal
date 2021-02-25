@@ -1,14 +1,16 @@
 /*
  * HAL device Open, Find and Print
- *   December 2020, Perspecta Labs
+ *   March 2021, Perspecta Labs
  *
- *     a) IPC to application (unix pipe and ZMQ process)
- *     b) INET device (tcp or udp)
- *     c) Bidirectional Serial Device (tty)
- *     d) Unidirectional Serial Device (ilp)
+ *     z) ZMQ to application
+ *     u) IPC to application (unix pipe and ZMQ process)
+ *     n) INET device (tcp or udp)
+ *     t) Bidirectional Serial Device (tty)
+ *     i) Unidirectional Serial Device (ilp)
  */
 
 #include "hal.h"
+#include "../api/xdcomms.h"
 
 /* Define IPC parent-child process file descriptors */
 #define PARENT_IN  pipe_a2h[0]
@@ -39,6 +41,11 @@ void device_print_int(FILE *fd, char *name, int v) {
   if (v >= 0) fprintf(fd, " %s=%d", name, v);
 }
 
+/* Print device definition element (if it exists) */
+void device_print_ptr(FILE *fd, char *name, void *p) {
+  if (p != NULL) fprintf(fd, " %s=%p", name, p);
+}
+
 /* Print device definition */
 void devices_print_one(device *d, FILE *fd)  {
   if (fd == NULL) return;
@@ -50,8 +57,10 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_str(fd, "mo", d->mode_out);
   device_print_int(fd, "pi", d->port_in);
   device_print_int(fd, "po", d->port_out);
-  device_print_int(fd, "fi", d->readfd);
-  device_print_int(fd, "fo", d->writefd);
+  device_print_int(fd, "fi", d->read_fd);
+  device_print_int(fd, "fo", d->write_fd);
+  device_print_ptr(fd, "si", d->read_soc);
+  device_print_ptr(fd, "so", d->write_soc);
   device_print_str(fd, "di", d->path_r);
   device_print_str(fd, "do", d->path_w);
   device_print_int(fd, "Pi", d->pid_in);
@@ -63,12 +72,11 @@ void devices_print_one(device *d, FILE *fd)  {
   
 /* Print list of devices for debugging */
 void log_log_devs(int level, device *root, const char *fn)  {
-  FILE *fd[2];
+  FILE *fd[2];        /* log.c print devices (e.g., stdout and filename) */
   int   i;
   
   log_get_fds(level, &fd[0], &fd[1]);
   for (i=0; i<2; i++) {
-//    fprintf(stderr, "XXX fd=%p\n", fd[i]);
     if (fd[i] != NULL) {
       fprintf(fd[i], "  HAL device list (from %s):\n", fn);
       for(device *d = root; d != NULL; d = d->next) devices_print_one(d, fd[i]);
@@ -81,10 +89,19 @@ void log_log_devs(int level, device *root, const char *fn)  {
 /* Match from Device List  */
 /*********t************************************************************/
 /* Loop through devs linked list, return device with fd as its read file descriptor */
-device *find_device_by_readfd(device *root, int fd) {
+device *find_device_by_read_fd(device *root, int fd) {
   for(device *d = root; d != NULL; d = d->next) {
-    // fprintf(stderr, "%s: fd=%d: dev=%s rfd=%d wfd=%d\n", __func__, fd, d->id, d->readfd, d->writefd);
-    if ( (d->enabled != 0) && (d->readfd == fd) ) return (d);
+    // fprintf(stderr, "%s: fd=%d: dev=%s rfd=%d wfd=%d\n", __func__, fd, d->id, d->read_fd, d->write_fd);
+    if ( (d->enabled != 0) && (d->read_fd == fd) ) return (d);
+  }
+  return ((device *) NULL);
+}
+
+/* Loop through devs linked list, return device with fd as its read file descriptor */
+device *find_device_by_read_soc(device *root, void *socket) {
+  for(device *d = root; d != NULL; d = d->next) {
+    // fprintf(stderr, "%s: fd=%d: dev=%s rfd=%d wfd=%d\n", __func__, fd, d->id, d->read_soc, d->write_soc);
+    if ( (d->enabled != 0) && (d->read_soc == socket) ) return (d);
   }
   return ((device *) NULL);
 }
@@ -99,7 +116,28 @@ device *find_device_by_id(device *root, const char *id) {
 }
 
 /**********************************************************************/
-/* Open Device; a) IPC  */
+/* z) Open ZMQ Device */
+/**********************************************************************/
+/* Open read and write ZMQ sockets (and store in the device structure) */
+/* Uses xdcomms API to configure */
+void interface_open_zmq(device *d) {
+  gaps_tag        tag;
+
+  /* Use addr_out publishes to APP sub */
+  if (strlen(d->addr_out) > 0) {
+    xdc_set_out((char *) d->addr_out);
+    d->write_soc = xdc_pub_socket();
+  }
+  tag_write(&tag, 0, 0, 0);         /* any tag */
+  if (strlen(d->addr_in)  > 0) {
+    xdc_set_in((char *) d->addr_in);
+    d->read_soc = xdc_sub_socket(tag);
+  }
+  log_trace("Created ZMQ sockets for %s (r=%p w=%p)", d->id, d->read_soc, d->write_soc);
+}
+
+/**********************************************************************/
+/* u) Open Unix IPC Device */
 /*********t************************************************************/
 /* Start child process (currently zcat) to communicate between APP and HAL */
 void ipc_child_run(int *pipe_a2h, int *pipe_h2a, const char *path, const char *mode, const char *addr) {
@@ -199,15 +237,15 @@ void interface_open_ipc(device *d) {
       strcmp(d->mode_in,  "rep") ||
       strcmp(d->mode_out, "req") ||
       strcmp(d->mode_out, "rep")) {
-    d->readfd  = PARENT_IN;
-    d->writefd = PARENT_OUT;
+    d->read_fd  = PARENT_IN;
+    d->write_fd = PARENT_OUT;
   }
   else
   {
-    if (d->pid_in  > 0) d->readfd  = PARENT_IN;
-    if (d->pid_out > 0) d->writefd = PARENT_OUT;
+    if (d->pid_in  > 0) d->read_fd  = PARENT_IN;
+    if (d->pid_out > 0) d->write_fd = PARENT_OUT;
   }
-  log_trace("Starred HAL-ZMQ-API process(es): in=[pid=%d:fd=%d] out=[pid=%d:fd=%d]", d->pid_in, d->readfd, d->pid_out, d->writefd);
+  log_trace("Starred HAL-ZMQ-API process(es): in=[pid=%d:fd=%d] out=[pid=%d:fd=%d]", d->pid_in, d->read_fd, d->pid_out, d->write_fd);
 }
 
 /**********************************************************************/
@@ -267,9 +305,9 @@ void interface_open_inet(device *d) {
 
   /* Save file descriptors */
   if ( (fd_out == -1) && (fd_in == -1) ) {log_fatal("\nNo address speciffied for interface %s\n", d->id); exit(EXIT_FAILURE);}
-  if ( (fd_out == -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_in;}
-  if ( (fd_out != -1) && (fd_in == -1) ) {d->readfd = fd_out; d->writefd = fd_out;}
-  if ( (fd_out != -1) && (fd_in != -1) ) {d->readfd = fd_in;  d->writefd = fd_out;}
+  if ( (fd_out == -1) && (fd_in != -1) ) {d->read_fd = fd_in;  d->write_fd = fd_in;}
+  if ( (fd_out != -1) && (fd_in == -1) ) {d->read_fd = fd_out; d->write_fd = fd_out;}
+  if ( (fd_out != -1) && (fd_in != -1) ) {d->read_fd = fd_in;  d->write_fd = fd_out;}
 }
 
 /**********************************************************************/
@@ -282,8 +320,8 @@ void interface_open_tty(device *d) {
     log_fatal("Error opening device %s: %s\n", d->id, d->path);
     exit(EXIT_FAILURE);
   }
-  d->readfd = fd;
-  d->writefd = fd;
+  d->read_fd = fd;
+  d->write_fd = fd;
 }
 
 /**********************************************************************/
@@ -306,9 +344,9 @@ void ilp_open_data_devices(device *d) {
       log_fatal("Error opening device %s: %s\n", d->id, d->path_r);
       exit(EXIT_FAILURE);
     }
-    d->readfd  = fd_read;
+    d->read_fd  = fd_read;
 
-    log_trace("Opened read device (fd=%d) %s: %s", d->readfd, d->id, d->path_r);
+    log_trace("Opened read device (fd=%d) %s: %s", d->read_fd, d->id, d->path_r);
   }
   
   if (strlen(d->path_w) > 0) {
@@ -318,9 +356,9 @@ void ilp_open_data_devices(device *d) {
       log_fatal("Error opening device %s: %s", d->id, d->path_w);
       exit(EXIT_FAILURE);
     }
-    d->writefd = fd_write;
+    d->write_fd = fd_write;
 
-    log_trace("Opened write device (fd=%d) %s: %s", d->writefd, d->id, d->path_w);
+    log_trace("Opened write device (fd=%d) %s: %s", d->write_fd, d->id, d->path_w);
   }
 }
 
@@ -435,8 +473,9 @@ void devices_open(device *dev_linked_list_root) {
     else if ( (!strncmp(d->comms, "udp", 3)) || (!strncmp(d->comms, "tcp", 3)) )  interface_open_inet(d);
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
-    else { log_fatal("Device %s [%s] unknown", d->id, d->path); exit(EXIT_FAILURE);}
-// fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->readfd, d->writefd);
+    else if   (!strncmp(d->comms, "zmq", 3))                                      interface_open_zmq(d);
+    else { log_fatal("Device %s [%s] unknown", d->id, d->comms); exit(EXIT_FAILURE);}
+// fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->read_fd, d->write_fd);
   }
   interface_open_ilp(NULL);
 }

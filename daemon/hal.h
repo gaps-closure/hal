@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <signal.h>
 #include "../log/log.h"
+#include <zmq.h>
 
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */
@@ -46,13 +47,15 @@ typedef struct _dev {
   /* B) internal structures and parameters for this device */
   struct sockaddr_in socaddr_in;
   struct sockaddr_in socaddr_out;
-  int         readfd;       /* file descriptors to HAL-ZMQ-API process */
-  int         writefd;
-  int         count_r;      /* total packet counts */
+  int         read_fd;     /* I/O handles = file descriptors */
+  int         write_fd;
+  void       *read_soc;    /* I/O handles - ZMQ sockets */
+  void       *write_soc;
+  int         count_r;     /* total packet counts */
   int         count_w;
-  int         pid_in;       /* HAL-ZMQ-API process ids */
+  int         pid_in;      /* HAL-ZMQ-API process ids */
   int         pid_out;
-  struct _dev *next;        /* Deices saved as a linked list */
+  struct _dev *next;       /* Deices saved as a linked list */
 } device;
 
 /* HAL Selector (used in HAL map entries and PDUs) */

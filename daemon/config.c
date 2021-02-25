@@ -75,10 +75,10 @@ device *get_devices(config_t *cfg) {
       /* required parameters */
       ret[i].enabled     = get_param_int(dev, "enabled",     0, i);
       ret[i].id          = get_param_str(dev, "id",          0, i);
-      ret[i].path        = get_param_str(dev, "path",        0, i);
       ret[i].model       = get_param_str(dev, "model",       0, i);
       ret[i].comms       = get_param_str(dev, "comms",       0, i);
       /* optional parameters */
+      ret[i].path        = get_param_str(dev, "path",        1, i);
       ret[i].init_enable = get_param_int(dev, "init_enable", 1, i);
       ret[i].addr_in     = get_param_str(dev, "addr_in",     1, i);
       ret[i].addr_out    = get_param_str(dev, "addr_out",    1, i);
@@ -90,12 +90,14 @@ device *get_devices(config_t *cfg) {
       ret[i].path_w      = get_param_str(dev, "path_w",      1, i);
       ret[i].from_mux    = get_param_int(dev, "from_mux",    1, i);
 
-      ret[i].readfd   = -1; /* to be set when opened */
-      ret[i].writefd  = -1; /* to be set when opened */
-      ret[i].pid_in   = -1; /* to be set when opened */
-      ret[i].pid_out  = -1; /* to be set when opened */
-      ret[i].count_r  =  0;
-      ret[i].count_w  =  0;
+      ret[i].read_fd   = -1; /* to be set when opened */
+      ret[i].write_fd  = -1; /* to be set when opened */
+      ret[i].read_soc  = NULL; /* to be set when opened */
+      ret[i].write_soc = NULL; /* to be set when opened */
+      ret[i].pid_in    = -1; /* to be set when opened */
+      ret[i].pid_out   = -1; /* to be set when opened */
+      ret[i].count_r   =  0;
+      ret[i].count_w   =  0;
 
       /*
       for(int j = 0; j < SN_LIST_WINDOW_SIZE; j++) {
