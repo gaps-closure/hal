@@ -253,6 +253,7 @@ void *xdc_ctx() {
     xdc_log_level(-1);            /* set logging level to default (if not set) */
     ctx = zmq_ctx_new();
     if(ctx == NULL) exit_with_zmq_error("zmq_ctx_new");
+    log_trace("API creates a new ZMQ context (p=%p)", ctx);
   }
   return ctx;
 }
@@ -285,9 +286,10 @@ void *xdc_pub_socket()
  */
 void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
 {
-    int      err;
+    int      err, len;
     void    *socket;
     gaps_tag tag4filter;
+    void    *filter;
 
     socket = zmq_socket(xdc_ctx(), ZMQ_SUB);
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
@@ -296,12 +298,22 @@ void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
         err = zmq_setsockopt(socket, ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
         assert(err == 0);
     }
-  
+
     err = zmq_connect(socket, xdc_set_in(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
-    log_trace("API connects to %s (sock=%p timeout(ms)=%d matchLen=%d)", xdc_set_in(NULL), socket, timeout, RX_FILTER_LEN);
-    tag_cp(&tag4filter, &tag);
-    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
+    
+    if ((tag.mux) != 0) {
+        len = RX_FILTER_LEN;
+        tag_cp(&tag4filter, &tag);
+        filter = (void *) &tag4filter;
+    } else {
+        len = 0;
+        filter = (void *) "";
+    }
+      
+    log_trace("API connects to %s (sock=%p timeout(ms)=%d match Len=%d)", xdc_set_in(NULL), socket, timeout, len);
+    
+    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, filter, len);
     assert(err == 0);
     return socket;
 }
@@ -345,7 +357,7 @@ int xdc_recv(void *socket, void *adu, gaps_tag *tag)
   void *p =  &packet;
   size_t      adu_len;
   
-  log_trace("API waiting to recv (using len=%d filter)", RX_FILTER_LEN);
+  log_trace("API waiting to recv packet");
   int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
   if (size <= 0) {
     if (errno == EAGAIN) log_trace("Timeout on socket (%p): rv=%d error = %s", socket, size, zmq_strerror(errno));

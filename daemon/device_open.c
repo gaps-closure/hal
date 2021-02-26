@@ -121,19 +121,22 @@ device *find_device_by_id(device *root, const char *id) {
 /* Open read and write ZMQ sockets (and store in the device structure) */
 /* Uses xdcomms API to configure */
 void interface_open_zmq(device *d) {
-  gaps_tag        tag;
+  int rc;
 
   /* Use addr_out publishes to APP sub */
   if (strlen(d->addr_out) > 0) {
-    xdc_set_out((char *) d->addr_out);
-    d->write_soc = xdc_pub_socket();
+    d->write_soc = zmq_socket(xdc_ctx(), ZMQ_PUB);
+    rc = zmq_bind (d->write_soc, d->addr_out);
+    log_trace("Device %s has a ZMQ publisher  listening on %s for subscribers", d->id, d->addr_out);
   }
-  tag_write(&tag, 0, 0, 0);         /* any tag */
   if (strlen(d->addr_in)  > 0) {
-    xdc_set_in((char *) d->addr_in);
-    d->read_soc = xdc_sub_socket(tag);
+    d->read_soc = zmq_socket(xdc_ctx(), ZMQ_SUB);
+    rc = zmq_bind (d->read_soc, d->addr_in);
+    assert (rc == 0);
+    rc = zmq_setsockopt (d->read_soc, ZMQ_SUBSCRIBE, "", 0);
+    log_trace("Device %s has a ZMQ subscriber listening on %s for publishers (with no receive filter)", d->id, d->addr_in);
   }
-  log_trace("Created ZMQ sockets for %s (r=%p w=%p)", d->id, d->read_soc, d->write_soc);
+  assert (rc == 0);
 }
 
 /**********************************************************************/

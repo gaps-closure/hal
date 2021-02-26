@@ -11,6 +11,7 @@
 #include "device_open.h"
 #include "packetize.h"
 
+#define MAX_POLL_ITEMS 16
 #define DATA_ALIGNMENT 32       /* Must be power of 2 */
 // PACKET MAX covers max data (ADU_SIZE_MAX_C) + max header (256), and it is multiple of DATA_ALIGNMENT
 #define PACKET_MAX ((ADU_SIZE_MAX_C + 255 + DATA_ALIGNMENT) - ((ADU_SIZE_MAX_C + 255) % DATA_ALIGNMENT))
@@ -195,20 +196,13 @@ void pdu_delete(pdu *pdu) {
 }
 
 /* Process input from device (using file descriptor ifd or socket isoc) and send to output */
-int process_input(int ifd, halmap *map, device *devs) {
-  pdu    *ipdu;
-  device *idev, *odev;
-  halmap *h;
-  int    buf_len, pkt_len=0;
+int process_input(device *idev, halmap *map, device *devs) {
+  pdu     *ipdu;
+  device  *odev;
+  halmap  *h;
+  int      buf_len, pkt_len=0;
   uint8_t *buf;
   
-  // TODOz - find by socket
-  idev = find_device_by_read_fd(devs, ifd);
-  if(idev == NULL) { 
-    log_warn("%s: Device not found for input fd\n", __func__);
-    return (0);
-  }
-
   buf = read_input_dev_into_buffer(idev, &buf_len);
   if(buf_len <= 0) {
     log_trace("==================== No data from %s ====================\n", idev->id);
@@ -256,7 +250,7 @@ int process_input(int ifd, halmap *map, device *devs) {
 }
 
 /**********************************************************************/
-/* Listen for input from any open device                              */
+/* Listen for input from any open device using unix select or zmq poll  */
 /**********************************************************************/
 /* TODOz - replace with ZMQ POLL */
 void select_add(int fd, int *maxrfd, fd_set *readfds){
@@ -289,14 +283,12 @@ int select_init(device *dev_linked_list_root, fd_set *readfds) {
 }
 
 /* Wait for input from any read interface */
-void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
+void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
   int       nunready, nready;
   int       maxrfd;                   /* Maximum file descriptor number for select */
   fd_set    readfds, readfds_saved;   /* File descriptor set for select */
-
-  log_error("TODOz - select using ZMQ POLL\n");
-  exit(EXIT_FAILURE);
-
+  device   *idev;
+  
   maxrfd = select_init(devs,  &readfds_saved);
 
   while (1) {
@@ -317,7 +309,9 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
     if (sel_verbose) log_trace("Select found n=%d ready (max=%d)\n", nready, maxrfd);
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
-        nunready += process_input(i, map, devs);
+        idev = find_device_by_read_fd(devs, i);
+        if(idev == NULL) log_warn("Device not found for input fd=%d\n", i);
+        else             nunready += process_input(idev, map, devs);
         nready--;
       }
     }
@@ -328,3 +322,71 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
     }
   }
 }
+
+int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items) {
+  int      i=0;
+  char     s[256]="", str_new[64];
+  device  *d;                   /*  device pointer */
+
+  /* First load ØMQ sockets into item */
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+    if ((d->enabled != 0) && (d->read_soc != NULL)) {
+      sprintf(str_new, "%s(soc=%p) ", d->id, d->read_soc);
+      strcat(s, str_new);
+      items[i].socket = d->read_soc;
+      items[i].events = ZMQ_POLLIN;
+      i++;
+    }
+  }
+  *num_zmq_items = i;
+  /* Second get standard unix socket 'fd' into item*/
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+    if ((d->enabled != 0) && (d->read_fd >= 0)) {
+      sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
+      strcat(s, str_new);
+      items[i].socket = NULL;
+      items[i].fd     = d->read_fd;
+      items[i].events = ZMQ_POLLIN;
+      i++;
+    }
+  }
+  log_debug("========== HAL Waiting for first input from %d ZMQ and %d Unix device(s): %s\n", *num_zmq_items, i-(*num_zmq_items), s);
+  return (i);
+}
+
+/* Wait for input from any read interface */
+void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
+  int             num_items, num_zmq_items, i, rc;
+  zmq_pollitem_t  items[MAX_POLL_ITEMS];
+  char            msg [256];
+  device         *idev;
+
+  // For now only use if needed (but will remove when fully tested)
+//  if (devs->read_soc == NULL) read_wait_loop2(devs, map, hal_wait_us);
+
+  num_items = zmq_poll_init(devs, items, &num_zmq_items);
+  while (1) {
+    rc = zmq_poll (items, num_items, -1);    /* Poll for events indefinitely (-1) */
+    assert (rc >= 0);
+    log_trace("Poller found %d of %d ready", rc, num_items);
+    if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
+    for (i=0; i<num_items; i++) {
+      log_trace("Checking device %d", i);
+      /* Check for any returned events (stored in items[].revents) */
+      if (items[i].revents & ZMQ_POLLIN) {
+        if (i < num_zmq_items) {
+          printf("Poller detected ZMQ device is ready\n");
+          rc = zmq_recv (items[i].socket, msg, 255, 0);
+          printf("RX rc=%d: %s\n", rc, msg);
+        }
+        else {
+          printf("Poller detected UNIX device is ready\n");
+          idev = find_device_by_read_fd(devs, items[i].fd);
+          if(idev == NULL) log_warn("Device not found for input fd=%d\n", items[i].fd);
+          else             process_input(idev, map, devs);
+        }
+      }
+    }
+  }
+}
+
