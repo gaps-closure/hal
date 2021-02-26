@@ -117,12 +117,19 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
       exit(EXIT_FAILURE);
     }
   }
+  else if (strcmp(com_type, "zmq") == 0) {
+    *buf_len = zmq_recv (idev->read_soc, buf[buf_index], PACKET_MAX, 0);
+    if (*buf_len < 0) {
+      log_fatal("ZMQ reeive errno code: %d", errno);
+      exit(EXIT_FAILURE);
+    }
+  }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
 
   (idev->count_r)++;
 
-  log_debug("HAL reads  %s from %s (fd=%02d) into buffer (ptr=%p, index=%d) of len=%d", idev->model, idev->id, fd, (void *) buf[buf_index], buf_index, *buf_len);
-  log_buf_trace("Packet", buf[buf_index], *buf_len);
+  log_debug("HAL reads  (comms=%s, format=%s) from %s into buffer (ptr=%p, idx=%d): len=%d", com_type, com_model, idev->id, (void *) buf[buf_index], buf_index, *buf_len);
+  log_buf_trace("Read Packet", buf[buf_index], *buf_len);
   
 //log_trace("mux=%d", *((uint32_t *) buf[buf_index]));
 
@@ -152,7 +159,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
   // TODOz - write to ZMQ socket
-  log_trace("HAL writing to %s on fd=%d (using buf=%p)\n", odev->id, odev->write_fd, (void *) buf);
+  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
   /* a) Convert into packet based on interface packet model  */
 //  log_pdu_trace(p, __func__);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
@@ -175,6 +182,10 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 //    fprintf(stderr, "XXX: Write udp mode to %s interface\n", com_type);
     rv = sendto(fd, buf, pkt_len, MSG_CONFIRM, (const struct sockaddr *) &(odev->socaddr_out), sizeof(odev->socaddr_out));
   }
+  else if (strcmp(com_type, "zmq") == 0) {
+    rv = zmq_send (odev->write_soc, buf, pkt_len, 0);
+    if (rv <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", odev->write_soc, rv, zmq_strerror(errno));
+  }
   else {
     log_fatal("%s unknown comms type %s", __func__, com_type);
     exit(EXIT_FAILURE);
@@ -182,7 +193,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   (odev->count_w)++;
 
   (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
-  log_debug("HAL written %s onto %s (fd=%02d) rv=%d", odev->model, odev->id, fd, rv);
+  log_debug("HAL writes (comms=%s, format=%s) onto %s: len=%d", com_type, odev->model, odev->id, rv);
   log_buf_trace("Packet", buf, pkt_len);
 }
 
@@ -245,7 +256,7 @@ int process_input(device *idev, halmap *map, device *devs) {
     buf_len  -= pkt_len;
 // log_trace("length remaining in buffer after one packet removed = %d bytes", buf_len);
   }
-  log_trace("==================== Successfully processed input from %s ====================\n", idev->id);
+  log_trace("==================== Successfully processed input from %s to %s =============\n", idev->id, odev->id);
   return (0);
 }
 
@@ -358,7 +369,7 @@ int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_
 void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   int             num_items, num_zmq_items, i, rc;
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
-  char            msg [256];
+//  char            msg [256];
   device         *idev;
 
   // For now only use if needed (but will remove when fully tested)
@@ -368,19 +379,21 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   while (1) {
     rc = zmq_poll (items, num_items, -1);    /* Poll for events indefinitely (-1) */
     assert (rc >= 0);
-    log_trace("Poller found %d of %d ready", rc, num_items);
+    log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
     if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
     for (i=0; i<num_items; i++) {
-      log_trace("Checking device %d", i);
+//      log_trace("Checking device %d", i);
       /* Check for any returned events (stored in items[].revents) */
       if (items[i].revents & ZMQ_POLLIN) {
         if (i < num_zmq_items) {
-          printf("Poller detected ZMQ device is ready\n");
-          rc = zmq_recv (items[i].socket, msg, 255, 0);
-          printf("RX rc=%d: %s\n", rc, msg);
+//          printf("Poller detected ZMQ device is ready\n");
+          idev = find_device_by_read_soc(devs, items[i].socket);
+          if(idev == NULL) log_warn("Device not found for input soc=%d\n", items[i].socket);
+          else             process_input(idev, map, devs);
+//          rc = zmq_recv (items[i].socket, msg, 255, 0);
+//          printf("RX rc=%d: %s\n", rc, msg);
         }
         else {
-          printf("Poller detected UNIX device is ready\n");
           idev = find_device_by_read_fd(devs, items[i].fd);
           if(idev == NULL) log_warn("Device not found for input fd=%d\n", items[i].fd);
           else             process_input(idev, map, devs);

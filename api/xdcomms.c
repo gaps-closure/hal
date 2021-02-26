@@ -52,7 +52,7 @@ void xdc_log_level(int new_level) {
   if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
     log_set_quiet(0);
     log_set_level(new_level);
-    log_trace("User sets API log level to %d)", new_level);
+    log_trace("User sets API log level: %d", new_level);
     do_once = 0;
   }
   else {

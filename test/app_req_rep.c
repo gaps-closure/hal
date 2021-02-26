@@ -95,6 +95,8 @@ void opts_print(void) {
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Orange sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
+  printf(" -p : Loopback test <mux,sec,typ>: Send and Receive <1,1,1> \n");
+  printf(" -q : EOP heartbeat test <mux,sec,typ>: Send <11,11,DATA_TYP_HB_ORANGE>, Receive <12,12,DATA_TYP_HB_GREEN>\n");
   printf(" -r : Reverse Client and Server: default = Enclave 1 client, Enclave 2 server\n");
   printf(" -u : URL index for HAL API : Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 2=ipc:///tmp/sock_suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen\n");
 }
@@ -102,7 +104,7 @@ void opts_print(void) {
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt, v;
-  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:qru:")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:pqru:")) != EOF)
   {
     switch (opt)
     {
@@ -134,6 +136,14 @@ void opts_get(int argc, char **argv) {
         if (v > 0) copy_buf_size = v;
         typ_2_1 = DATA_TYP_RAW;
         sec_2_1 = 3;               /* ILIP ACM supports <2 3 3> not <2 2 3> */
+        break;
+      case 'p':
+        mux_2_1 = 1;
+        sec_2_1 = 1;
+        typ_2_1 = DATA_TYP_POSITION;
+        mux_1_2 = 1;
+        sec_1_2 = 1;
+        typ_1_2 = DATA_TYP_POSITION;
         break;
       case 'q':
         mux_2_1 = 12;
