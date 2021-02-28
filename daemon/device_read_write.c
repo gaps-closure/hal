@@ -10,6 +10,7 @@
 #include "map.h"
 #include "device_open.h"
 #include "packetize.h"
+#include <pthread.h>
 
 #define MAX_POLL_ITEMS 16
 #define DATA_ALIGNMENT 32       /* Must be power of 2 */
@@ -214,6 +215,11 @@ int process_input(device *idev, halmap *map, device *devs) {
   int      buf_len, pkt_len=0;
   uint8_t *buf;
   
+  if (idev == NULL) {
+    log_warn("Device not found for input\n");
+    return (1);
+  }
+  
   buf = read_input_dev_into_buffer(idev, &buf_len);
   if(buf_len <= 0) {
     log_trace("==================== No data from %s ====================\n", idev->id);
@@ -369,16 +375,11 @@ int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_
 void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   int             num_items, num_zmq_items, i, rc;
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
-//  char            msg [256];
   device         *idev;
-
-  // For now only use if needed (but will remove when fully tested)
-//  if (devs->read_soc == NULL) read_wait_loop2(devs, map, hal_wait_us);
 
   num_items = zmq_poll_init(devs, items, &num_zmq_items);
   while (1) {
-    rc = zmq_poll (items, num_items, -1);    /* Poll for events indefinitely (-1) */
-    assert (rc >= 0);
+    rc = zmq_poll(items, num_items, -1);    /* Poll for events indefinitely (-1) */
     log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
     if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
     for (i=0; i<num_items; i++) {
@@ -386,18 +387,14 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
       /* Check for any returned events (stored in items[].revents) */
       if (items[i].revents & ZMQ_POLLIN) {
         if (i < num_zmq_items) {
-//          printf("Poller detected ZMQ device is ready\n");
+//          printf("Poller detected ZMQ  device (%p) is ready\n", items[i].socket);
           idev = find_device_by_read_soc(devs, items[i].socket);
-          if(idev == NULL) log_warn("Device not found for input soc=%d\n", items[i].socket);
-          else             process_input(idev, map, devs);
-//          rc = zmq_recv (items[i].socket, msg, 255, 0);
-//          printf("RX rc=%d: %s\n", rc, msg);
         }
         else {
+//          printf("Poller detected Unux device (%d) is ready\n", items[i].fd);
           idev = find_device_by_read_fd(devs, items[i].fd);
-          if(idev == NULL) log_warn("Device not found for input fd=%d\n", items[i].fd);
-          else             process_input(idev, map, devs);
         }
+        process_input(idev, map, devs);
       }
     }
   }

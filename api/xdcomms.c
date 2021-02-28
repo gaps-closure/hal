@@ -343,6 +343,7 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   // tag_print(&tag, stderr);
   // fprintf(stderr, "len=%ld ", adu_len);
   log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
+  // Test back-to-back packets in HAL using loop, e.g.::  for (i=0; i<2; i++) {
   int bytes = zmq_send (socket, (void *) p, packet_len, 0);
   if (bytes <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", socket, bytes, zmq_strerror(errno));
 }
