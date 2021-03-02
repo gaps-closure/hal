@@ -10,13 +10,24 @@
 #include "map.h"
 #include "device_open.h"
 #include "packetize.h"
-#include <pthread.h>
 
 #define MAX_POLL_ITEMS 16
 #define DATA_ALIGNMENT 32       /* Must be power of 2 */
 // PACKET MAX covers max data (ADU_SIZE_MAX_C) + max header (256), and it is multiple of DATA_ALIGNMENT
 #define PACKET_MAX ((ADU_SIZE_MAX_C + 255 + DATA_ALIGNMENT) - ((ADU_SIZE_MAX_C + 255) % DATA_ALIGNMENT))
-#define PACKET_BUFFERS_MAX 2    /* Increase to give driver more time to read data from input buffer (payload mode) */
+#define PACKET_BUFFERS_MAX 2    /* increasing gives (payload mode) driver more time to read data */
+
+// #define MTHREAD     // Multithreaded version disabled until fix input buffer to use malloc?
+#ifdef MTHREAD
+#include <pthread.h>
+typedef struct _thread_args {
+  int      buf_len;
+  uint8_t *buf;
+  device  *idev;
+  halmap  *map;
+  device  *devs;
+} thread_args;
+#endif
 
 int sel_verbose=0;      /* help debug of device saying it is ready when it is not */
 
@@ -207,20 +218,13 @@ void pdu_delete(pdu *pdu) {
   free(pdu);
 }
 
-/* Process input from device (using file descriptor ifd or socket isoc) and send to output */
-int process_input(device *idev, halmap *map, device *devs) {
+/* Extract input packets from input buffer */
+int route_packets(uint8_t *buf, int buf_len, device *idev, halmap *map, device *devs) {
   pdu     *ipdu;
   device  *odev;
   halmap  *h;
-  int      buf_len, pkt_len=0;
-  uint8_t *buf;
-  
-  if (idev == NULL) {
-    log_warn("Device not found for input\n");
-    return (1);
-  }
-  
-  buf = read_input_dev_into_buffer(idev, &buf_len);
+  int      pkt_len=0;
+
   if(buf_len <= 0) {
     log_trace("==================== No data from %s ====================\n", idev->id);
 //    if (sel_verbose==1) fprintf(stderr, "%s: Input PDU is NULL\n", __func__);
@@ -266,6 +270,29 @@ int process_input(device *idev, halmap *map, device *devs) {
   return (0);
 }
 
+#ifdef MTHREAD
+/* Process input buffer in a separate thread */
+void *route_packets_thread(void *vargp) {
+//  printf("********* Inside route_packets thread *********\n");
+  thread_args *p=vargp;
+  route_packets(p->buf, p->buf_len, p->idev, p->map, p->devs);
+  pthread_exit(NULL);
+}
+
+/* Create thread to route packet(s) to output */
+void create_routing_thread(uint8_t *buf, int buf_len, device *idev, halmap *map, device *devs) {
+  thread_args  args;
+  pthread_t    thread_id;             /* structure with thread ID */
+  
+  args.buf     = buf;
+  args.buf_len = buf_len;
+  args.idev    = idev;
+  args.map     = map;
+  args.devs    = devs;
+  pthread_create(&thread_id, NULL, route_packets_thread, (void *) &args);
+}
+#endif
+
 /**********************************************************************/
 /* Listen for input from any open device using unix select or zmq poll  */
 /**********************************************************************/
@@ -305,7 +332,9 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
   int       maxrfd;                   /* Maximum file descriptor number for select */
   fd_set    readfds, readfds_saved;   /* File descriptor set for select */
   device   *idev;
-  
+  uint8_t  *buf;
+  int       buf_len;
+
   maxrfd = select_init(devs,  &readfds_saved);
 
   while (1) {
@@ -327,8 +356,11 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
     for (int i = 0; i < maxrfd && nready > 0; i++) {
       if (FD_ISSET(i, &readfds)) {
         idev = find_device_by_read_fd(devs, i);
-        if(idev == NULL) log_warn("Device not found for input fd=%d\n", i);
-        else             nunready += process_input(idev, map, devs);
+        if (idev == NULL)      log_warn("Device not found for input\n");
+        else {
+          buf = read_input_dev_into_buffer(idev, &buf_len);
+          nunready += route_packets(buf, buf_len, idev, map, devs);
+        }
         nready--;
       }
     }
@@ -376,6 +408,8 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   int             num_items, num_zmq_items, i, rc;
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
   device         *idev;
+  uint8_t        *buf;
+  int             buf_len;
 
   num_items = zmq_poll_init(devs, items, &num_zmq_items);
   while (1) {
@@ -384,17 +418,18 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
     if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
     for (i=0; i<num_items; i++) {
 //      log_trace("Checking device %d", i);
-      /* Check for any returned events (stored in items[].revents) */
-      if (items[i].revents & ZMQ_POLLIN) {
-        if (i < num_zmq_items) {
-//          printf("Poller detected ZMQ  device (%p) is ready\n", items[i].socket);
-          idev = find_device_by_read_soc(devs, items[i].socket);
-        }
+      if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
+        if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);
+        else                   idev = find_device_by_read_fd (devs, items[i].fd);
+        if (idev == NULL)      log_warn("Device not found for input\n");
         else {
-//          printf("Poller detected Unux device (%d) is ready\n", items[i].fd);
-          idev = find_device_by_read_fd(devs, items[i].fd);
+          buf = read_input_dev_into_buffer(idev, &buf_len);
+#ifdef MTHREAD
+          create_routing_thread(buf, buf_len, idev, map, devs);
+#else
+          route_packets(buf, buf_len, idev, map, devs);
+#endif
         }
-        process_input(idev, map, devs);
       }
     }
   }

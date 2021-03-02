@@ -7,7 +7,7 @@ INCL = -I ../log -I ../api
 
 OBJDIR ?= .
 
-LDLIBS      = -lzmq   # -L../codecs -lpnt
+LDLIBS      = -lzmq -lpthread  # -L../codecs -lpnt
 LIBS        = $(OBJDIR)/../api/libxdcomms.a
 HAL_OBJECT_LIST = $(OBJDIR)/../log/log.o $(OBJDIR)/config.o $(OBJDIR)/device_open.o $(OBJDIR)/device_read_write.o $(OBJDIR)/map.o $(OBJDIR)/time.o $(OBJDIR)/packetize.o $(OBJDIR)/packetize_sdh_be_v1.o $(OBJDIR)/packetize_sdh_be_v3.o $(OBJDIR)/packetize_sdh_be_v2.o $(OBJDIR)/packetize_sdh_bw_v1.o $(OBJDIR)/packetize_sdh_ha_v1.o $(OBJDIR)/crc.o $(OBJDIR)/hal.o
 
