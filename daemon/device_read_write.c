@@ -165,34 +165,30 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
 /* Write pdu to specified fd */
 void write_pdu(device *odev, selector *selector_to, pdu *p) {
   int             rv=-1;
-  int             fd;
   int             pkt_len=0;
   const char     *com_type;
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
 
-  // TODOz - write to ZMQ socket
-  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
-  /* a) Convert into packet based on interface packet model  */
+//  log_trace("HAL writing to %s (using buf=%p)", (void *) buf);
 //  log_pdu_trace(p, __func__);
-  pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
 //  log_buf_trace("Packet", buf, pkt_len);
-  if (pkt_len == 0) return;      // do not write if bad length
+  /* a) Convert into packet based on interface packet model  */
+  pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
+  if (pkt_len <= 0) return;      // do not write if bad length
     
   /* b) Write to interface based on interface comms type */
-  fd = odev->write_fd;
   com_type = odev->comms;
-
-  log_trace("HAL writing using comms type %s (len=%d buf=%p)", com_type, pkt_len, (void *)buf);
+  log_trace("HAL writing to %s using comms type %s (len=%d buf=%p)", odev->id, com_type, pkt_len, (void *)buf);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
       || (strcmp(com_type, "ilp") == 0)
       || (strcmp(com_type, "tcp") == 0)
      ) {
-    rv = write(fd, buf, pkt_len);     /* write = send for tcp with no flags */
+    rv = write(odev->write_fd, buf, pkt_len);     /* write = send for tcp with no flags */
   }
   else if (strcmp(com_type, "udp") == 0) {
 //    fprintf(stderr, "XXX: Write udp mode to %s interface\n", com_type);
-    rv = sendto(fd, buf, pkt_len, MSG_CONFIRM, (const struct sockaddr *) &(odev->socaddr_out), sizeof(odev->socaddr_out));
+    rv = sendto(odev->write_fd, buf, pkt_len, MSG_CONFIRM, (const struct sockaddr *) &(odev->socaddr_out), sizeof(odev->socaddr_out));
   }
   else if (strcmp(com_type, "zmq") == 0) {
     rv = zmq_send (odev->write_soc, buf, pkt_len, 0);
@@ -202,9 +198,9 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
     log_fatal("%s unknown comms type %s", __func__, com_type);
     exit(EXIT_FAILURE);
   }
+  
   (odev->count_w)++;
-
-  (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
+//  (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
   log_debug("HAL writes (comms=%s, format=%s) onto %s: len=%d", com_type, odev->model, odev->id, rv);
   log_buf_trace("Packet", buf, pkt_len);
 }
@@ -254,7 +250,7 @@ int route_packets(uint8_t *buf, int buf_len, device *idev, halmap *map, device *
       return (0);
     }
 
-    /* Avoid race between send and receive */
+    /* Avoid Application not being ready to receive */
     if (strcmp(idev->id, h->to.dev) == 0) {
       log_trace("%s: Loopback (%s -> %s) sleep = 50ms", __func__, idev->id, h->to.dev);
       usleep(50000);
@@ -412,11 +408,14 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   int             buf_len;
 
   num_items = zmq_poll_init(devs, items, &num_zmq_items);
-  while (1) {
+  while (1) {     /* Main HAL Loop */
     rc = zmq_poll(items, num_items, -1);    /* Poll for events indefinitely (-1) */
-    log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
-    if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
-    for (i=0; i<num_items; i++) {
+//    log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
+    if (rc <= 0) {
+      log_error("Poll error rc=%d (0 is a timeout) errno=%d\n", rc, errno);
+      continue;
+    }
+    for (i = 0; i < num_items; i++) {
 //      log_trace("Checking device %d", i);
       if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
         if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);

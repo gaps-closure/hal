@@ -37,9 +37,9 @@
  *      orange:  ./app_req_rep -e 2 -o 150
  *          The Green APP sends requests with position <1,1,1> information.
  *          The '-n 2' option configures the APP to send 2 sequential requests;
- *          Green will report timeouts (set to 3 seconds using the '-b' option) and uses the
+ *          Green will report timeouts (set to 3 seconds using the '-t' option) and uses the
  *          '-o' option, so it knows to expect raw data (without specifying the size).
- *      green:   ./app_req_rep -n 2 -b 3000 -o 0
+ *      green:   ./app_req_rep -n 2 -t 3000 -o 0
  *          We can repeat the orange's command to respond to the second request:
  *      orange:  ./app_req_rep -e 2 -o 100
  *
@@ -62,18 +62,23 @@
 #include "../appgen/6month-demo/gma.h"
 #include <stdio.h>
 #include <sys/time.h>
+#include <stdbool.h>
+#include <signal.h>
 
 /**********************************************************************/
 /* Get options */
 /*********t************************************************************/
 /* Default option values */
+int  RX_COUNT             = 0;
 int  mux_1_2 = 1, sec_1_2 = 1, typ_1_2 = DATA_TYP_POSITION;    /* one-way request tag */
 int  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* one-way reply tag */
+int  burst_size           = 1;
 int  log_level            = 2;
 int  enclave              = 1;
 int  reverse_flow         = 0;    // normally enclave1 = client; enclave-2 = server
 int  receive_first        = 0;
 int  loop_count           = 1;
+bool verbose              = false;
 int  sub_block_timeout_ms = -1;
 int  copy_buf_size        = -1;
 # define IPC_ADDR_MAX 50
@@ -87,36 +92,38 @@ void opts_print(void) {
   printf("Test program for sending requests and replies using the GAPS Hardware Abstraction Layer (HAL)\n");
   printf("Usage: ./app_req_rep [Options]\n");
   printf("[Options]:\n");
-  printf(" -b : Subscriber Blocking timeout (in milliseconds): default = -1 (blocking) \n");
+  printf(" -b : Burst size: default = 1 (send and receive one message per request-response loop)\n");
   printf(" -e : Enclave index. Currently support 1 or 2: default = 1\n");
-  printf(" -g : Green sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
-  printf(" -G : Green sends BIG data type (0x01234567): default = position type (1) \n");
+  printf(" -g : Raw (3) data type from enclave 1 to 2 (enclave 1 specified size (in bytes); enclave 2 size must be 0: default = position (1)\n");
+  printf(" -G : BIG data type (0x01234567) sent from enclave 1 to 2 (both sides must specify): default = position type (1) \n");
   printf(" -h : Print this message\n");
   printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -n : Number of request-response loops: Default = 1\n");
-  printf(" -o : Orange sends Raw data type (3) of specified size (in bytes): default = position type (1) \n");
-  printf(" -p : Loopback test <mux,sec,typ>: Send and Receive <1,1,1> \n");
+  printf(" -o : Raw (3) data type from enclave 1 to 2. Both enclaves must set and enclave 1 specified size (in bytes): default = position (1)\n");
+  printf(" -p : HAL Loopback test <mux,sec,typ>: Send and Receive <1,1,1>\n");
   printf(" -q : EOP heartbeat test <mux,sec,typ>: Send <11,11,DATA_TYP_HB_ORANGE>, Receive <12,12,DATA_TYP_HB_GREEN>\n");
   printf(" -r : Reverse Client and Server: default = Enclave 1 client, Enclave 2 server\n");
+  printf(" -t : Timeout for subscriber receive (in milliseconds): default = -1 (blocking) \n");
   printf(" -u : URL index for HAL API : Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 2=ipc:///tmp/sock_suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen\n");
+  printf(" -v : Verbose mode\n");
 }
 
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
-  int opt, v;
-  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:pqru:")) != EOF)
+  int opt, value;
+  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:pqrt:u:v")) != EOF)
   {
     switch (opt)
     {
       case 'b':
-        sub_block_timeout_ms = atoi(optarg);
+        burst_size = atoi(optarg);
         break;
       case 'e':
         enclave = atoi(optarg);      /* default = 1 */
         break;
       case 'g':
-        v = atoi(optarg);
-        if (v > 0) copy_buf_size = v;
+        value = atoi(optarg);
+        if (value > 0) copy_buf_size = value;
         typ_1_2 = DATA_TYP_RAW;     /* ILIP ACM supports <1 1 3> */
         break;
       case 'G':
@@ -132,8 +139,8 @@ void opts_get(int argc, char **argv) {
         loop_count = atoi(optarg);
         break;
       case 'o':
-        v = atoi(optarg);
-        if (v > 0) copy_buf_size = v;
+        value = atoi(optarg);
+        if (value > 0) copy_buf_size = value;
         typ_2_1 = DATA_TYP_RAW;
         sec_2_1 = 3;               /* ILIP ACM supports <2 3 3> not <2 2 3> */
         break;
@@ -156,15 +163,18 @@ void opts_get(int argc, char **argv) {
       case 'r':
         reverse_flow = 1;
         break;
+      case 't':
+        sub_block_timeout_ms = atoi(optarg);
+        break;
       case 'u':
-        v = atoi(optarg);
-        if (v==1) {
+        value = atoi(optarg);
+        if (value==1) {
           strcpy(xdc_addr_sub_enc1, "ipc:///tmp/example1suborange");
           strcpy(xdc_addr_pub_enc1, "ipc:///tmp/example1puborange");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/example1subpurple");
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/example1pubpurple");
         }
-        if (v==2) {
+        if (value==2) {
           strcpy(xdc_addr_sub_enc1, "ipc:///tmp/sock_subgreen");
           strcpy(xdc_addr_pub_enc1, "ipc:///tmp/sock_pubgreen");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/sock_suborange");
@@ -172,18 +182,21 @@ void opts_get(int argc, char **argv) {
 //          mux_1_2 = 11; sec_2_1 = 11; typ_2_1 = 12;
 //          mux_2_1 = 12; sec_1_2 = 12; typ_1_2 = 11;
         }
-        if (v==5) {
+        if (value==5) {
           strcpy(xdc_addr_sub_enc1, "ipc:///tmp/halsubbegreen");
           strcpy(xdc_addr_pub_enc1, "ipc:///tmp/halpubbegreen");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/halsubbeorange");
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbeorange");
         }
-        if (v==6) {
+        if (value==6) {
           strcpy(xdc_addr_sub_enc1, "ipc:///tmp/halsubbwgreen");
           strcpy(xdc_addr_pub_enc1, "ipc:///tmp/halpubbwgreen");
           strcpy(xdc_addr_sub_enc2, "ipc:///tmp/halsubbworange");
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbworange");
         }
+        break;
+      case 'v':
+        verbose = true;
         break;
       case ':':
         fprintf(stderr, "\noption needs a value\n");
@@ -195,7 +208,7 @@ void opts_get(int argc, char **argv) {
     }
   }
   fprintf(stderr, "Enclave-%d channels: 1-to-2-tag=[%d, %d, %d] 2-to-1-tag=[%d, %d, %d]\n", enclave, mux_1_2, sec_1_2, typ_1_2, mux_2_1, sec_2_1, typ_2_1);
-  fprintf(stderr, "Params: timeout=%d, loop_count=%d, reverse_flow=%d, copy_buf_size=%d, xdc_log_level=%d\n", sub_block_timeout_ms, loop_count, reverse_flow, copy_buf_size, log_level);
+  fprintf(stderr, "Params: timeout=%d, loops=%d, burst=%d, reverse=%d, buf_size=%d, API-log=%d verbose=%s\n", sub_block_timeout_ms, loop_count, burst_size, reverse_flow, copy_buf_size, log_level, verbose ? "true" : "false");
   fprintf(stderr, "API URIs: ");
   switch(enclave) {
     case 1:
@@ -251,45 +264,55 @@ size_t raw_set (uint8_t *adu, size_t len) {
 /**********************************************************************/
 /* Send and receive (or receive and send) one ADU */
 /*********t************************************************************/
+/* Signal Handler for SIGINT - print statistics */
+void sigintHandler(int sig_num)
+{
+  fprintf(stderr, "\nRx count = %d of %d expected\n", RX_COUNT, loop_count*burst_size);
+  exit(0);
+}
+
+
 /* Send and print one message */
 void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, int new_flag) {
-  fprintf(stderr, "app tx: ");
+  int i;
+  
+  if (verbose) fprintf(stderr, "app tx: ");
   switch (tag_pub->typ) {
     case DATA_TYP_POSITION:
     case DATA_TYP_BIG:
     case DATA_TYP_HB_ORANGE:
     case DATA_TYP_HB_GREEN:
       if (new_flag == 1) *adu_len = position_set(adu);
-      position_print((position_datatype *) adu);
+      if (verbose) position_print((position_datatype *) adu);
       break;
     case DATA_TYP_RAW:
       if (new_flag == 1) *adu_len = raw_set(adu, copy_buf_size);
-      raw_print((raw_datatype *) adu);
+      if (verbose) raw_print((raw_datatype *) adu);
       break;
     default:
       fprintf(stderr, "Undefined Publish data type: %d\n", tag_pub->typ);
       exit(3);
   }
-  xdc_asyn_send(socket, adu, tag_pub);
+  for (i=0; i<burst_size; i++) xdc_asyn_send(socket, adu, tag_pub);
 }
 
 
 /* Receive and print one message */
 void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub) {
-  int rv=-1;
+  int rv=-1, i;
 //  xdc_blocking_recv(socket_sub, adu, r_tag);     /* 6month API only supports blocking receive */
-  rv = xdc_recv(socket_sub, adu, tag_sub);
+  for (i=0; i<burst_size; i++) { rv = xdc_recv(socket_sub, adu, tag_sub); RX_COUNT++; }
   if (rv > 0) {
-    fprintf(stderr, "app rx: ");
+    if (verbose) fprintf(stderr, "app rx: ");
     switch (tag_sub->typ) {
       case DATA_TYP_POSITION:
       case DATA_TYP_BIG:
       case DATA_TYP_HB_ORANGE:
       case DATA_TYP_HB_GREEN:
-        position_print((position_datatype *) adu);
+        if (verbose) position_print((position_datatype *) adu);
         break;
       case DATA_TYP_RAW:
-        raw_print((raw_datatype *) adu);
+        if (verbose) raw_print((raw_datatype *) adu);
         break;
       default:
         fprintf(stderr, "Undefined Subscribe data type: %d\n", tag_sub->typ);
@@ -305,8 +328,8 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_su
 
 /* One send & one receive (or one receive & one send)  */
 void send_and_recv(gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub, int receive_first) {
-  uint8_t   adu[ADU_SIZE_MAX_C];
-  size_t    adu_len;
+  uint8_t     adu[ADU_SIZE_MAX_C];
+  size_t      adu_len;
   
   if (receive_first == 0) send_one(adu, &adu_len, tag_pub, socket_pub, 1);
   recv_one(adu, &adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
@@ -323,6 +346,7 @@ int main(int argc, char **argv) {
   long            elapsed_us;
   void            *socket_pub, *socket_sub;
   
+  signal(SIGINT, sigintHandler);    /* Initialize signal handler (for counting rx packet if not complete) */
   opts_get (argc, argv);
   xdc_log_level(log_level);
 
@@ -370,7 +394,7 @@ int main(int argc, char **argv) {
   for (i=0; i<loop_count; i++) send_and_recv(&tag_pub, &tag_sub, socket_pub, socket_sub, receive_first);
   gettimeofday(&t1, NULL);
   elapsed_us = ((t1.tv_sec-t0.tv_sec)*1000000) + t1.tv_usec-t0.tv_usec;
-  fprintf(stderr, "Elapsed = %ld us, rate = %f rw/sec\n", elapsed_us, (double) 1000000*loop_count/elapsed_us);
+  fprintf(stderr, "Elapsed = %ld us, rate = %f msgs/sec (%d of %d expected)\n", elapsed_us, (double) 1000000*loop_count*burst_size/elapsed_us, RX_COUNT, loop_count*burst_size);
   
   return (0);
 }
