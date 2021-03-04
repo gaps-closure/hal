@@ -17,6 +17,10 @@
 #define PACKET_MAX ((ADU_SIZE_MAX_C + 255 + DATA_ALIGNMENT) - ((ADU_SIZE_MAX_C + 255) % DATA_ALIGNMENT))
 #define PACKET_BUFFERS_MAX 2    /* increasing gives (payload mode) driver more time to read data */
 
+/**********************************************************************/
+/* Alternative HAL Modes */
+/**********************************************************************/
+// #define MSELECT     // Original version using unix select among HAL's read file descriptor
 // #define MTHREAD     // Multithreaded version disabled until fix input buffer to use malloc?
 #ifdef MTHREAD
 #include <pthread.h>
@@ -401,6 +405,9 @@ int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_
 
 /* Wait for input from any read interface */
 void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
+#ifdef MSELECT
+  read_wait_loop2(devs, map, hal_wait_us);
+#endif
   int             num_items, num_zmq_items, i, rc;
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
   device         *idev;

@@ -49,9 +49,9 @@
  *      green:   ./app_req_rep -o 0 -o 0 -g 400
  *
  *    [g] Big UDP: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
- *                 (HAL is configured to 'be' URIs)
- *      green:   ./app_req_rep -u 1 -o 0 -g 700
- *      orange:  ./app_req_rep -e 2 -u 1 -o 900 -g 0
+ *                 (HAL is configured to 'be' ZMQ URIs)
+ *      green:   ./app_req_rep -z 1 -o 0 -g 700
+ *      orange:  ./app_req_rep -e 2 -z 1 -o 900 -g 0
  
  *    [x] EOP: Orange enclave sends HB/position <12,12,13>; Green replies with HB/position <111,111,113>
  *      green:   ./app_req_rep -r -q
@@ -64,28 +64,38 @@
 #include <sys/time.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <time.h>
+
+#define MODE_SERVER 0     /* Receive first, then send */
+#define MODE_CLIENT 1     /* send first, then receive */
+#define MODE_SOURCE 2     /* Send only */
+#define MODE_SINK   3     /* Recv only */
 
 /**********************************************************************/
 /* Get options */
 /*********t************************************************************/
 /* Default option values */
-int  RX_COUNT             = 0;
+int  rx_count             = 0;
 int  mux_1_2 = 1, sec_1_2 = 1, typ_1_2 = DATA_TYP_POSITION;    /* one-way request tag */
 int  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* one-way reply tag */
 int  burst_size           = 1;
 int  log_level            = 2;
 int  enclave              = 1;
 int  reverse_flow         = 0;    // normally enclave1 = client; enclave-2 = server
-int  receive_first        = 0;
+int  mode_uni             = 0;    // 0=RPC e1=client, e2=server   (1=UNI: e1=source, e2=sink)
 int  loop_count           = 1;
+int  sleep_nano           = 0;
 bool verbose              = false;
 int  sub_block_timeout_ms = -1;
 int  copy_buf_size        = -1;
-# define IPC_ADDR_MAX 50
-char xdc_addr_sub_enc1[IPC_ADDR_MAX] = "ipc:///tmp/halsubgreen";
-char xdc_addr_pub_enc1[IPC_ADDR_MAX] = "ipc:///tmp/halpubgreen";
-char xdc_addr_sub_enc2[IPC_ADDR_MAX] = "ipc:///tmp/halsuborange";
-char xdc_addr_pub_enc2[IPC_ADDR_MAX] = "ipc:///tmp/halpuborange";
+int  receive_first        = 0;
+
+# define IPC_ADDR_MAX 128
+char log_filename[IPC_ADDR_MAX]        = "z_";
+char xdc_addr_sub_enc1[IPC_ADDR_MAX]   = "ipc:///tmp/halsubgreen";
+char xdc_addr_pub_enc1[IPC_ADDR_MAX]   = "ipc:///tmp/halpubgreen";
+char xdc_addr_sub_enc2[IPC_ADDR_MAX]   = "ipc:///tmp/halsuborange";
+char xdc_addr_pub_enc2[IPC_ADDR_MAX]   = "ipc:///tmp/halpuborange";
 
 /* Print options */
 void opts_print(void) {
@@ -94,6 +104,7 @@ void opts_print(void) {
   printf("[Options]:\n");
   printf(" -b : Burst size: default = 1 (send and receive one message per request-response loop)\n");
   printf(" -e : Enclave index. Currently support 1 or 2: default = 1\n");
+  printf(" -f : Log filename prefix: default = %s\n", log_filename);
   printf(" -g : Raw (3) data type from enclave 1 to 2 (enclave 1 specified size (in bytes); enclave 2 size must be 0: default = position (1)\n");
   printf(" -G : BIG data type (0x01234567) sent from enclave 1 to 2 (both sides must specify): default = position type (1) \n");
   printf(" -h : Print this message\n");
@@ -102,16 +113,18 @@ void opts_print(void) {
   printf(" -o : Raw (3) data type from enclave 1 to 2. Both enclaves must set and enclave 1 specified size (in bytes): default = position (1)\n");
   printf(" -p : HAL Loopback test <mux,sec,typ>: Send and Receive <1,1,1>\n");
   printf(" -q : EOP heartbeat test <mux,sec,typ>: Send <11,11,DATA_TYP_HB_ORANGE>, Receive <12,12,DATA_TYP_HB_GREEN>\n");
-  printf(" -r : Reverse Client and Server: default = Enclave 1 client, Enclave 2 server\n");
+  printf(" -r : Reverse enclave1 and enclave 2 roles (default is enclave 1 is RPC Client or One-way source)\n");
+  printf(" -s : Sleep (nanoseconds) before a send: default = 0 \n");
   printf(" -t : Timeout for subscriber receive (in milliseconds): default = -1 (blocking) \n");
-  printf(" -u : URL index for HAL API : Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 2=ipc:///tmp/sock_suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen\n");
+  printf(" -u : Unidirectional mode (Enclave 1 = source, Enclave 2 = sink): default = RPC mode (Enclave 1 = client, Enclave 2 = server), \n");
+  printf(" -z : URL index for HAL API : Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 2=ipc:///tmp/sock_suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen\n");
   printf(" -v : Verbose mode\n");
 }
 
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt, value;
-  while((opt =  getopt(argc, argv, "b:e:g:Ghl:n:o:pqrt:u:v")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:f:g:Ghl:n:o:pqrs:t:uvz:")) != EOF)
   {
     switch (opt)
     {
@@ -120,6 +133,9 @@ void opts_get(int argc, char **argv) {
         break;
       case 'e':
         enclave = atoi(optarg);      /* default = 1 */
+        break;
+      case 'f':
+        strcpy(log_filename, optarg);
         break;
       case 'g':
         value = atoi(optarg);
@@ -163,10 +179,19 @@ void opts_get(int argc, char **argv) {
       case 'r':
         reverse_flow = 1;
         break;
+      case 's':
+        sleep_nano = atoi(optarg);
+        break;
       case 't':
         sub_block_timeout_ms = atoi(optarg);
         break;
       case 'u':
+        mode_uni = 1;
+        break;
+      case 'v':
+        verbose = true;
+        break;
+      case 'z':
         value = atoi(optarg);
         if (value==1) {
           strcpy(xdc_addr_sub_enc1, "ipc:///tmp/example1suborange");
@@ -195,9 +220,6 @@ void opts_get(int argc, char **argv) {
           strcpy(xdc_addr_pub_enc2, "ipc:///tmp/halpubbworange");
         }
         break;
-      case 'v':
-        verbose = true;
-        break;
       case ':':
         fprintf(stderr, "\noption needs a value\n");
         opts_print();
@@ -208,7 +230,7 @@ void opts_get(int argc, char **argv) {
     }
   }
   fprintf(stderr, "Enclave-%d channels: 1-to-2-tag=[%d, %d, %d] 2-to-1-tag=[%d, %d, %d]\n", enclave, mux_1_2, sec_1_2, typ_1_2, mux_2_1, sec_2_1, typ_2_1);
-  fprintf(stderr, "Params: timeout=%d, loops=%d, burst=%d, reverse=%d, buf_size=%d, API-log=%d verbose=%s\n", sub_block_timeout_ms, loop_count, burst_size, reverse_flow, copy_buf_size, log_level, verbose ? "true" : "false");
+  fprintf(stderr, "Params: timeout=%d, loops=%d, burst=%d, uni=%d reverse=%d, sleep=%dns, buf_size=%d, API-log=%d verbose=%s\n", sub_block_timeout_ms, loop_count, burst_size, mode_uni, reverse_flow, sleep_nano, copy_buf_size, log_level, verbose ? "true" : "false");
   fprintf(stderr, "API URIs: ");
   switch(enclave) {
     case 1:
@@ -264,17 +286,11 @@ size_t raw_set (uint8_t *adu, size_t len) {
 /**********************************************************************/
 /* Send and receive (or receive and send) one ADU */
 /*********t************************************************************/
-/* Signal Handler for SIGINT - print statistics */
-void sigintHandler(int sig_num)
-{
-  fprintf(stderr, "\nRx count = %d of %d expected\n", RX_COUNT, loop_count*burst_size);
-  exit(0);
-}
-
-
-/* Send and print one message */
-void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, int new_flag) {
-  int i;
+/* Send and print one message (do not optimize the sleep loop) */
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+void send_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, int new_flag, struct timespec *sleep_req) {
+  int i, j;
   
   if (verbose) fprintf(stderr, "app tx: ");
   switch (tag_pub->typ) {
@@ -293,15 +309,23 @@ void send_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *socket, in
       fprintf(stderr, "Undefined Publish data type: %d\n", tag_pub->typ);
       exit(3);
   }
-  for (i=0; i<burst_size; i++) xdc_asyn_send(socket, adu, tag_pub);
+  for (i=0; i<burst_size; i++) {
+    if (sleep_req != NULL) {
+//    nanosleep has a minimum, as it is rounded up to the next multiple of the underlying unix clock
+//      nanosleep(sleep_req, sleep_req);
+      for (j=0; j<sleep_req->tv_nsec; j++) sleep_req->tv_sec += j;
+    }
+    xdc_asyn_send(socket, adu, tag_pub);
+  }
 }
+#pragma GCC pop_options
 
 
 /* Receive and print one message */
-void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub) {
+void recv_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub) {
   int rv=-1, i;
 //  xdc_blocking_recv(socket_sub, adu, r_tag);     /* 6month API only supports blocking receive */
-  for (i=0; i<burst_size; i++) { rv = xdc_recv(socket_sub, adu, tag_sub); RX_COUNT++; }
+  for (i=0; i<burst_size; i++) { rv = xdc_recv(socket_sub, adu, tag_sub); rx_count++; }
   if (rv > 0) {
     if (verbose) fprintf(stderr, "app rx: ");
     switch (tag_sub->typ) {
@@ -320,36 +344,91 @@ void recv_one(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_su
     }
   }
   else {
-    fprintf(stderr, "app rx failed: rv=%d (timeout=%d ms) ", rv, sub_block_timeout_ms);
-    send_one(adu, adu_len, tag_pub, socket_pub, 0);
-    recv_one(adu, adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
+    fprintf(stderr, "app rx failed: rv=%d (after a timeout=%d ms) ", rv, sub_block_timeout_ms);
+    send_one_burst(adu, adu_len, tag_pub, socket_pub, 0, (struct timespec *) NULL);
+    recv_one_burst(adu, adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
   }
 }
 
 /* One send & one receive (or one receive & one send)  */
-void send_and_recv(gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub, int receive_first) {
-  uint8_t     adu[ADU_SIZE_MAX_C];
-  size_t      adu_len;
+void send_and_recv(gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub, struct timespec *sleep_req) {
+  uint8_t         adu[ADU_SIZE_MAX_C];
+  size_t          adu_len;
   
-  if (receive_first == 0) send_one(adu, &adu_len, tag_pub, socket_pub, 1);
-  recv_one(adu, &adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
-  if (receive_first == 1) send_one(adu, &adu_len, tag_pub, socket_pub, 1);
+  if (mode_uni == 0) {      /* 2-way flow (RPC - alternates read and write) */
+    if (receive_first == 0) send_one_burst(adu, &adu_len, tag_pub, socket_pub, 1, sleep_req);
+    recv_one_burst(adu, &adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
+    if (receive_first == 1) send_one_burst(adu, &adu_len, tag_pub, socket_pub, 1, sleep_req);
+  }
+  else {                    /* 1-way flow (unidirection flow) ) */
+    if (receive_first == 0) send_one_burst(adu, &adu_len, tag_pub, socket_pub, 1, sleep_req);
+    else                    recv_one_burst(adu, &adu_len, tag_pub, tag_sub, socket_pub, socket_sub);
+  }
 }
          
 /**********************************************************************/
 /* Conifgure API, Run experiment and collect results */
 /*********t************************************************************/
+void log_results(long elapsed_us) {
+  FILE             *fp;
+  char              header_str[IPC_ADDR_MAX], enclave_str[IPC_ADDR_MAX];
+  int               send_count, expected_count=0;
+  double            duration_seconds;
+  
+  send_count       = loop_count * burst_size;
+  duration_seconds = (double) elapsed_us/1000000;
+  if ( (mode_uni == 0) || (receive_first == 1) )  expected_count = send_count;
+  fprintf(stderr, "Elapsed = %ld us, rate = %f msgs/sec (%d of %d expected)\n", elapsed_us, (double) 1000000*send_count/elapsed_us, rx_count, expected_count);
+  
+  /* Write results to log file */
+  sprintf(enclave_str, "%d", enclave);
+  strcat(log_filename, enclave_str);
+  strcpy(header_str, "");
+  if( access(log_filename, F_OK) != 0 ) {
+    sprintf(header_str, "Tx_Count_%d, Tx_Burst_%d, Rx_Count_%d, Loss_%d %%, Sleep_%d ns, Duration_%d sec, Rate_%d msgs/sec\n", enclave, enclave, enclave, enclave, enclave, enclave, enclave);
+  }
+  fp = fopen(log_filename, "a");
+  fprintf(fp, "%s", header_str);
+  fprintf(fp, "%d, %d, %d, %.3f, %d, %.3f, %.3f\n", send_count, burst_size, rx_count, (double) 100*rx_count/send_count, sleep_nano, duration_seconds, (double) send_count/duration_seconds);
+  fclose(fp);
+}
+
+
+/* Signal Handler for SIGINT - print statistics */
+void sigintHandler(int sig_num)
+{
+  log_results((long) 0);
+  exit(0);
+}
+
+// Run Experiment (Calculating delay and read-write loop rate) and collect results
+void run_experiment(gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub) {
+  int               i;
+  long              elapsed_us;
+  struct timeval    t0, t1;
+  struct timespec   sleep_req = {0}, *sleep_req_ptr=NULL;
+  
+  sleep_req.tv_sec = 0;
+  sleep_req.tv_nsec = sleep_nano;
+  if (sleep_nano > 0) sleep_req_ptr = &sleep_req;
+
+  gettimeofday(&t0, NULL);
+  for (i=0; i<loop_count; i++) send_and_recv(tag_pub, tag_sub, socket_pub, socket_sub, sleep_req_ptr);
+  gettimeofday(&t1, NULL);
+  elapsed_us = ((t1.tv_sec-t0.tv_sec)*1000000) + t1.tv_usec-t0.tv_usec;
+
+  log_results(elapsed_us);
+}
+
+/* Set HAL API parameters */
 int main(int argc, char **argv) {
-  int             i, receive_first=0;
-  gaps_tag        tag_pub, tag_sub;
-  struct timeval  t0, t1;
-  long            elapsed_us;
-  void            *socket_pub, *socket_sub;
+  gaps_tag   tag_pub, tag_sub;
+  void      *socket_pub, *socket_sub;
   
   signal(SIGINT, sigintHandler);    /* Initialize signal handler (for counting rx packet if not complete) */
   opts_get (argc, argv);
   xdc_log_level(log_level);
-
+  
   /* A) Configure TAGS and ADDRESSES (values depend on the enclave) */
   switch(enclave) {
     case 1:
@@ -389,12 +468,6 @@ int main(int argc, char **argv) {
 //  socket_sub = xdc_sub_socket(tag_sub);   /* 6month API does not support timeout parameter */
   socket_sub = xdc_sub_socket_non_blocking(tag_sub, sub_block_timeout_ms);
   
-  // D) Run Experiment (Calculating delay and read-write loop rate)
-  gettimeofday(&t0, NULL);
-  for (i=0; i<loop_count; i++) send_and_recv(&tag_pub, &tag_sub, socket_pub, socket_sub, receive_first);
-  gettimeofday(&t1, NULL);
-  elapsed_us = ((t1.tv_sec-t0.tv_sec)*1000000) + t1.tv_usec-t0.tv_usec;
-  fprintf(stderr, "Elapsed = %ld us, rate = %f msgs/sec (%d of %d expected)\n", elapsed_us, (double) 1000000*loop_count*burst_size/elapsed_us, RX_COUNT, loop_count*burst_size);
-  
+  run_experiment(&tag_pub, &tag_sub, socket_pub, socket_sub);
   return (0);
 }
