@@ -75,9 +75,9 @@
 /* Get options */
 /*********t************************************************************/
 /* Default option values */
-int  rx_count             = 0;
 uint32_t  mux_1_2 = 1, sec_1_2 = 1, typ_1_2 = DATA_TYP_POSITION;    /* request tag */
 uint32_t  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* reply tag */
+int  rx_count             = 0;
 int  burst_size           = 1;
 int  log_level            = 2;
 int  enclave              = 1;
