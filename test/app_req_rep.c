@@ -173,11 +173,19 @@ void opts_get(int argc, char **argv) {
         sec_1_2 = 1;
         typ_1_2 = DATA_TYP_POSITION;
         break;
-      case 'q':
+      case 'Q':
         mux_2_1 = 12;
         sec_2_1 = 12;
         typ_2_1 = DATA_TYP_HB_ORANGE;
         mux_1_2 = 111;
+        sec_1_2 = 111;
+        typ_1_2 = DATA_TYP_HB_GREEN;
+        break;
+      case 'q':
+        mux_2_1 = 3221225484;
+        sec_2_1 = 12;
+        typ_2_1 = DATA_TYP_HB_ORANGE;
+        mux_1_2 = 1073741935;
         sec_1_2 = 111;
         typ_1_2 = DATA_TYP_HB_GREEN;
         break;
