@@ -76,8 +76,8 @@
 /*********t************************************************************/
 /* Default option values */
 int  rx_count             = 0;
-int  mux_1_2 = 1, sec_1_2 = 1, typ_1_2 = DATA_TYP_POSITION;    /* one-way request tag */
-int  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* one-way reply tag */
+uint32_t  mux_1_2 = 1, sec_1_2 = 1, typ_1_2 = DATA_TYP_POSITION;    /* request tag */
+uint32_t  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* reply tag */
 int  burst_size           = 1;
 int  log_level            = 2;
 int  enclave              = 1;
@@ -242,7 +242,7 @@ void opts_get(int argc, char **argv) {
         fprintf(stderr, "\nSkipping undefined option (%c)\n", opt);
     }
   }
-  fprintf(stderr, "Enclave-%d channels: 1-to-2-tag=[%d, %d, %d] 2-to-1-tag=[%d, %d, %d]\n", enclave, mux_1_2, sec_1_2, typ_1_2, mux_2_1, sec_2_1, typ_2_1);
+  fprintf(stderr, "Enclave-%d channels: 1-to-2-tag=[%u, %u, %u] 2-to-1-tag=[%u, %u, %u]\n", enclave, mux_1_2, sec_1_2, typ_1_2, mux_2_1, sec_2_1, typ_2_1);
   fprintf(stderr, "Params: timeout=%d, loops=%d, burst=%d, uni=%d reverse=%d, sleep=%dns, buf_size=%d, API-log=%d verbose=%s\n", sub_block_timeout_ms, loop_count, burst_size, mode_uni, reverse_flow, sleep_nano, copy_buf_size, log_level, verbose ? "true" : "false");
   fprintf(stderr, "API URIs: ");
   switch(enclave) {
