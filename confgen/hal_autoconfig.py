@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
 # Create HAL configuration file
-#    January, 2021
+#    March, 2021 (added support for ZMQ API)
 #
 # Tested Examples:
 #  1) eri demo running in emulator (start.sh example1) with /dev/vcom devices (default inputs)
 #       python3 hal_autoconfig.py
 #  2) 6month demo running both enclaves on jaga (with sudo bash test/6MoDemo_BW.net.sh)
-#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_jaga_bw.json
+#       python3 hal_autoconfig.py -d device_defs/devices_6modemo_jaga_bw.json
 #  3) 6month demo running both enclaves on jaga (with ilip root, read and write devices)
-#       python3 hal_autoconfig.py -x xdconf_6modemo.json -d devices_6modemo_ilip.json
+#       python3 hal_autoconfig.py -d device_defs/devices_6modemo_ilip_v3.json
 # Untested Examples:
 #  4) eri demo running both enclaves on jaga with BW devices (but not send to gw listners)
-#       python3 hal_autoconfig.py -d devices_eri_bw.json
+#       python3 hal_autoconfig.py -x xdc_defs/xdconf_eri.json -d xdc_defs/devices_eri_bw.json
 #  5) eri demo running in emulator (start.sh example1) with different BE device paths
-#       python3 hal_autoconfig.py -d devices_eri_be_different_dev_paths.json
+#       python3 hal_autoconfig.py -d  device_defs/devices_be_different_dev_paths.json
 
 import json
 import argparse
@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('-o', '--output_dir', help='Output directory path', type=str, default='')
     parser.add_argument('-p', '--output_file_prefix', help='Output HAL configuration file name prefix', type=str, default='hal')
     parser.add_argument('-v', '--verbose', help="run in verbose mode", action='store_true', default=False)
-    parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of HAL API and tag-maps', type=str, default='map_defs/xdconf_6modemo.json')
+    parser.add_argument('-x', '--json_api_file',      help='Input JSON file name of HAL API and tag-maps', type=str, default='xdc_defs/xdconf_6modemo.json')
     return parser.parse_args()
 
 # Read JSON file into a python dictionary (data)
@@ -120,7 +120,7 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     for dev in dev_dict['devices']:
         if (args.verbose): print('create_device_cfg:', dev)
         # skip if network device other than tty does not mention local_enclve_name (needed for ilip)
-        if ( (dev['comms'] != "ipc") and (dev['comms'] != "tty") ):
+        if ( (dev['comms'] != "ipc") and (dev['comms'] != "zmq") and (dev['comms'] != "tty") ):
             if (local_enclve_name not in dev.values()):
                 if (args.verbose): print('skip this device in enclave', local_enclve_name)
                 break
@@ -135,7 +135,7 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
             add_inet(local_enclve_name, d, dev)
         elif (d['comms'] == "ilp"):
             add_ilp(local_enclve_name, d, dev)
-        elif (d['comms'] == "ipc"):
+        elif ( (d['comms'] == "ipc") or (d['comms'] == "zmq") ):
             add_ipc(local_enclve_name, d, dev, enc_info)
         elif (d['comms'] == "tty"):
             add_tty(local_enclve_name, d, dev)
@@ -152,7 +152,7 @@ def create_maps(local_enclve_name, halmaps, dev_list):
     for dev in dev_list:
         # TODO - select which HAL device. For now, assume there is just one of each is enabled.
         if (dev['enabled'] == 1):
-            if (dev['comms'] == "ipc"): dev_app = dev['id']
+            if ( (dev['comms'] == "ipc") or (dev['comms'] == "zmq") ): dev_app = dev['id']
             else:                       dev_net = dev['id']
     if (args.verbose): print ('create maps for enclave', local_enclve_name, 'between', dev_app, 'and', dev_net)
 
