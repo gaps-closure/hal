@@ -39,7 +39,7 @@ int pdu_from_sdh_bw_v1 (pdu *out, uint8_t *in, int len_in) {
   if (get_packet_length_sdh_bw_v1(pkt, out->data_len) > len_in)  return (-1);
   
   out->psel.ctag = ntohl(pkt->message_tag_ID);
-  // fprintf(stderr, "%s: ctag=%d crc: in=%02x recalc=%02x\n", __func__, out->psel.ctag, ntohs(pkt->crc16), sdh_bw_v1_crc_calc(pkt));
+// fprintf(stderr, "%s: ctag=%06x crc: in=%02x recalc=%02x\n", __func__, out->psel.ctag, ntohs(pkt->crc16), sdh_bw_v1_crc_calc(pkt));
 //  memcpy (out->data, pkt->data, out->data_len);    /* TODO_PDU_PTR */
   out->data = pkt->data;    /* TODO_PDU_PTR */
   return (get_packet_length_sdh_bw_v1(pkt, out->data_len));

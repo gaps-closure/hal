@@ -152,6 +152,7 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
   /* b) Create CLOSURE packet header (TODO: remove NBO ha tag, len) */
   tag_cp(&(p->tag), tag);
 
+// tag_print(tag, stderr);
 // fprintf(stderr, "%s: mux = %d = %d\n", __func__, tag->mux, *((uint32_t *) p));
 
   p->data_len = (uint32_t) *buff_len;
@@ -334,17 +335,24 @@ void *xdc_sub_socket(gaps_tag tag)
  * Send ADU to HAL (HAL is the ZMQ subscriber) in a sdh_ha_v1 packet
  */
 void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
+  int          bytes;
   sdh_ha_v1    packet, *p=&packet;
   size_t       packet_len;
   size_t       adu_len;         /* Size of ADU is calculated by encoder */
 
   gaps_data_encode(p, &packet_len, adu, &adu_len, tag);
-  // fprintf(stderr, "API sends (on ZMQ s=%p): ", socket);
-  // tag_print(&tag, stderr);
-  // fprintf(stderr, "len=%ld ", adu_len);
   log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
-  // Test back-to-back packets in HAL using loop, e.g.::  for (i=0; i<2; i++) {
-  int bytes = zmq_send (socket, (void *) p, packet_len, 0);
+  // Test 1) two packets in one HAL receive buf using by sending same packet back-to-back:
+  //         for (i=0; i<2; i++)
+  // Test 2) one Packet split into two HAL receive bufs by sending 1/2 packet, then sleep before sending next half
+  //         size_t split_1_len = packet_len / 2;
+  //         size_t split_2_len = packet_len - split_1_len;
+  //         bytes = zmq_send (socket, (void *) p, split_1_len, 0);
+  //         sleep(1);
+  //         bytes = zmq_send (socket, (void *) p, split_2_len, 0);
+  //         log_buf_warn("API SPLITS Packet into two: len=%d + len=%d (%d)", split_1_len, split_2_len, bytes);
+
+  bytes = zmq_send (socket, (void *) p, packet_len, 0);
   if (bytes <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", socket, bytes, zmq_strerror(errno));
 }
 

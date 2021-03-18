@@ -166,22 +166,11 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   return(pdu_ptr);
 }
 
-/* Write pdu to specified fd */
-void write_pdu(device *odev, selector *selector_to, pdu *p) {
+/* Write buffer to interface device based on interface comms type */
+void write_buf(device *odev, uint8_t *buf, int pkt_len) {
   int             rv=-1;
-  int             pkt_len=0;
-  const char     *com_type;
-  static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
+  const char     *com_type = odev->comms;
 
-//  log_trace("HAL writing to %s (using buf=%p)", (void *) buf);
-//  log_pdu_trace(p, __func__);
-//  log_buf_trace("Packet", buf, pkt_len);
-  /* a) Convert into packet based on interface packet model  */
-  pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
-  if (pkt_len <= 0) return;      // do not write if bad length
-    
-  /* b) Write to interface based on interface comms type */
-  com_type = odev->comms;
   log_trace("HAL writing to %s using comms type %s (len=%d buf=%p)", odev->id, com_type, pkt_len, (void *)buf);
   if (   (strcmp(com_type, "ipc") == 0)
       || (strcmp(com_type, "tty") == 0)
@@ -199,14 +188,43 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
     if (rv <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", odev->write_soc, rv, zmq_strerror(errno));
   }
   else {
-    log_fatal("%s unknown comms type %s", __func__, com_type);
+    log_fatal("Unknown comms type %s", com_type);
     exit(EXIT_FAILURE);
   }
-  
   (odev->count_w)++;
 //  (void)rv;     /* do nothing, so compiler sees rv is used if logging not enabled  */
   log_debug("HAL writes (comms=%s, format=%s) onto %s: len=%d", com_type, odev->model, odev->id, rv);
   log_buf_trace("Packet", buf, pkt_len);
+}
+
+// Split packet into multiple chunks
+void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
+  int i, n = 1;
+  int split_len = pkt_len / n;
+  int final_len = pkt_len - ((n-1) * split_len);
+  
+  log_warn(">>>> SPLIT packet (len=%d) into %d chunks (len=%d, %d)", pkt_len, n, split_len, final_len);
+  for (i = 0; i<n; i++) {
+    if (i < (n-1)) write_buf(odev, buf, split_len);
+    else           write_buf(odev, buf, final_len);
+    buf += pkt_len;
+  }
+}
+        
+/* Convert PDU into packet based on interface packet model, then send  */
+void write_pdu(device *odev, selector *selector_to, pdu *p) {
+  int             pkt_len=0;
+  static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
+
+//  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
+//  log_pdu_trace(p, __func__);
+//  log_buf_trace("Packet", buf, pkt_len);
+  pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
+  if (pkt_len <= 0) return;      // do not write if bad length
+
+//  write_in_chunks(odev, buf, pkt_len);
+  write_buf(odev, buf, pkt_len);
+  
 }
 
 /**********************************************************************/
@@ -236,6 +254,7 @@ int route_packets(uint8_t *buf, int buf_len, device *idev, halmap *map, device *
     ipdu = read_pdu_from_buffer(idev, buf, buf_len, &pkt_len);
     if(ipdu == NULL) {
       log_trace("==================== No packet in Input Buffer from %s ====================\n", idev->id);
+      pdu_delete(ipdu);
       return (0);
     }
     
