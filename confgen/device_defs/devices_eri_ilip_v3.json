@@ -2,8 +2,7 @@
   "devices": [
     {
       "model":    "sdh_ha_v1",
-      "path":     "./zc/zc",
-      "comms":    "ipc",
+      "comms":    "zmq",
       "mode_in":  "sub",
       "mode_out": "pub"
     },
