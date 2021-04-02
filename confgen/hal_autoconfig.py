@@ -149,13 +149,19 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
 
 # Create HAL maps as a list of python dictionaries
 def create_maps(local_enclve_name, halmaps, dev_list):
+    xdc_dev_list = []
     for dev in dev_list:
         # TODO - select which HAL device. For now, assume there is just one of each is enabled.
         if (dev['enabled'] == 1):
             if ( (dev['comms'] == "ipc") or (dev['comms'] == "zmq") ): dev_app = dev['id']
-            else:                       dev_net = dev['id']
+            else:
+              dev_net = dev['id']
+              xdc_dev_list.append(dev['id'])
     if (args.verbose): print ('create maps for enclave', local_enclve_name, 'between', dev_app, 'and', dev_net)
-
+    if (len(xdc_dev_list) != 1):
+        print ('Exit: Must have exactly one xdc device enabled, not', len(xdc_dev_list), xdc_dev_list)
+        sys.exit(1)
+        
     hal_config_map_list = []
     for map in halmaps:
         d={}
