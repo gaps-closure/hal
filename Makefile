@@ -1,4 +1,4 @@
-DIRS = $(wildcard zc log api appgen daemon)
+DIRS = $(wildcard log api appgen daemon)
 
 CC          ?= gcc
 CFLAGS      ?= -O2 -Wall -Wstrict-prototypes
@@ -28,5 +28,4 @@ clean:
 
 install: 
 	mkdir -p $(INSTALLPATH)
-	install -m 755 zc/zc $(INSTALLPATH)
 	install -m 755 hal   $(INSTALLPATH)
