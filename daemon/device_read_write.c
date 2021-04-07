@@ -1,6 +1,6 @@
 /*
  * HAL device read and write (loop)
- *   January 2021, Perspecta Labs
+ *   April 2021 (ZMQ-based version), Perspecta Labs
  */
 
 /**********************************************************************/
@@ -312,8 +312,81 @@ void create_routing_thread(uint8_t *buf, int buf_len, device *idev, halmap *map,
 }
 #endif
 
+int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items) {
+  int      i=0;
+  char     s[256]="", str_new[64];
+  device  *d;                   /*  device pointer */
+
+  /* First load ØMQ sockets into item */
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+    if ((d->enabled != 0) && (d->read_soc != NULL)) {
+      sprintf(str_new, "%s(soc=%p) ", d->id, d->read_soc);
+      strcat(s, str_new);
+      items[i].socket = d->read_soc;
+      items[i].events = ZMQ_POLLIN;
+      i++;
+    }
+  }
+  *num_zmq_items = i;
+  /* Second get standard unix socket 'fd' into item*/
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+    if ((d->enabled != 0) && (d->read_fd >= 0)) {
+      sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
+      strcat(s, str_new);
+      items[i].socket = NULL;
+      items[i].fd     = d->read_fd;
+      items[i].events = ZMQ_POLLIN;
+      i++;
+    }
+  }
+  log_debug("========== HAL Waiting for first input from %d ZMQ and %d Unix device(s): %s\n", *num_zmq_items, i-(*num_zmq_items), s);
+  return (i);
+}
+
+/* Wait for input from any read interface */
+void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
+#ifdef MSELECT
+  read_wait_loop2(devs, map, hal_wait_us);
+#endif
+  int             num_items, num_zmq_items, i, rc;
+  zmq_pollitem_t  items[MAX_POLL_ITEMS];
+  device         *idev;
+  uint8_t        *buf;
+  int             buf_len;
+
+  num_items = zmq_poll_init(devs, items, &num_zmq_items);
+  while (1) {     /* Main HAL Loop */
+    rc = zmq_poll(items, num_items, -1);    /* Poll for events indefinitely (-1) */
+//    log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
+    if (rc <= 0) {
+      log_error("Poll error rc=%d (0 is a timeout) errno=%d\n", rc, errno);
+      continue;
+    }
+    for (i = 0; i < num_items; i++) {
+//      log_trace("Checking device %d", i);
+      if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
+        if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);
+        else                   idev = find_device_by_read_fd (devs, items[i].fd);
+        if (idev == NULL)      log_warn("Device not found for input\n");
+        else {
+          buf = read_input_dev_into_buffer(idev, &buf_len);
+#ifdef MTHREAD
+          create_routing_thread(buf, buf_len, idev, map, devs);
+#else
+          route_packets(buf, buf_len, idev, map, devs);
+#endif
+        }
+      }
+    }
+  }
+}
+
+
+
+
 /**********************************************************************/
-/* Listen for input from any open device using unix select or zmq poll  */
+/* OLD (ZCAT-BASED) Listen for input from any open device using unix select or zmq poll  */
+/* TODO - Delete a) all 3 functions below here, b) MSELECT, and c) sel_verbose */
 /**********************************************************************/
 /* TODOz - replace with ZMQ POLL */
 void select_add(int fd, int *maxrfd, fd_set *readfds){
@@ -390,73 +463,3 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
     }
   }
 }
-
-int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items) {
-  int      i=0;
-  char     s[256]="", str_new[64];
-  device  *d;                   /*  device pointer */
-
-  /* First load ØMQ sockets into item */
-  for(d = dev_linked_list_root; d != NULL; d = d->next) {
-    if ((d->enabled != 0) && (d->read_soc != NULL)) {
-      sprintf(str_new, "%s(soc=%p) ", d->id, d->read_soc);
-      strcat(s, str_new);
-      items[i].socket = d->read_soc;
-      items[i].events = ZMQ_POLLIN;
-      i++;
-    }
-  }
-  *num_zmq_items = i;
-  /* Second get standard unix socket 'fd' into item*/
-  for(d = dev_linked_list_root; d != NULL; d = d->next) {
-    if ((d->enabled != 0) && (d->read_fd >= 0)) {
-      sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
-      strcat(s, str_new);
-      items[i].socket = NULL;
-      items[i].fd     = d->read_fd;
-      items[i].events = ZMQ_POLLIN;
-      i++;
-    }
-  }
-  log_debug("========== HAL Waiting for first input from %d ZMQ and %d Unix device(s): %s\n", *num_zmq_items, i-(*num_zmq_items), s);
-  return (i);
-}
-
-/* Wait for input from any read interface */
-void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
-#ifdef MSELECT
-  read_wait_loop2(devs, map, hal_wait_us);
-#endif
-  int             num_items, num_zmq_items, i, rc;
-  zmq_pollitem_t  items[MAX_POLL_ITEMS];
-  device         *idev;
-  uint8_t        *buf;
-  int             buf_len;
-
-  num_items = zmq_poll_init(devs, items, &num_zmq_items);
-  while (1) {     /* Main HAL Loop */
-    rc = zmq_poll(items, num_items, -1);    /* Poll for events indefinitely (-1) */
-//    log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
-    if (rc <= 0) {
-      log_error("Poll error rc=%d (0 is a timeout) errno=%d\n", rc, errno);
-      continue;
-    }
-    for (i = 0; i < num_items; i++) {
-//      log_trace("Checking device %d", i);
-      if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
-        if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);
-        else                   idev = find_device_by_read_fd (devs, items[i].fd);
-        if (idev == NULL)      log_warn("Device not found for input\n");
-        else {
-          buf = read_input_dev_into_buffer(idev, &buf_len);
-#ifdef MTHREAD
-          create_routing_thread(buf, buf_len, idev, map, devs);
-#else
-          route_packets(buf, buf_len, idev, map, devs);
-#endif
-        }
-      }
-    }
-  }
-}
-
