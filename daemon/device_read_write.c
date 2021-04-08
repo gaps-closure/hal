@@ -160,9 +160,10 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   
   pdu_ptr = malloc(sizeof(pdu));
   *pkt_len = pdu_from_packet(pdu_ptr, buf, buf_len, idev);
-  if  (*pkt_len <= 0) return(NULL);
-  log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", *pkt_len, (void *) buf, buf_len);
-  log_pdu_trace(pdu_ptr, __func__);
+  if  (*pkt_len > 0) {
+    log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", *pkt_len, (void *) buf, buf_len);
+    log_pdu_trace(pdu_ptr, __func__);
+  }
   return(pdu_ptr);
 }
 
@@ -199,7 +200,7 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
 
 // Split packet into multiple chunks
 void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
-  int i, n = 1;
+  int i, n = 2;
   int split_len = pkt_len / n;
   int final_len = pkt_len - ((n-1) * split_len);
   
@@ -208,6 +209,7 @@ void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
     if (i < (n-1)) write_buf(odev, buf, split_len);
     else           write_buf(odev, buf, final_len);
     buf += pkt_len;
+    sleep(4);
   }
 }
         
@@ -222,9 +224,8 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
 
-//  write_in_chunks(odev, buf, pkt_len);
-  write_buf(odev, buf, pkt_len);
-  
+  if (strcmp(odev->comms, "udp") == 0) write_in_chunks(odev, buf, pkt_len);
+  else                                       write_buf(odev, buf, pkt_len);
 }
 
 /**********************************************************************/
@@ -252,9 +253,10 @@ int route_packets(uint8_t *buf, int buf_len, device *idev, halmap *map, device *
   /* Process one or more packets: input buffer -> internal PDU -> output device */
   while (buf_len > 0) {
     ipdu = read_pdu_from_buffer(idev, buf, buf_len, &pkt_len);
-    if(ipdu == NULL) {
+    if (pkt_len <= 0) {
       log_trace("==================== No packet in Input Buffer from %s ====================\n", idev->id);
       pdu_delete(ipdu);
+      fprintf(stderr, "XXX\n");
       return (0);
     }
     
@@ -374,6 +376,7 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
           create_routing_thread(buf, buf_len, idev, map, devs);
 #else
           route_packets(buf, buf_len, idev, map, devs);
+          fprintf(stderr, "YYYY\n");
 #endif
         }
       }
