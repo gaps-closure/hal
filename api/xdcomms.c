@@ -143,21 +143,20 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
   codec_map  *cm = cmap_find(tag->typ);
   
   xdc_log_level(-1);            /* set logging level to default (if not set) */
-
+            
   /* a) serialize data into packet */
   cm->encode (p->data, buff_in, buff_len);
   log_buf_trace("API <- raw app data:", buff_in, *buff_len);
   log_buf_trace("    -> encoded data:", p->data, *buff_len);
 
-  /* b) Create CLOSURE packet header (TODO: remove NBO ha tag, len) */
+  /* b) Create CLOSURE packet header (sdh_ha_v1 structure) */
   tag_cp(&(p->tag), tag);
-
-// tag_print(tag, stderr);
-// fprintf(stderr, "%s: mux = %d = %d\n", __func__, tag->mux, *((uint32_t *) p));
-
+  p->version=VERSION_LOCAL;                /* No hton-ntoh conversion, no delimiter, no CRC*/
   p->data_len = (uint32_t) *buff_len;
-  /* TODO: preplace last two with  sizeof(*p) - ADU_SIZE_MAX_C  */
-  *p_len = (*buff_len) + sizeof(p->tag) + sizeof(p->data_len);
+  *p_len = (*buff_len) + sizeof(*p) - ADU_SIZE_MAX_C;   /* return packet length */
+//  tag_print(tag, stderr);
+  log_trace("len [data=%ld pkt=%ld]\n", *buff_len, *p_len);
+
   // TODO - return value to indicate an error
 }
 

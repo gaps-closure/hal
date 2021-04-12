@@ -209,7 +209,7 @@ void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
     if (i < (n-1)) write_buf(odev, buf, split_len);
     else           write_buf(odev, buf, final_len);
     buf += pkt_len;
-    sleep(4);
+    sleep(1);
   }
 }
         
@@ -223,8 +223,8 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 //  log_buf_trace("Packet", buf, pkt_len);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
-
-  if (strcmp(odev->comms, "udp") == 0) write_in_chunks(odev, buf, pkt_len);
+//  if (strcmp(odev->comms, "udp") == 0) write_in_chunks(odev, buf, pkt_len);
+  if (strcmp(odev->comms, "tty") == 0) write_in_chunks(odev, buf, pkt_len);
   else                                       write_buf(odev, buf, pkt_len);
 }
 
@@ -256,7 +256,6 @@ int route_packets(uint8_t *buf, int buf_len, device *idev, halmap *map, device *
     if (pkt_len <= 0) {
       log_trace("==================== No packet in Input Buffer from %s ====================\n", idev->id);
       pdu_delete(ipdu);
-      fprintf(stderr, "XXX\n");
       return (0);
     }
     
@@ -376,7 +375,6 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
           create_routing_thread(buf, buf_len, idev, map, devs);
 #else
           route_packets(buf, buf_len, idev, map, devs);
-          fprintf(stderr, "YYYY\n");
 #endif
         }
       }

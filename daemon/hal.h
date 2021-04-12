@@ -20,6 +20,7 @@
 #include <signal.h>
 #include "../log/log.h"
 #include <zmq.h>
+#include <stdbool.h>
 
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */

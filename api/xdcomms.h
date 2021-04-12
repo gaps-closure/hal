@@ -14,6 +14,8 @@
 #define ADU_SIZE_MAX_C  1000000     /* 1 MB - Increased for ILIP payload mode*/
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
+#define VERSION_LOCAL   0
+#define VERSION_REMOTE  0x72ca
 
 #define IPC_ADDR_DEFAULT_HALPUB "ipc:///tmp/halpub1"
 #define IPC_ADDR_DEFAULT_HALSUB "ipc:///tmp/halsub1"
@@ -28,17 +30,16 @@ typedef struct _tag {
 } gaps_tag;
 
 /*
- * CLOSURE packet (for comms between application and HAL)
- * TODO: Do not pass Payload data inside packet:
- *   a) Immediate data is contained in the packet
- *   b) Direct Memory Access (DMA) data is an address in memory
+ * CLOSURE packet for local comms between application and HAL
+ * Also between HAL's with a p2p link: e.g., emulator
+ * Only the latter uses framing (crc, delim) and hton/ntoh conversions
  */
 typedef struct _sdh_ha_v1 {
-  gaps_tag  tag;
-  uint32_t  data_len;               /* 0 = no immediate data */
-  uint8_t   data[ADU_SIZE_MAX_C];   /* Immediate data */
-//  size_t    dma_len;                /* 0 = no DMA data */
-//  void     *dma_address;            /* Driver will DMA from/to host memory */
+  gaps_tag  tag;                   /* must come first, so API can select its packets */
+  uint16_t  version;               /* VERSION_LOCAL = local API; VERSION_REMOTE = remote API */
+  uint16_t  crc16;                 /* CRC frame check */
+  uint32_t  data_len;              /* Data length */
+  uint8_t   data[ADU_SIZE_MAX_C];  /* Data (up to ADU_SIZE_MAX_C bytes) */
 } sdh_ha_v1;
 
 /* Table of codec per data types (Max of DATA_TYP_MAX types) */
