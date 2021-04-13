@@ -1,10 +1,9 @@
 /*
- * Convert between HAL PDU and external packet of the BookEnd (BE)
- * Security Device Hardware (SDH) packet
- *   January 2021, Perspecta Labs
+ * Convert between HAL PDU and BE Security Device Hardware (SDH) packet
+ *   April 2021, Perspecta Labs
  *
  * v2 is the November 2020 EOP Immediate Mode packet format.
- * Similar to v1, but Descriptor Type replaces TLV count + new dst & SipHash fields
+ * Similar to v1, but Descriptor Type replaces TLV count (+ new dst & SipHash fields)
  */
 
 #include "hal.h"
@@ -37,26 +36,23 @@ size_t check_len_sdh_be_v2 (size_t len) {
     return (len);
 }
 
-/* get size of packet (= header length + data length) */
-/*   v3 (Mercury12+) sends payload PLUS 256 byte packet */
-int get_packet_length_sdh_be_v2(pkt_sdh_be_v2 *pkt, int data_len) {
-  return (sizeof(*pkt));
-}
-
 /* Put data from external packet (*in) into internal HAL PDU */
 int pdu_from_sdh_be_v2 (pdu *out, uint8_t *in, int len_in) {
     pkt_sdh_be_v2  *pkt = (pkt_sdh_be_v2 *) in;
+    int             len_pkt = sizeof(*pkt);
 
     out->data_len     = check_len_sdh_be_v2(ntohl(pkt->imm_data_len));
-    if (get_packet_length_sdh_be_v2(pkt, 0) > len_in)  return (-1);
+    log_trace("len [in=%d pkt=%d data=%d]", len_in, len_pkt, out->data_len);
+    if (len_pkt > len_in)  {
+      log_warn("Partial ILIPv2 packet. If this can occur, then add packetize_join.c");
+      return (-1);
+    }
 //    fprintf(stderr, "%s: ", __func__); sdh_be_v2_print(pkt);
     out->psel.tag.mux = ntohl(pkt->session_tag);
     out->psel.tag.sec = ntohl(pkt->message_tag);
     out->psel.tag.typ = ntohl(pkt->data_tag);
-//    memcpy (out->data, pkt->imm_data, len);    /* TODO_PDU_PTR */
-    out->data = pkt->imm_data;    /* TODO_PDU_PTR */
-
-    return (get_packet_length_sdh_be_v2(pkt, 0));
+    out->data = pkt->imm_data;
+    return (len_pkt);
 }
 
 /* Put data into external packet (*out) from internal HAL PDU */
@@ -88,5 +84,5 @@ int pdu_into_sdh_be_v2 (uint8_t *out, pdu *in, gaps_tag *otag) {
     pkt->desc_sip_hash_up   = 0;
 //    sdh_be_v2_print(pkt);
 
-    return (sizeof(*pkt));    /* packet size always 256B in v2 (unless too big) */
+    return (sizeof(*pkt));    /* packet size always 256 Bytes in v2 (unless too big) */
 }

@@ -39,8 +39,7 @@ int pdu_from_sdh_bw_v1 (pdu *out, uint8_t *in, int len_in) {
   frame_delim     = (ntohl(pkt_ptr->message_tag_ID)) & 0xff000000;
   len_pkt         = get_packet_length_sdh_bw_v1(pkt_ptr);
   start_of_packet = (crc_pkt == crc_regen) && (frame_delim == 0);
-  if (start_of_packet)  log_trace("start=%d, len [in=%d pkt=%d], crc [pkt=%02x out=%02x]. delim=%d\n", start_of_packet, len_in, len_pkt, crc_pkt, crc_regen, frame_delim);
-  else                  log_trace("start=%d, len [in=%d pkt=XX]\n", start_of_packet, len_in);
+  log_trace("start=%d, len [in=%d pkt=%d], crc [pkt=%02x out=%02x]. delim=%d\n", start_of_packet, len_in, len_pkt, crc_pkt, crc_regen, frame_delim);
   rv = packet_parser(in, len_in, len_pkt, out, &sbuf, start_of_packet);
   if (rv > 0) packet_2_pdu_bw_v1(out, (sdh_bw_v1 *) sbuf);
   return (rv);
