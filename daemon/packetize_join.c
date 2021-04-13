@@ -1,6 +1,11 @@
 /*
- * Combine packets from
+ * Combine packets from a sequence of input receive buffers
  *   April 2021, Perspecta Labs
+ *
+ * Based loosely on the Generic Framing Protocol (GFP) using CRC to check
+ * start of frame, with no escape sequences, so has low fixed overhead.
+ *    - Assumes start of PDU is always at the start of a packet
+ *    - robust to packet loos (clears buffer when a new PDU arrives)
  */
 
 #include "hal.h"

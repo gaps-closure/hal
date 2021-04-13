@@ -20,7 +20,7 @@ int get_packet_length_sdh_bw_v1(sdh_bw_v1 *pkt) {
 }
 
 /* Copy from packet (input or saved) into internal PDU */
-void packet_2_pdu(pdu *out, sdh_bw_v1 *in) {
+void packet_2_pdu_bw_v1(pdu *out, sdh_bw_v1 *in) {
   out->data_len  = ntohs(in->data_len);
   out->psel.ctag = ntohl(in->message_tag_ID);
   out->data      = in->data;
@@ -42,7 +42,7 @@ int pdu_from_sdh_bw_v1 (pdu *out, uint8_t *in, int len_in) {
   if (start_of_packet)  log_trace("start=%d, len [in=%d pkt=%d], crc [pkt=%02x out=%02x]. delim=%d\n", start_of_packet, len_in, len_pkt, crc_pkt, crc_regen, frame_delim);
   else                  log_trace("start=%d, len [in=%d pkt=XX]\n", start_of_packet, len_in);
   rv = packet_parser(in, len_in, len_pkt, out, &sbuf, start_of_packet);
-  if (rv > 0) packet_2_pdu(out, (sdh_bw_v1 *) sbuf);
+  if (rv > 0) packet_2_pdu_bw_v1(out, (sdh_bw_v1 *) sbuf);
   return (rv);
 }
 

@@ -29,15 +29,9 @@ typedef struct _tag {
   uint32_t    typ;      /* data type */
 } gaps_tag;
 
-/*
- * CLOSURE packet for local comms between application and HAL
- * Also between HAL's with a p2p link: e.g., emulator
- * Only the latter uses framing (crc, delim) and hton/ntoh conversions
- */
+/* CLOSURE packet for local comms between application and HAL */
 typedef struct _sdh_ha_v1 {
-  gaps_tag  tag;                   /* must come first, so API can select its packets */
-  uint16_t  version;               /* VERSION_LOCAL = local API; VERSION_REMOTE = remote API */
-  uint16_t  crc16;                 /* CRC frame check */
+  gaps_tag  tag;                   /* First, so API can select its packets */
   uint32_t  data_len;              /* Data length */
   uint8_t   data[ADU_SIZE_MAX_C];  /* Data (up to ADU_SIZE_MAX_C bytes) */
 } sdh_ha_v1;

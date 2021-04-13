@@ -151,7 +151,6 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
 
   /* b) Create CLOSURE packet header (sdh_ha_v1 structure) */
   tag_cp(&(p->tag), tag);
-  p->version=VERSION_LOCAL;                /* No hton-ntoh conversion, no delimiter, no CRC*/
   p->data_len = (uint32_t) *buff_len;
   *p_len = (*buff_len) + sizeof(*p) - ADU_SIZE_MAX_C;   /* return packet length */
 //  tag_print(tag, stderr);

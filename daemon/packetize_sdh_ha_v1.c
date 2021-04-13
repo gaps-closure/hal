@@ -9,7 +9,7 @@
 #include "packetize_join.h"
 
 /* Print M1 Packet */
-void sda_ha_v1_print(sdh_ha_v1 *p) {
+void sdh_ha_v1_print(sdh_ha_v1 *p) {
   fprintf(stderr, "%s: ", __func__);
   fprintf(stderr, "mux=%u ",  p->tag.mux);
   fprintf(stderr, "sec=%u ",  p->tag.sec);
@@ -24,26 +24,23 @@ int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt) {
   return (sizeof(*pkt) - ADU_SIZE_MAX_C + pkt->data_len);
 }
 
+/* Copy from packet (input or saved) into internal PDU */
+void packet_2_pdu_sdh_ha_v1(pdu *out, sdh_bw_v1 *in) {
+  out->data_len     = in->data_len;
+  tag_cp(&(out->psel.tag), &(pkt->tag));
+  out->data         = pkt->data;   /* TODO_PDU_PTR */
+}
+
 /* Put closure packet (in) into internal HAL PDU structure (out) */
 int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) in;
-  uint16_t    crc_pkt, crc_regen;
-  int         len_pkt, frame_delim;
-  bool        start_of_packet;
+  uint8_t    *sbuf = in;
+  int         len_pkt;
 
-  frame_delim     = pkt->version;
-  crc_pkt         = pkt->crc16;
-  crc_regen       = crc_pkt;
   len_pkt         = get_packet_length_sdh_ha_v1(pkt);
-  start_of_packet = (crc_pkt == crc_regen) && (frame_delim == 0);
-  log_trace("len [in=%d pkt=%d] crc [pkt=%02x out=%02x] v=0x%x start=%d\n", len_in, len_pkt, crc_pkt, crc_regen, frame_delim, start_of_packet);
-  
-  if (len_pkt > len_in)  return (-1);   /* incomplete packet */
-  out->data_len = pkt->data_len;
-  tag_cp(&(out->psel.tag), &(pkt->tag));
-  out->data = pkt->data;   /* TODO_PDU_PTR */
-
-  return (len_pkt);
+  log_trace("len [in=%d pkt=%d]\n", start_of_packet, len_in, len_pkt);
+  if (len_in >= len_pkt) packet_2_pdu_sdh_ha_v1(out, pkt);
+  return (rv);
 }
 
 /* Put internal PDU (in) into closure packet (out) */
