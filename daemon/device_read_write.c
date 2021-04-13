@@ -217,15 +217,14 @@ void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
 void write_pdu(device *odev, selector *selector_to, pdu *p) {
   int             pkt_len=0;
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
-
+  char            comm2chunk[] = "xudp";   /* udp (bw), ilp (be_v2), tty (socat) */
 //  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
 //  log_pdu_trace(p, __func__);
 //  log_buf_trace("Packet", buf, pkt_len);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
-//  if (strcmp(odev->comms, "udp") == 0) write_in_chunks(odev, buf, pkt_len);
-  if (strcmp(odev->comms, "tty") == 0) write_in_chunks(odev, buf, pkt_len);
-  else                                       write_buf(odev, buf, pkt_len);
+  if (strcmp(odev->comms, comm2chunk) == 0) write_in_chunks(odev, buf, pkt_len);
+  else                                      write_buf(odev, buf, pkt_len);
 }
 
 /**********************************************************************/

@@ -337,11 +337,15 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   sdh_ha_v1    packet, *p=&packet;
   size_t       packet_len;
   size_t       adu_len;         /* Size of ADU is calculated by encoder */
+//  int          i;
 
   gaps_data_encode(p, &packet_len, adu, &adu_len, tag);
-  log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
-  // Test 1) two packets in one HAL receive buf using by sending same packet back-to-back:
-  //         for (i=0; i<2; i++)
+  // Test 1) two packets in one HAL receive buf, by sending same packet back-to-back:
+//  for (i=0; i<2; i++) {
+    log_buf_trace("API sends Packet", (uint8_t *) p, packet_len);
+    bytes = zmq_send (socket, (void *) p, packet_len, 0);
+    if (bytes <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", socket, bytes, zmq_strerror(errno));
+//  }
   // Test 2) one Packet split into two HAL receive bufs by sending 1/2 packet, then sleep before sending next half
   //         size_t split_1_len = packet_len / 2;
   //         size_t split_2_len = packet_len - split_1_len;
@@ -349,9 +353,6 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
   //         sleep(1);
   //         bytes = zmq_send (socket, (void *) p, split_2_len, 0);
   //         log_buf_warn("API SPLITS Packet into two: len=%d + len=%d (%d)", split_1_len, split_2_len, bytes);
-
-  bytes = zmq_send (socket, (void *) p, packet_len, 0);
-  if (bytes <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", socket, bytes, zmq_strerror(errno));
 }
 
 /*
