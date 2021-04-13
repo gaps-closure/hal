@@ -2,9 +2,9 @@
 
 /* CLOSURE packet for serial line comms (e.g., socat-pty) */
 typedef struct _sdh_sc_v1 {
-  gaps_tag  tag;
   uint16_t  delim;                 /* start of frame marker */
   uint16_t  crc16;                 /* CRC frame check */
+  gaps_tag  tag;
   uint32_t  data_len;              /* Data length */
   uint8_t   data[ADU_SIZE_MAX_C];  /* Data (up to ADU_SIZE_MAX_C bytes) */
 } sdh_sc_v1;

@@ -14,8 +14,6 @@
 #define ADU_SIZE_MAX_C  1000000     /* 1 MB - Increased for ILIP payload mode*/
 #define RX_FILTER_LEN   12
 #define DATA_TYP_MAX    200
-#define VERSION_LOCAL   0
-#define VERSION_REMOTE  0x72ca
 
 #define IPC_ADDR_DEFAULT_HALPUB "ipc:///tmp/halpub1"
 #define IPC_ADDR_DEFAULT_HALSUB "ipc:///tmp/halsub1"

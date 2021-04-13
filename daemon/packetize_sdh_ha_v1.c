@@ -25,22 +25,21 @@ int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt) {
 }
 
 /* Copy from packet (input or saved) into internal PDU */
-void packet_2_pdu_sdh_ha_v1(pdu *out, sdh_bw_v1 *in) {
+void packet_2_pdu_sdh_ha_v1(pdu *out, sdh_ha_v1 *in) {
   out->data_len     = in->data_len;
-  tag_cp(&(out->psel.tag), &(pkt->tag));
-  out->data         = pkt->data;   /* TODO_PDU_PTR */
+  tag_cp(&(out->psel.tag), &(in->tag));
+  out->data         = in->data;   /* TODO_PDU_PTR */
 }
 
 /* Put closure packet (in) into internal HAL PDU structure (out) */
 int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) in;
-  uint8_t    *sbuf = in;
   int         len_pkt;
 
   len_pkt         = get_packet_length_sdh_ha_v1(pkt);
-  log_trace("len [in=%d pkt=%d]\n", start_of_packet, len_in, len_pkt);
+  log_trace("len [in=%d pkt=%d]\n", len_in, len_pkt);
   if (len_in >= len_pkt) packet_2_pdu_sdh_ha_v1(out, pkt);
-  return (rv);
+  return (len_pkt);
 }
 
 /* Put internal PDU (in) into closure packet (out) */
