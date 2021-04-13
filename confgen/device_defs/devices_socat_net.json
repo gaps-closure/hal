@@ -1,0 +1,18 @@
+{
+  "devices": [
+    {
+      "model":    "sdh_ha_v1",
+      "comms":    "zmq",
+      "mode_in":  "sub",
+      "mode_out": "pub"
+    },
+    {
+      "model":    "sdh_socat_v1",
+      "comms":    "tty",
+      "enclave_name_1": "green",
+      "path":     "/tmp/vcom1",
+      "enclave_name_2":  "orange",
+      "path":     "/tmp/vcom2"
+    }
+  ]
+}

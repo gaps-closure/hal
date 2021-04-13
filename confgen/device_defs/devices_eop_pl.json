@@ -15,7 +15,7 @@
       "listen_port_1":  6788,
       "connect_addr_1": "10.109.23.126",
       "connect_port_1": 6788,
-      "enclav_name_2":  "orange",
+      "enclave_name_2": "orange",
       "listen_addr_2":  "10.109.23.126",
       "listen_port_2":  6788,
       "connect_addr_2": "10.109.23.128",
