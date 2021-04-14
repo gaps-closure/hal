@@ -44,23 +44,20 @@ void packet_2_pdu_sdh_sc_v1(pdu *out, sdh_sc_v1 *in) {
 
 /* Put closure packet (in) into internal HAL PDU structure (out) */
 int pdu_from_sdh_sc_v1 (pdu *out, uint8_t *in, int len_in) {
-  sdh_sc_v1  *pkt = (sdh_sc_v1 *) in;
-  uint8_t    *sbuf = in;
-  uint16_t    crc_pkt, crc_regen;
-  int         len_pkt, frame_delim, rv;
-  bool        start_of_packet;
-
+  sdh_sc_v1        *pkt = (sdh_sc_v1 *) in;
+  uint8_t          *sbuf = in;
+  uint16_t          crc_pkt, crc_regen;
+  int               len_pkt, frame_delim, rv;
+  bool              start_of_packet;
+  static pkt_reaas  prs;            /* Packet reassembly structure */
+  
   frame_delim     = ntohs(pkt->delim);
   crc_pkt         = ntohs(pkt->crc16);
   crc_regen       = crc_pkt;
   len_pkt         = get_packet_length_sdh_sc_v1(pkt);
   start_of_packet = (crc_pkt == crc_regen) && (frame_delim == SDH_DELIM);
   log_trace("start=%d, len [in=%d pkt=%d], crc [pkt=%02x out=%02x]. delim=%04x\n", start_of_packet, len_in, len_pkt, crc_pkt, crc_regen, frame_delim);
-  if (start_of_packet)  log_trace("start=%d, len [in=%d pkt=%d], crc [pkt=%02x out=%02x]. delim=%d\n", start_of_packet, len_in, len_pkt, crc_pkt, crc_regen, frame_delim);
-  else                  log_trace("start=%d, len [in=%d pkt=XX]\n", start_of_packet, len_in);
-
-  rv = packet_parser(in, len_in, len_pkt, out, &sbuf, start_of_packet);
-  log_trace("rv=%d\n", rv);
+  rv = packet_parser(in, len_in, len_pkt, &sbuf, start_of_packet, &prs);
   if (rv > 0) packet_2_pdu_sdh_sc_v1(out, (sdh_sc_v1 *) sbuf);
   return (rv);
 }
