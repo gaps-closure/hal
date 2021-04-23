@@ -10,26 +10,25 @@
  * 2) View APP Options:
  *   ./app_req_rep -h
  *
- * 3) Run APP via HAL and Network (after HAL daemon is running and NET is up) in all enclaves
+ * 3) Run after HAL is running and NET is up in enclave-1 (green) and enclave=2 (orange):
  *
- *    [a] Default Flow: Green enclave-1 sends position <1,1,1>; Orange replies with posiiton <2,2,1>
- *      green:   ./app_req_rep
- *      oprange: ./app_req_rep -e 2
+ *    [a] Default Flow: enc-1 sends position <1,1,1>; enc-2 replies with posiiton <2,2,1>
+ *      enclave-2: ./app_req_rep -e 2
+ *      enclave-1: ./app_req_rep
  *
- *    [b] Reverse: Orange enclave-2 sends position <2,2,1>; Green replies with posiiton <1,1,1>
- *      green:   ./app_req_rep -r
- *      oprange: ./app_req_rep -e 2 -r
+ *    [b] Reverse: enc-2 sends position <2,2,1>; enc-2 replies with posiiton <1,1,1>
+ *      enclave-1: ./app_req_rep -r
+ *      enclave-2: ./app_req_rep -e 2 -r
  *
- *    [c] Raw Data: Green enclave-1 sends raw data <1,1,3>; Orange replies with posiiton <2,2,1>
- *          The '-g 0' option, means orange expect to receive a request with raw data (of any size)
- *      orange:  ./app_req_rep -e 2 -g 0
- *          The Green APP sends raw data <1,1,3>, sending a buffer of sequenctial numbers
- *          whose size (in Bytes) is defined by the '-g' option.
- *      green:   ./app_req_rep -g 1000
+ *    [c] Big Data: enc-1 sends raw data <1,1,3>; enc-2 replies with posiiton <2,2,1>
+ *          '-g 0' option means enc-2  expect to receive araw data (of any size)
+ *      enclave-2: ./app_req_rep -e 2 -g 0
+ *          '-g 1000' option means enc-1 sends a 1000B buffer of sequenctial numbers
+ *      enclave-1: ./app_req_rep -g 1000
  *
- *    [d] Big Tag: Green enclave sends position <1,1,0x01234567>; Orange replies with posiiton <2,2,1>
- *      green:   ./app_req_rep -G
- *      oprange: ./app_req_rep -e 2 -G
+ *    [d] Big Tag: enc-1 sends position <1,1,0x01234567>; enc-2 replies with posiiton <2,2,1>
+ *      enclave-2: ./app_req_rep -e 2 -G
+ *      enclave-1: ./app_req_rep -G
  *
  *    [e] Timeout: Green enclave sends posiiton <1,1,1>; Orange replies with raw data <2,2,3>
  *          The Orange APP replies to one request with raw data <2,2,3>, sending a buffer of
@@ -49,13 +48,13 @@
  *      green:   ./app_req_rep -o 0 -o 0 -g 400
  *
  *    [g] Big UDP: Green enclave sends raw data <1,1,3>; Orange replies with raw data <2,2,3>
- *                 (HAL is configured to 'be' ZMQ URIs)
- *      green:   ./app_req_rep -z 1 -o 0 -g 700
- *      orange:  ./app_req_rep -e 2 -z 1 -o 900 -g 0
- 
- *    [x] EOP: Orange enclave sends HB/position <12,12,13>; Green replies with HB/position <111,111,113>
- *      green:   ./app_req_rep -r -q
- *      orange:  ./app_req_rep -r -q -e 2
+ *                 (HAL is configured to 'example1' ZMQ URIs)
+ *      green:   ./app_req_rep -z 1 -o 0 -g 700 -v
+ *      orange:  ./app_req_rep -e 2 -z 1 -o 900 -g 0 -v
+ *
+ *    [q] EOP: enc-1 sends Heart-beat/position <12,12,13>; enc-1 replies with same <111,111,113>
+ *      enclave-2: ./app_req_rep -r -q -e 2
+ *      enclave-1: ./app_req_rep -r -q
  */
 
 #include "../api/xdcomms.h"
@@ -86,6 +85,7 @@ int  mode_uni             = 0;    // 0=RPC e1=client, e2=server   (1=UNI: e1=sou
 int  loop_count           = 1;
 int  sleep_nano           = 0;
 bool verbose              = false;
+bool very_verbose         = false;
 int  sub_block_timeout_ms = -1;
 int  copy_buf_size        = -1;
 int  receive_first        = 0;
@@ -109,7 +109,7 @@ void opts_print(void) {
   printf(" -g : Raw (3) data type from enclave 1 to 2 (enclave 1 specified size (in bytes); enclave 2 size must be 0: default = position (1)\n");
   printf(" -G : BIG data type (0x01234567) sent from enclave 1 to 2 (both sides must specify): default = position type (1) \n");
   printf(" -h : Print this message\n");
-  printf(" -l : log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
+  printf(" -l : API log level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL (default = 2)\n");
   printf(" -m : Experimental Mode: default = %s\n", experimental_mode);
   printf(" -n : Number of request-response loops: Default = 1\n");
   printf(" -o : Raw (3) data type from enclave 1 to 2. Both enclaves must set and enclave 1 specified size (in bytes): default = position (1)\n");
@@ -121,12 +121,13 @@ void opts_print(void) {
   printf(" -u : Unidirectional mode (Enclave 1 = source, Enclave 2 = sink): default = RPC mode (Enclave 1 = client, Enclave 2 = server), \n");
   printf(" -z : URL index for HAL API : Default = ipc:///tmp/halsubgreen, 1=ipc:///tmp/example1suborange 2=ipc:///tmp/sock_suborange 5=ipc:///tmp/halsubbegreen 6=ipc:///tmp/halsubbwgreen\n");
   printf(" -v : Verbose mode\n");
+  printf(" -w : print data\n");
 }
 
 /* Parse the configuration file */
 void opts_get(int argc, char **argv) {
   int opt, value;
-  while((opt =  getopt(argc, argv, "b:e:f:g:Ghl:n:o:pqrs:t:uvz:")) != EOF)
+  while((opt =  getopt(argc, argv, "b:e:f:g:Ghl:n:o:pqrs:t:uvVz:")) != EOF)
   {
     switch (opt)
     {
@@ -204,6 +205,9 @@ void opts_get(int argc, char **argv) {
       case 'v':
         verbose = true;
         break;
+      case 'V':
+        very_verbose = true;
+        break;
       case 'z':
         value = atoi(optarg);
         if (value==1) {
@@ -243,7 +247,7 @@ void opts_get(int argc, char **argv) {
     }
   }
   fprintf(stderr, "Enclave-%d channels: 1-to-2-tag=[%u, %u, %u] 2-to-1-tag=[%u, %u, %u]\n", enclave, mux_1_2, sec_1_2, typ_1_2, mux_2_1, sec_2_1, typ_2_1);
-  fprintf(stderr, "Params: timeout=%d, loops=%d, burst=%d, uni=%d reverse=%d, sleep=%dns, buf_size=%d, API-log=%d verbose=%s\n", sub_block_timeout_ms, loop_count, burst_size, mode_uni, reverse_flow, sleep_nano, copy_buf_size, log_level, verbose ? "true" : "false");
+  fprintf(stderr, "Params: timeout=%d, loops=%d, burst=%d, uni=%d reverse=%d, sleep=%dns, buf_size=%d, API-log=%d verbose=%s,%s,%d\n", sub_block_timeout_ms, loop_count, burst_size, mode_uni, reverse_flow, sleep_nano, copy_buf_size, log_level, verbose ? "true" : "false", very_verbose ? "true" : "false", log_level);
   fprintf(stderr, "API URIs: ");
   switch(enclave) {
     case 1:
@@ -315,7 +319,8 @@ void send_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *sock
       break;
     case DATA_TYP_RAW:
       if (new_flag == 1) *adu_len = raw_set(adu, copy_buf_size);
-      if (verbose) raw_print((raw_datatype *) adu);
+      if (verbose) fprintf(stderr, "len=%ld\n", *adu_len);
+      if (very_verbose) raw_print((raw_datatype *) adu);
       break;
     default:
       fprintf(stderr, "Undefined Publish data type: %d\n", tag_pub->typ);
@@ -348,7 +353,8 @@ void recv_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *
         if (verbose) position_print((position_datatype *) adu);
         break;
       case DATA_TYP_RAW:
-        if (verbose) raw_print((raw_datatype *) adu);
+        if (verbose) fprintf(stderr, "len=%d\n", rv);
+        if (very_verbose) raw_print((raw_datatype *) adu);
         break;
       default:
         fprintf(stderr, "Undefined Subscribe data type: %d\n", tag_sub->typ);

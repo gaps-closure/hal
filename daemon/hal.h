@@ -45,6 +45,7 @@ typedef struct _dev {
   int         port_in;     /* port HAL listens to on this device */
   int         port_out;    /* port HAL connects to from this device */
   int         from_mux;    /* tag mux value for ilip device */
+  int         max_len;     /* Maximum length of packet */
   /* B) internal structures and parameters for this device */
   struct sockaddr_in socaddr_in;
   struct sockaddr_in socaddr_out;

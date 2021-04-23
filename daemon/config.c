@@ -89,6 +89,7 @@ device *get_devices(config_t *cfg) {
       ret[i].path_r      = get_param_str(dev, "path_r",      1, i);
       ret[i].path_w      = get_param_str(dev, "path_w",      1, i);
       ret[i].from_mux    = get_param_int(dev, "from_mux",    1, i);
+      ret[i].max_len     = get_param_int(dev, "max_len",     1, i);
 
       ret[i].read_fd   = -1; /* to be set when opened */
       ret[i].write_fd  = -1; /* to be set when opened */

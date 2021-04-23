@@ -66,6 +66,7 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "Pi", d->pid_in);
   device_print_int(fd, "Po", d->pid_out);
   device_print_int(fd, "mx", d->from_mux);
+  device_print_int(fd, "ml", d->max_len);
   fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
   fprintf(fd, "]\n");
 }
