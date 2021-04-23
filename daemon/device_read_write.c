@@ -199,15 +199,13 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
 }
 
 // Split packet into multiple chunks
-void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
-  int i, n = 1 + (pkt_len/(odev->max_len));
-  int split_len = pkt_len / n;
-  int final_len = pkt_len - ((n-1) * split_len);
+void write_in_chunks(device *odev, uint8_t *buf, int pkt_len, int max_len) {
+  int i, n = 1 + (pkt_len/max_len);
+  int final_len = pkt_len - ((n-1) * max_len);
   
-  log_warn(">>>> max_len=%d)", odev->max_len);
-  log_warn(">>>> SPLIT PDU (len=%d) into %d packets (len=%d, %d)", pkt_len, n, split_len, final_len);
+  log_debug(">>>> SPLIT PDU (len=%d) into %d packets (len=%d, %d)", pkt_len, n, max_len, final_len);
   for (i = 0; i<n; i++) {
-    if (i < (n-1)) write_buf(odev, buf, split_len);
+    if (i < (n-1)) write_buf(odev, buf, max_len);
     else           write_buf(odev, buf, final_len);
     buf += pkt_len;
     sleep(1);
@@ -216,16 +214,17 @@ void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
         
 /* Convert PDU into packet based on interface packet model, then send  */
 void write_pdu(device *odev, selector *selector_to, pdu *p) {
-  int             pkt_len=0;
+  int             max_len      = odev->max_len;
+  int             pkt_len      = 0;
   static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
-  char            comm2chunk[] = "udp";   /* udp (bw), ilp (be_v2), tty (socat) */
+  
 //  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
 //  log_pdu_trace(p, __func__);
 //  log_buf_trace("Packet", buf, pkt_len);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
-  if (strcmp(odev->comms, comm2chunk) == 0) write_in_chunks(odev, buf, pkt_len);
-  else                                      write_buf(odev, buf, pkt_len);
+  if ( (max_len > 0) && (max_len < pkt_len) ) write_in_chunks(odev, buf, pkt_len, max_len);
+  else                                        write_buf(odev, buf, pkt_len);
 }
 
 /**********************************************************************/

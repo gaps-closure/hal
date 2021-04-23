@@ -319,7 +319,7 @@ void send_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *sock
       break;
     case DATA_TYP_RAW:
       if (new_flag == 1) *adu_len = raw_set(adu, copy_buf_size);
-      if (verbose) fprintf(stderr, "len=%ld\n", *adu_len);
+      if (verbose) fprintf(stderr, "len=%d\n", copy_buf_size);
       if (very_verbose) raw_print((raw_datatype *) adu);
       break;
     default:
@@ -341,6 +341,8 @@ void send_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, void *sock
 /* Receive and print one message */
 void recv_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *tag_sub, void *socket_pub, void *socket_sub) {
   int rv=-1, i;
+  raw_datatype *raw = (raw_datatype *) adu;
+  
 //  xdc_blocking_recv(socket_sub, adu, r_tag);     /* 6month API only supports blocking receive */
   for (i=0; i<burst_size; i++) { rv = xdc_recv(socket_sub, adu, tag_sub); rx_count++; }
   if (rv > 0) {
@@ -353,8 +355,8 @@ void recv_one_burst(uint8_t *adu, size_t *adu_len, gaps_tag *tag_pub, gaps_tag *
         if (verbose) position_print((position_datatype *) adu);
         break;
       case DATA_TYP_RAW:
-        if (verbose) fprintf(stderr, "len=%d\n", rv);
-        if (very_verbose) raw_print((raw_datatype *) adu);
+        if (verbose) fprintf(stderr, "len=%d (with 16B header and 20B trailer = %d) Bytes\n", raw->data_len, rv);
+        if (very_verbose) raw_print(raw);
         break;
       default:
         fprintf(stderr, "Undefined Subscribe data type: %d\n", tag_sub->typ);
