@@ -293,6 +293,10 @@ size_t raw_set (uint8_t *adu, size_t len) {
   raw_datatype  *out  = (raw_datatype *) adu;
   uint8_t       *data = (uint8_t *) (out + 1);
   
+  if ( (len + 50) > ADU_SIZE_MAX_C) {
+    fprintf(stderr, "\nExit: RAW data length (%ld) and header/trailer < HAL ADU_SIZE_MAX_C (%d)\n", len, ADU_SIZE_MAX_C);
+    exit (1);
+  }
   out->data_len = len;
   trailer_set(&(out->trailer));
   for (i=0; i<len; i++) data[i] = (uint8_t) (i % 256);
