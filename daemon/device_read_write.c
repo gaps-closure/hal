@@ -200,7 +200,8 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
 
 // Split packet into multiple chunks
 void write_in_chunks(device *odev, uint8_t *buf, int pkt_len, int max_len) {
-  int i, n = 1 + (pkt_len/max_len);
+  int i
+  int n = (pkt_len + (max_len -1)) /max_len;   /* round up */
   int final_len = pkt_len - ((n-1) * max_len);
   
   log_debug(">>>> SPLIT PDU (len=%d) into %d packets (len=%d, %d)", pkt_len, n, max_len, final_len);
