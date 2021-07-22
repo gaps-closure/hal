@@ -61,6 +61,7 @@ int get_param_int(config_setting_t *dev, const char *name, int optional, int fie
 
 /* Construct linked list of devices from config */
 device *get_devices(config_t *cfg) {
+//  log_fatl("XXXX");
   device *ret = NULL;
   config_setting_t *devs = config_lookup(cfg, "devices");
   if(devs != NULL) {
@@ -89,6 +90,8 @@ device *get_devices(config_t *cfg) {
       ret[i].path_r      = get_param_str(dev, "path_r",      1, i);
       ret[i].path_w      = get_param_str(dev, "path_w",      1, i);
       ret[i].from_mux    = get_param_int(dev, "from_mux",    1, i);
+      ret[i].offset_r    = get_param_int(dev, "offset_r",    1, i);
+      ret[i].offset_w    = get_param_int(dev, "offset_w",    1, i);
 
       ret[i].read_fd   = -1; /* to be set when opened */
       ret[i].write_fd  = -1; /* to be set when opened */

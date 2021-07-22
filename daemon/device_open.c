@@ -66,6 +66,8 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "Pi", d->pid_in);
   device_print_int(fd, "Po", d->pid_out);
   device_print_int(fd, "mx", d->from_mux);
+  device_print_int(fd, "or", d->offset_r);
+  device_print_int(fd, "ow", d->offset_w);
   fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
   fprintf(fd, "]\n");
 }
@@ -328,6 +330,24 @@ void interface_open_tty(device *d) {
 }
 
 /**********************************************************************/
+/* Open Device; e) PMEM shared memory  */
+/*********t************************************************************/
+/* Open a serial (tty) interface for read-write and save the fds */
+void interface_open_pmem(device *d) {
+  int fd;   //  rv, offset[]={4,5};
+  
+  log_fatal("TODO - Open PMEM device %s: %s (for now emulate as serial tty line)", d->id, d->path);
+  log_fatal("TODO - Offset r=%d w=%d. Initialize read and write indexes to 0\n", d->offset_r, d->offset_w);
+  if ((fd = open(d->path, O_RDWR)) < 0) {
+    log_fatal("Error opening device %s: %s\n", d->id, d->path);
+    exit(EXIT_FAILURE);
+  }
+  d->read_fd = fd;
+  d->write_fd = fd;
+//  rv = write(fd, offset, sizeof(offset));
+}
+
+/**********************************************************************/
 /* Open Device; d) Unidirectional Serial Links (based on root device) */
 /*********t************************************************************/
 /* open unidirection ILIP device pair (for read and write) */
@@ -477,6 +497,7 @@ void devices_open(device *dev_linked_list_root) {
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
     else if   (!strncmp(d->comms, "zmq", 3))                                      interface_open_zmq(d);
+    else if   (!strncmp(d->comms, "pmem", 4))                                     interface_open_pmem(d);
     else { log_fatal("Device %s [%s] unknown", d->id, d->comms); exit(EXIT_FAILURE);}
 // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->read_fd, d->write_fd);
   }

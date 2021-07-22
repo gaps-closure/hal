@@ -1,6 +1,12 @@
 /*
  * HAL device read and write (loop)
- *   January 2021, Perspecta Labs
+ *   August 2021, Peraton Labs
+ *
+ * Uses the 'comms' type (specified in the configuration file) to get/put data:
+ *   1) read/write using a file descriptor (fd)
+ *   2) recvfrom/  a file descriptor (fd)
+ *   3) zmq_recv/   a ZMQ socket
+ *   4) load/store using a pmem shared memory address
  */
 
 /**********************************************************************/
@@ -18,7 +24,7 @@
 #define PACKET_BUFFERS_MAX 2    /* increasing gives (payload mode) driver more time to read data */
 
 /**********************************************************************/
-/* Alternative HAL Modes */
+/* Alternative HAL Modes using a) original unix select function and/or one thread per received packet */
 /**********************************************************************/
 // #define MSELECT     // Original version using unix select among HAL's read file descriptor
 // #define MTHREAD     // Multithreaded version disabled until fix input buffer to use malloc?
@@ -38,7 +44,7 @@ int sel_verbose=0;      /* help debug of device saying it is ready when it is no
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
-/* Transform ADU data  */
+/* Transform ADU data (NOT YET IMPLEMENTED)  */
 pdu *codec(halmap *h, pdu *ipdu) {
   pdu *opdu = NULL;
 
@@ -63,6 +69,7 @@ pdu *codec(halmap *h, pdu *ipdu) {
 /**********************************************************************/
 /* HAL Device Read and Write  */
 /**********************************************************************/
+/* Print status of all devices */
 void devs_stat_print(device *devs) {
   char   s[256]=""; char  str_new[64];
   
@@ -111,7 +118,6 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
       *buf_len = read(fd, buf[buf_index], 2304);    /* v12  bigger packets (buffer big en */
       *buf_len = 256;                    /* HACK to packet (256) - actually gets 512 */
     }
-    // TODOz - read from ZMQ socket instread of file descriptor
     else {
       *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     }
@@ -135,6 +141,14 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
   }
   else if (strcmp(com_type, "zmq") == 0) {
     *buf_len = zmq_recv (idev->read_soc, buf[buf_index], PACKET_MAX, 0);
+    if (*buf_len < 0) {
+      log_fatal("ZMQ reeive errno code: %d", errno);
+      exit(EXIT_FAILURE);
+    }
+  }
+  else if (strcmp(com_type, "pmem") == 0) {
+    log_fatal("TODO - Implement PMEM 'comms' using load from virtual pmem-addr (for now emulate as serial tty line)");
+    *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     if (*buf_len < 0) {
       log_fatal("ZMQ reeive errno code: %d", errno);
       exit(EXIT_FAILURE);
@@ -187,6 +201,10 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
     rv = zmq_send (odev->write_soc, buf, pkt_len, 0);
     if (rv <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", odev->write_soc, rv, zmq_strerror(errno));
   }
+  else if (strcmp(com_type, "pmem") == 0) {
+    log_fatal("TODO - Implement PMEM 'comms' using store into virtual pmem-addr (for now emulate as serial tty line)");
+    rv = write(odev->write_fd, buf, pkt_len);     /* write = send for tcp with no flags */
+  }
   else {
     log_fatal("Unknown comms type %s", com_type);
     exit(EXIT_FAILURE);
@@ -197,7 +215,7 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
   log_buf_trace("Packet", buf, pkt_len);
 }
 
-// Split packet into multiple chunks
+// Split packet into multiple chunks (used to test ability to handle split packets)
 void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
   int i, n = 1;
   int split_len = pkt_len / n;
