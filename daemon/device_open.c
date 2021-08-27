@@ -1,6 +1,6 @@
 /*
  * HAL device Open, Find and Print
- *   March 2021, Perspecta Labs
+ *   August 2021, Perspecta Labs
  *
  *     z) ZMQ to application
  *     u) IPC to application (unix pipe and ZMQ process)
@@ -316,20 +316,6 @@ void interface_open_inet(device *d) {
 }
 
 /**********************************************************************/
-/* Open Device; c) Bidirectional TTY Serial Link  */
-/*********t************************************************************/
-/* Open a serial (tty) interface for read-write and save the fds */
-void interface_open_tty(device *d) {
-  int fd;
-  if ((fd = open(d->path, O_RDWR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path);
-    exit(EXIT_FAILURE);
-  }
-  d->read_fd = fd;
-  d->write_fd = fd;
-}
-
-/**********************************************************************/
 /* Open Device; e) PMEM shared memory  */
 /*********t************************************************************/
 /* Open a serial (tty) interface for read-write and save the fds */
@@ -345,6 +331,20 @@ void interface_open_pmem(device *d) {
   d->read_fd = fd;
   d->write_fd = fd;
 //  rv = write(fd, offset, sizeof(offset));
+}
+
+/**********************************************************************/
+/* Open Device; c) Bidirectional TTY Serial Link  */
+/*********t************************************************************/
+/* Open a serial (tty) interface for read-write and save the fds */
+void interface_open_tty(device *d) {
+  int fd;
+  if ((fd = open(d->path, O_RDWR)) < 0) {
+    log_fatal("Error opening device %s: %s\n", d->id, d->path);
+    exit(EXIT_FAILURE);
+  }
+  d->read_fd = fd;
+  d->write_fd = fd;
 }
 
 /**********************************************************************/
