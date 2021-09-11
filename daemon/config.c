@@ -1,6 +1,6 @@
 /*
 * Read configuration information into HAL from (libconfig) file
-*   April 2020, Perspecta Labs
+*   August 2021, Perspecta Labs
 */
 
 #include "hal.h"
@@ -74,24 +74,26 @@ device *get_devices(config_t *cfg) {
     for(int i = 0; i < count; i++) {
       config_setting_t *dev = config_setting_get_elem(devs, i);
       /* required parameters */
-      ret[i].enabled     = get_param_int(dev, "enabled",     0, i);
-      ret[i].id          = get_param_str(dev, "id",          0, i);
-      ret[i].model       = get_param_str(dev, "model",       0, i);
-      ret[i].comms       = get_param_str(dev, "comms",       0, i);
+      ret[i].enabled       = get_param_int(dev, "enabled",       0, i);
+      ret[i].id            = get_param_str(dev, "id",            0, i);
+      ret[i].model         = get_param_str(dev, "model",         0, i);
+      ret[i].comms         = get_param_str(dev, "comms",         0, i);
       /* optional parameters */
-      ret[i].path        = get_param_str(dev, "path",        1, i);
-      ret[i].init_enable = get_param_int(dev, "init_enable", 1, i);
-      ret[i].addr_in     = get_param_str(dev, "addr_in",     1, i);
-      ret[i].addr_out    = get_param_str(dev, "addr_out",    1, i);
-      ret[i].mode_in     = get_param_str(dev, "mode_in",     1, i);
-      ret[i].mode_out    = get_param_str(dev, "mode_out",    1, i);
-      ret[i].port_in     = get_param_int(dev, "port_in",     1, i);
-      ret[i].port_out    = get_param_int(dev, "port_out",    1, i);
-      ret[i].path_r      = get_param_str(dev, "path_r",      1, i);
-      ret[i].path_w      = get_param_str(dev, "path_w",      1, i);
-      ret[i].from_mux    = get_param_int(dev, "from_mux",    1, i);
-      ret[i].offset_r    = get_param_int(dev, "offset_r",    1, i);
-      ret[i].offset_w    = get_param_int(dev, "offset_w",    1, i);
+      ret[i].path          = get_param_str(dev, "path",          1, i);
+      ret[i].init_enable   = get_param_int(dev, "init_enable",   1, i);
+      ret[i].addr_in       = get_param_str(dev, "addr_in",       1, i);
+      ret[i].addr_out      = get_param_str(dev, "addr_out",      1, i);
+      ret[i].mode_in       = get_param_str(dev, "mode_in",       1, i);
+      ret[i].mode_out      = get_param_str(dev, "mode_out",      1, i);
+      ret[i].port_in       = get_param_int(dev, "port_in",       1, i);
+      ret[i].port_out      = get_param_int(dev, "port_out",      1, i);
+      ret[i].path_r        = get_param_str(dev, "path_r",        1, i);
+      ret[i].path_w        = get_param_str(dev, "path_w",        1, i);
+      ret[i].from_mux      = get_param_int(dev, "from_mux",      1, i);
+      ret[i].addr_off_r    = get_param_int(dev, "addr_off_r",    1, i);
+      ret[i].addr_off_w    = get_param_int(dev, "addr_off_w",    1, i);
+      ret[i].guard_time_aw = get_param_int(dev, "guard_time_aw", 1, i);
+      ret[i].guard_time_bw = get_param_int(dev, "guard_time_bw", 1, i);
 
       ret[i].read_fd   = -1; /* to be set when opened */
       ret[i].write_fd  = -1; /* to be set when opened */
@@ -102,13 +104,8 @@ device *get_devices(config_t *cfg) {
       ret[i].count_r   =  0;
       ret[i].count_w   =  0;
 
-      /*
-      for(int j = 0; j < SN_LIST_WINDOW_SIZE; j++) {
-        ret[i].sn_list_r[j]=-1;
-        ret[i].sn_list_w[j]=-1;
-      }
-      */
       ret[i].next     = i < count - 1 ? &ret[i+1] : (device *) NULL;
+      // fprintf (stderr, "%s: %d of %d params: gr=%d\n", ret[i].id, i, count, ret[i].guard_time_r);
     }
   }
   return ret;

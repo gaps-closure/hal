@@ -5,6 +5,9 @@
 
 #define HAVE_ARCH_STRUCT_FLOCK 
 
+/* Control Information about one way connection (fixed for now) */
+#define PAGE_LEN_MAX 4096       /* Max page length in Bytes (B) */
+#define PAGES_MAX    3          /* Number of available pages (N) */
 #include "../api/xdcomms.h"
 
 #include <getopt.h>
@@ -20,6 +23,8 @@
 #include <signal.h>
 #include "../log/log.h"
 #include <zmq.h>
+
+typedef uint8_t (*page)[PAGE_LEN_MAX];  /* page is ptr to PAGE_LEN_MAX array */
 
 /**********************************************************************/
 /* HAL Daemon Linked List Device and Halmap Databases */
@@ -44,8 +49,10 @@ typedef struct _dev {
   int         port_in;     /* port HAL listens to on this device */
   int         port_out;    /* port HAL connects to from this device */
   int         from_mux;    /* tag mux value for ilip device */
-  int         offset_r;    /* PMEM channel address offset when reading */
-  int         offset_w;    /* PMEM channel address offset when reading */
+  int         addr_off_r;     /* SHM address offset when reading */
+  int         addr_off_w;     /* SHM address offset when writing */
+  int         guard_time_aw;  /* Min data duration after write (nanoseconds) */
+  int         guard_time_bw;  /* Guard time before writing (nanoseconds) */
   /* B) internal structures and parameters for this device */
   struct sockaddr_in socaddr_in;
   struct sockaddr_in socaddr_out;
@@ -57,6 +64,14 @@ typedef struct _dev {
   int         count_w;
   int         pid_in;      /* HAL-ZMQ-API process ids */
   int         pid_out;
+  uint64_t    shm_a;       /* Shared Memory After wrtie hold time in ns */
+  uint64_t    shm_b;       /* Shared Memory Before write hold time in ns */
+  page        shm_d;       /* Shared Memory Message Queue (per page) */
+  uint32_t   *shm_l;       /* Shared Memory length array (per page) */
+  uint32_t   *shm_r;       /* Shared Memory Start of Read Index */
+  uint64_t    shm_t[PAGES_MAX];  /* Shared Memory page create/delete time in ns */
+  int         shm_v[PAGES_MAX];  /* Shared Memory valid flag array (per page) */
+  uint32_t   *shm_w;       /* Shared Memory next write index */
   struct _dev *next;       /* Deices saved as a linked list */
 } device;
 

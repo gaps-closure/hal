@@ -109,7 +109,6 @@ void hal_init(char *file_name_config, char *file_name_log, char *file_name_stats
   /* b) Load coniguration */
   cfg_read(&cfg, file_name_config);
   devs = get_devices(&cfg);
-//  log_devs_debug(devs, __func__);
   map  = get_mappings(&cfg);
   log_halmap_debug(map, __func__);
   config_destroy(&cfg);

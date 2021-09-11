@@ -16,6 +16,7 @@
 #include "map.h"
 #include "device_open.h"
 #include "packetize.h"
+//#include "packetize_sdh_sm_v1.h"
 
 #define MAX_POLL_ITEMS 16
 #define DATA_ALIGNMENT 32       /* Must be power of 2 */
@@ -146,8 +147,8 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
       exit(EXIT_FAILURE);
     }
   }
-  else if (strcmp(com_type, "pmem") == 0) {
-    log_fatal("TODO - Implement PMEM 'comms' using load from virtual pmem-addr (for now emulate as serial tty line)");
+  else if (strcmp(com_type, "shm") == 0) {
+    log_fatal("TODO - Implement Shared Memory 'comms' using load from virtual addr (for now emulate as serial tty line)");
     *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     if (*buf_len < 0) {
       log_fatal("ZMQ reeive errno code: %d", errno);
@@ -180,6 +181,23 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   return(pdu_ptr);
 }
 
+void write_shm(device *odev, uint8_t *buf, int pkt_len) {
+  struct timeval tv;
+  uint64_t       ns_now;
+  uint32_t       w;
+
+
+  sdh_shm_print(odev);
+  gettimeofday(&tv,NULL);
+  ns_now = (tv.tv_usec * 1000) + (tv.tv_sec  * 1000000000);
+  w = *(odev->shm_w);
+  log_trace("Shared Memory time (nsec) c=%lu o=%lu)\n", ns_now, odev->shm_t[w]);
+  memcpy((odev->shm_d)[w], buf, pkt_len);
+  odev->shm_l[w] = pkt_len;
+  *(odev->shm_w) = ++w;
+  sdh_shm_print(odev);
+}
+
 /* Write buffer to interface device based on interface comms type */
 void write_buf(device *odev, uint8_t *buf, int pkt_len) {
   int             rv=-1;
@@ -201,9 +219,10 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
     rv = zmq_send (odev->write_soc, buf, pkt_len, 0);
     if (rv <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", odev->write_soc, rv, zmq_strerror(errno));
   }
-  else if (strcmp(com_type, "pmem") == 0) {
-    log_fatal("TODO - Implement PMEM 'comms' using store into virtual pmem-addr (for now emulate as serial tty line)");
-    rv = write(odev->write_fd, buf, pkt_len);     /* write = send for tcp with no flags */
+  else if (strcmp(com_type, "shm") == 0) {
+//    write_shm(odev, buf, pkt_len);
+    pdu_into_sdh_sm_v1(buf, odev, pkt_len);
+    rv = pkt_len;
   }
   else {
     log_fatal("Unknown comms type %s", com_type);
@@ -215,34 +234,37 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
   log_buf_trace("Packet", buf, pkt_len);
 }
 
-// Split packet into multiple chunks (used to test ability to handle split packets)
+// Split packet into n chunks (used to test ability to handle split packets)
 void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
   int i, n = 1;
   int split_len = pkt_len / n;
   int final_len = pkt_len - ((n-1) * split_len);
   
-  log_warn(">>>> SPLIT packet (len=%d) into %d chunks (len=%d, %d)", pkt_len, n, split_len, final_len);
-  for (i = 0; i<n; i++) {
-    if (i < (n-1)) write_buf(odev, buf, split_len);
-    else           write_buf(odev, buf, final_len);
-    buf += pkt_len;
+  if (n <= 1)  write_buf(odev, buf, pkt_len);
+  else {
+    log_warn(">>>> SPLIT packet (len=%d) into %d chunks (len=%d, %d)", pkt_len, n, split_len, final_len);
+    for (i = 0; i<n; i++) {
+      if (i < (n-1)) write_buf(odev, buf, split_len);
+      else           write_buf(odev, buf, final_len);
+      buf += pkt_len;
+    }
   }
 }
         
-/* Convert PDU into packet based on interface packet model, then send  */
+// Convert PDU into packet based on interface packet model, then send
+// (shm mode modifies Shared Memory control entries, then directly copies data)
 void write_pdu(device *odev, selector *selector_to, pdu *p) {
   int             pkt_len=0;
-  static uint8_t  buf[PACKET_MAX];        /* Packet buffer when writing */
+  static uint8_t  buf[PACKET_MAX];        /* Output Packet buffer */
 
 //  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
 //  log_pdu_trace(p, __func__);
 //  log_buf_trace("Packet", buf, pkt_len);
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
-
-//  write_in_chunks(odev, buf, pkt_len);
-  write_buf(odev, buf, pkt_len);
-  
+  /* Shared Memory directly copies data from PDU instead of creating packet (buf) */
+  if (strcmp(odev->comms, "shm") == 0) write_in_chunks(odev, p->data, pkt_len);
+  else                                 write_in_chunks(odev, buf,     pkt_len);
 }
 
 /**********************************************************************/
@@ -331,7 +353,7 @@ void create_routing_thread(uint8_t *buf, int buf_len, device *idev, halmap *map,
 #endif
 
 /**********************************************************************/
-/* Listen for input from any open device using unix select or zmq poll  */
+/* OLD - unix select */
 /**********************************************************************/
 /* TODOz - replace with ZMQ POLL */
 void select_add(int fd, int *maxrfd, fd_set *readfds){
@@ -409,35 +431,75 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
   }
 }
 
-int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items) {
+/**********************************************************************/
+/* Listen for input from any open device using unix select or zmq poll  */
+/**********************************************************************/
+int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items, int *num_shm_items) {
   int      i=0;
-  char     s[256]="", str_new[64];
+  char     s_zmq[256]="", s_uni[256]="", s_shm[256]="", str_new[64];
   device  *d;                   /*  device pointer */
 
-  /* First load ØMQ sockets into item */
+  /* A) load ØMQ sockets into item */
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if ((d->enabled != 0) && (d->read_soc != NULL)) {
       sprintf(str_new, "%s(soc=%p) ", d->id, d->read_soc);
-      strcat(s, str_new);
+      strcat(s_zmq, str_new);
       items[i].socket = d->read_soc;
       items[i].events = ZMQ_POLLIN;
       i++;
     }
   }
   *num_zmq_items = i;
-  /* Second get standard unix socket 'fd' into item*/
+  
+  /* B) load standard unix socket 'fd' into item (but not for SHM (with address offset) */
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
-    if ((d->enabled != 0) && (d->read_fd >= 0)) {
+    if ( (d->enabled != 0) && (d->read_fd >= 0) && (d->addr_off_r < 0) ) {
       sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
-      strcat(s, str_new);
+      strcat(s_uni, str_new);
       items[i].socket = NULL;
       items[i].fd     = d->read_fd;
       items[i].events = ZMQ_POLLIN;
       i++;
     }
   }
-  log_debug("========== HAL Waiting for first input from %d ZMQ and %d Unix device(s): %s\n", *num_zmq_items, i-(*num_zmq_items), s);
+  
+  /* C) load standard unix socket 'fd' into item (but not for SHM (with address offset) */
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+    if ( (d->enabled != 0) && (d->read_fd >= 0) && (d->addr_off_r >= 0) ) {
+
+      sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
+      strcat(s_shm, str_new);
+      (*num_shm_items)++;
+    }
+  }
+  
+
+  log_debug("====== HAL Wait for first input from %d ZMQ %s, %d Unix %s and %d SHM %s device(s)\n", *num_zmq_items, s_zmq, i-(*num_zmq_items), s_uni, *num_shm_items, s_shm);
   return (i);
+}
+
+/* Wait for input from any read interface */
+void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items, zmq_pollitem_t  *items) {
+  device         *idev;
+  uint8_t        *buf;
+  int             i, buf_len;
+
+  for (i = 0; i < num_items; i++) {
+//      log_trace("Checking device %d", i);
+    if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
+      if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);
+      else                   idev = find_device_by_read_fd (devs, items[i].fd);
+      if (idev == NULL)      log_warn("Device not found for input\n");
+      else {
+        buf = read_input_dev_into_buffer(idev, &buf_len);
+#ifdef MTHREAD
+        create_routing_thread(buf, buf_len, idev, map, devs);
+#else
+        route_packets(buf, buf_len, idev, map, devs);
+#endif
+      }
+    }
+  }
 }
 
 /* Wait for input from any read interface */
@@ -445,36 +507,24 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
 #ifdef MSELECT
   read_wait_loop2(devs, map, hal_wait_us);
 #endif
-  int             num_items, num_zmq_items, i, rc;
+  int             num_items, num_zmq_items=0, num_shm_items=0, rc;
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
-  device         *idev;
-  uint8_t        *buf;
-  int             buf_len;
+  long            timeout=-1;    /* Default event poll iss indefinite (-1) */
 
-  num_items = zmq_poll_init(devs, items, &num_zmq_items);
+  num_items = zmq_poll_init(devs, items, &num_zmq_items, &num_shm_items);
+//  if (num_shm_items > 0) timeout = 2000;  /* set poll timeout in millisecs */
+// log_fatal("Timeout=%d\n", timeout);
+
   while (1) {     /* Main HAL Loop */
-    rc = zmq_poll(items, num_items, -1);    /* Poll for events indefinitely (-1) */
-//    log_trace("Found %d (of %d) devices ready to be read", rc, num_items);
-    if (rc <= 0) {
-      log_error("Poll error rc=%d (0 is a timeout) errno=%d\n", rc, errno);
+    rc = zmq_poll(items, num_items, timeout);   /* Poll for events */
+    if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
+    if (rc < 0) {
+      log_error("Poll error rc=%d errno=%d\n", rc, errno);
       continue;
     }
-    for (i = 0; i < num_items; i++) {
-//      log_trace("Checking device %d", i);
-      if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
-        if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);
-        else                   idev = find_device_by_read_fd (devs, items[i].fd);
-        if (idev == NULL)      log_warn("Device not found for input\n");
-        else {
-          buf = read_input_dev_into_buffer(idev, &buf_len);
-#ifdef MTHREAD
-          create_routing_thread(buf, buf_len, idev, map, devs);
-#else
-          route_packets(buf, buf_len, idev, map, devs);
-#endif
-        }
-      }
+    else {
+      log_fatal("Poll Timeout\n");
     }
+//    log_fatal("Exit for debug"); exit (22);
   }
 }
-

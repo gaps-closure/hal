@@ -10,7 +10,10 @@
  */
 
 #include "hal.h"
+#include "packetize_sdh_sm_v1.h"
 #include "../api/xdcomms.h"
+#include <sys/mman.h>
+#include <fcntl.h>
 
 /* Define IPC parent-child process file descriptors */
 #define PARENT_IN  pipe_a2h[0]
@@ -18,6 +21,11 @@
 #define CHILD_OUT  pipe_a2h[1]
 #define CHILD_IN   pipe_h2a[0]
 #define PIPE_BUFFER_CAP  655360
+
+/* Shared Memory map */
+//#define MAP_SIZE 4096UL
+#define MAP_SIZE 1048576UL
+#define MAP_MASK (MAP_SIZE - 1)
 
 /* Store information on ILP devices associated with serial root device */
 #define ILP_MAX_DEVICES_PER_ROOT 16
@@ -46,11 +54,17 @@ void device_print_ptr(FILE *fd, char *name, void *p) {
   if (p != NULL) fprintf(fd, " %s=%p", name, p);
 }
 
+/* Print device definition element (if it exists) */
+void device_print_hex(FILE *fd, char *name, int v) {
+  if (v >= 0) fprintf(fd, " %s=0x%x", name, v);
+}
+
 /* Print device definition */
 void devices_print_one(device *d, FILE *fd)  {
   if (fd == NULL) return;
-  fprintf(fd, "   %s [v=%d d=%s m=%s c=%s", d->id, d->enabled, d->path,  d->model, d->comms);
-  device_print_int(fd, "ie", d->init_enable);
+  fprintf(fd, "   %s [v=%d c=%s m=%s", d->id, d->enabled, d->comms, d->model);
+  device_print_str(fd, "d",  d->path);
+  device_print_int(fd, "i",  d->init_enable);
   device_print_str(fd, "ai", d->addr_in);
   device_print_str(fd, "ao", d->addr_out);
   device_print_str(fd, "mi", d->mode_in);
@@ -66,8 +80,12 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "Pi", d->pid_in);
   device_print_int(fd, "Po", d->pid_out);
   device_print_int(fd, "mx", d->from_mux);
-  device_print_int(fd, "or", d->offset_r);
-  device_print_int(fd, "ow", d->offset_w);
+  device_print_hex(fd, "or", d->addr_off_r);
+  device_print_hex(fd, "ow", d->addr_off_w);
+  device_print_int(fd, "ma", d->shm_a);
+  device_print_int(fd, "mb", d->shm_b);
+  device_print_ptr(fd, "md", d->shm_d);
+// Todo all fields
   fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
   fprintf(fd, "]\n");
 }
@@ -315,26 +333,9 @@ void interface_open_inet(device *d) {
   if ( (fd_out != -1) && (fd_in != -1) ) {d->read_fd = fd_in;  d->write_fd = fd_out;}
 }
 
-/**********************************************************************/
-/* Open Device; e) PMEM shared memory  */
-/*********t************************************************************/
-/* Open a serial (tty) interface for read-write and save the fds */
-void interface_open_pmem(device *d) {
-  int fd;   //  rv, offset[]={4,5};
-  
-  log_fatal("TODO - Open PMEM device %s: %s (for now emulate as serial tty line)", d->id, d->path);
-  log_fatal("TODO - Offset r=%d w=%d. Initialize read and write indexes to 0\n", d->offset_r, d->offset_w);
-  if ((fd = open(d->path, O_RDWR)) < 0) {
-    log_fatal("Error opening device %s: %s\n", d->id, d->path);
-    exit(EXIT_FAILURE);
-  }
-  d->read_fd = fd;
-  d->write_fd = fd;
-//  rv = write(fd, offset, sizeof(offset));
-}
 
 /**********************************************************************/
-/* Open Device; c) Bidirectional TTY Serial Link  */
+/* Open Device: c) Bidirectional TTY Serial Link (or Shared Memory device) */
 /*********t************************************************************/
 /* Open a serial (tty) interface for read-write and save the fds */
 void interface_open_tty(device *d) {
@@ -345,6 +346,53 @@ void interface_open_tty(device *d) {
   }
   d->read_fd = fd;
   d->write_fd = fd;
+}
+
+/**********************************************************************/
+/* Open Device: d) Shared Memory */
+/*********t************************************************************/
+
+void shm_init(device *d) {
+  int i;
+  
+  d->shm_a   = 4;
+  d->shm_b   = 1;
+  for (i=0; i<PAGES_MAX; i++) {
+    d->shm_v[i] = 0;
+    d->shm_t[i] = 0;
+  }
+  *(d->shm_r) = 0;
+  *(d->shm_w) = 0;
+}
+
+void interface_open_shm(device *d) {
+  int                   fd;
+  off_t                 target = 0, offset=0;
+  void                 *shm_addr;
+  sdh_sm_v1            *shm_addr_block;
+  
+  interface_open_tty(d);
+  if (d->addr_off_w >= 0) {     /* sender who writes to SHM */
+    target = (off_t) d->addr_off_w;
+    offset = (target & ~MAP_MASK);
+    printf("target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
+    
+    fd = d->write_fd;
+    if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
+            fd, offset)) == MAP_FAILED) {
+      perror("mmap");
+      exit(1);
+    }
+    shm_addr_block  =  (sdh_sm_v1 *) shm_addr;
+//    shm_local.shm   =  shm_addr_block;
+    d->shm_d = shm_addr_block->page_data;
+    d->shm_l = shm_addr_block->data_len;
+    d->shm_r = &(shm_addr_block->ctl.index_read_oldest);
+    d->shm_w = &(shm_addr_block->ctl.index_write_next);
+    
+    shm_init(d);
+    sdh_shm_print(d);
+  }
 }
 
 /**********************************************************************/
@@ -497,7 +545,7 @@ void devices_open(device *dev_linked_list_root) {
     else if   (!strncmp(d->comms, "ipc", 3))                                      interface_open_ipc(d);
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
     else if   (!strncmp(d->comms, "zmq", 3))                                      interface_open_zmq(d);
-    else if   (!strncmp(d->comms, "pmem", 4))                                     interface_open_pmem(d);
+    else if   (!strncmp(d->comms, "shm", 4))                                      interface_open_shm(d);
     else { log_fatal("Device %s [%s] unknown", d->id, d->comms); exit(EXIT_FAILURE);}
 // fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->read_fd, d->write_fd);
   }
