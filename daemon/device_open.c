@@ -10,6 +10,7 @@
  */
 
 #include "hal.h"
+#include "device_open.h"
 #include "packetize_sdh_sm_v1.h"
 #include "../api/xdcomms.h"
 #include <sys/mman.h>
@@ -59,6 +60,44 @@ void device_print_hex(FILE *fd, char *name, int v) {
   if (v >= 0) fprintf(fd, " %s=0x%x", name, v);
 }
 
+void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p) {
+  int      i, j, index, r, w, count;
+  uint32_t len;
+  uint8_t  *d;
+  
+  r = *(p->shm_r);
+  w = *(p->shm_w);
+  count = (w -r) % PAGES_MAX;
+  fprintf(fd, " %s", name);
+  device_print_int(fd, "r", r);
+  device_print_int(fd, "w", w);
+  fprintf(fd, ": ");
+  for (i=0; i<count; i++) {
+    index = (i + r) % PAGES_MAX;
+    len = (p->shm_l)[index];
+    fprintf(fd, "(i=%d l=%d ", index, len);
+    tag_print(&((p->tag)[index]), stderr);
+    d = (p->shm_d)[index];
+    for (j=0; j<len; j++) {
+      if (j == 0) fprintf(fd, " d=0x");
+      fprintf(fd, "%02x", d[j]);
+      if ((j % 4) == 3) fprintf(fd, " ");
+    }
+    fprintf(fd, ")");
+  }
+  fprintf(fd, "\n");
+
+}
+
+void device_print_local(dev_shm_local *p, FILE *fd) {
+  int   i;
+  
+  for (i=0; i<PAGES_MAX; i++) {
+    device_print_int(fd, "[v=%d", (p->shm_v)[i]);
+    device_print_int(fd, "t=%ld]", (p->shm_t)[i]);
+  }
+}
+
 /* Print device definition */
 void devices_print_one(device *d, FILE *fd)  {
   if (fd == NULL) return;
@@ -71,23 +110,28 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_str(fd, "mo", d->mode_out);
   device_print_int(fd, "pi", d->port_in);
   device_print_int(fd, "po", d->port_out);
+  
   device_print_int(fd, "fi", d->read_fd);
   device_print_int(fd, "fo", d->write_fd);
   device_print_ptr(fd, "si", d->read_soc);
   device_print_ptr(fd, "so", d->write_soc);
+  
   device_print_str(fd, "di", d->path_r);
   device_print_str(fd, "do", d->path_w);
   device_print_int(fd, "Pi", d->pid_in);
   device_print_int(fd, "Po", d->pid_out);
   device_print_int(fd, "mx", d->from_mux);
+  
+  fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
+
   device_print_hex(fd, "or", d->addr_off_r);
   device_print_hex(fd, "ow", d->addr_off_w);
-  device_print_int(fd, "ma", d->shm_a);
-  device_print_int(fd, "mb", d->shm_b);
-  device_print_ptr(fd, "md", d->shm_d);
-// Todo all fields
-  fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
+  device_print_int(fd, "ga", d->guard_time_aw);
+  device_print_int(fd, "gb", d->guard_time_bw);
+  device_print_int(fd, "pt", d->shm_poll_time);
   fprintf(fd, "]\n");
+  if ((d->addr_off_w) >= 0) device_print_shm(fd, "    SHM-w", &(d->block_w));
+  if ((d->addr_off_r) >= 0) device_print_shm(fd, "    SHM-r", &(d->block_r));
 }
   
 /* Print list of devices for debugging */
@@ -351,31 +395,40 @@ void interface_open_tty(device *d) {
 /**********************************************************************/
 /* Open Device: d) Shared Memory */
 /*********t************************************************************/
-
-void shm_init(device *d) {
+/* Initialize values of Shared Memory */
+void shm_init_local_data(dev_shm_ptrs *dev_block_ptr, dev_shm_local *local) {
   int i;
   
-  d->shm_a   = 4;
-  d->shm_b   = 1;
+  *(dev_block_ptr->shm_r) = 0;
+  *(dev_block_ptr->shm_w) = 0;
   for (i=0; i<PAGES_MAX; i++) {
-    d->shm_v[i] = 0;
-    d->shm_t[i] = 0;
+    local->shm_v[i] = 0;
+    local->shm_t[i] = 0;
   }
-  *(d->shm_r) = 0;
-  *(d->shm_w) = 0;
 }
 
+/* Load device structure (hal.h) with pointers to Shared Memory */
+void shm_init_globl_ptrs(dev_shm_ptrs *dev_block_ptr, sdh_sm_v1 *shm_block_ptr) {
+  dev_block_ptr->shm_r = &(shm_block_ptr->index_read_oldest);
+  dev_block_ptr->shm_w = &(shm_block_ptr->index_write_next);
+  dev_block_ptr->shm_l = shm_block_ptr->data_len;
+  dev_block_ptr->tag   = shm_block_ptr->tag;
+  dev_block_ptr->shm_d = shm_block_ptr->page_data;
+  printf("shm ptrs=%p r=%p w=%p l=%p t-%p d=%p\n", shm_block_ptr, &(shm_block_ptr->index_read_oldest), &(shm_block_ptr->index_write_next), shm_block_ptr->data_len, dev_block_ptr->tag, dev_block_ptr->shm_d);
+  printf("dev ptrs=%p r=%p w=%p\n", dev_block_ptr, dev_block_ptr->shm_r, dev_block_ptr->shm_w);
+}
+              
+/* Use mmap to get virtual addresses of shared memory */
 void interface_open_shm(device *d) {
-  int                   fd;
-  off_t                 target = 0, offset=0;
-  void                 *shm_addr;
-  sdh_sm_v1            *shm_addr_block;
+  int                  fd;
+  off_t                target = 0, offset=0;
+  void                *shm_addr;
   
   interface_open_tty(d);
   if (d->addr_off_w >= 0) {     /* sender who writes to SHM */
     target = (off_t) d->addr_off_w;
     offset = (target & ~MAP_MASK);
-    printf("target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
+    printf("Write target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
     
     fd = d->write_fd;
     if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
@@ -383,16 +436,27 @@ void interface_open_shm(device *d) {
       perror("mmap");
       exit(1);
     }
-    shm_addr_block  =  (sdh_sm_v1 *) shm_addr;
-//    shm_local.shm   =  shm_addr_block;
-    d->shm_d = shm_addr_block->page_data;
-    d->shm_l = shm_addr_block->data_len;
-    d->shm_r = &(shm_addr_block->ctl.index_read_oldest);
-    d->shm_w = &(shm_addr_block->ctl.index_write_next);
+    shm_init_globl_ptrs(&(d->block_w), (sdh_sm_v1 *) shm_addr);
+    shm_init_local_data(&(d->block_w), &(d->local_w));
+    printf("3 dev r=%p w=%p\n", d->block_w.shm_r, d->block_w.shm_w);
+
+//    log_devs_debug(d, __func__);
     
-    shm_init(d);
-    sdh_shm_print(d);
   }
+  if (d->addr_off_r >= 0) {     /* sender who reads from SHM */
+    target = (off_t) d->addr_off_r;
+    offset = (target & ~MAP_MASK);
+    printf("Read  target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
+    
+    fd = d->read_fd;
+    if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
+            fd, offset)) == MAP_FAILED) {
+      perror("mmap");
+      exit(1);
+    }
+    shm_init_globl_ptrs(&(d->block_r), (sdh_sm_v1 *) shm_addr);
+  }
+
 }
 
 /**********************************************************************/

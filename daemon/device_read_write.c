@@ -148,7 +148,8 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
     }
   }
   else if (strcmp(com_type, "shm") == 0) {
-    log_fatal("TODO - Implement Shared Memory 'comms' using load from virtual addr (for now emulate as serial tty line)");
+    log_fatal("TODO - Implement Shared Memory read");
+exit (111);
     *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
     if (*buf_len < 0) {
       log_fatal("ZMQ reeive errno code: %d", errno);
@@ -181,25 +182,8 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   return(pdu_ptr);
 }
 
-void write_shm(device *odev, uint8_t *buf, int pkt_len) {
-  struct timeval tv;
-  uint64_t       ns_now;
-  uint32_t       w;
-
-
-  sdh_shm_print(odev);
-  gettimeofday(&tv,NULL);
-  ns_now = (tv.tv_usec * 1000) + (tv.tv_sec  * 1000000000);
-  w = *(odev->shm_w);
-  log_trace("Shared Memory time (nsec) c=%lu o=%lu)\n", ns_now, odev->shm_t[w]);
-  memcpy((odev->shm_d)[w], buf, pkt_len);
-  odev->shm_l[w] = pkt_len;
-  *(odev->shm_w) = ++w;
-  sdh_shm_print(odev);
-}
-
 /* Write buffer to interface device based on interface comms type */
-void write_buf(device *odev, uint8_t *buf, int pkt_len) {
+void write_buf(device *odev, uint8_t *buf, int pkt_len, gaps_tag *otag) {
   int             rv=-1;
   const char     *com_type = odev->comms;
 
@@ -220,9 +204,9 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
     if (rv <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", odev->write_soc, rv, zmq_strerror(errno));
   }
   else if (strcmp(com_type, "shm") == 0) {
-//    write_shm(odev, buf, pkt_len);
-    pdu_into_sdh_sm_v1(buf, odev, pkt_len);
+    pdu_into_sdh_sm_v1(buf, odev, pkt_len, otag);
     rv = pkt_len;
+    log_devs_debug(odev, __func__);
   }
   else {
     log_fatal("Unknown comms type %s", com_type);
@@ -235,17 +219,17 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len) {
 }
 
 // Split packet into n chunks (used to test ability to handle split packets)
-void write_in_chunks(device *odev, uint8_t *buf, int pkt_len) {
+void write_in_chunks(device *odev, uint8_t *buf, int pkt_len, gaps_tag *otag) {
   int i, n = 1;
   int split_len = pkt_len / n;
   int final_len = pkt_len - ((n-1) * split_len);
   
-  if (n <= 1)  write_buf(odev, buf, pkt_len);
+  if (n <= 1)  write_buf(odev, buf, pkt_len, otag);
   else {
     log_warn(">>>> SPLIT packet (len=%d) into %d chunks (len=%d, %d)", pkt_len, n, split_len, final_len);
     for (i = 0; i<n; i++) {
-      if (i < (n-1)) write_buf(odev, buf, split_len);
-      else           write_buf(odev, buf, final_len);
+      if (i < (n-1)) write_buf(odev, buf, split_len, otag);
+      else           write_buf(odev, buf, final_len, otag);
       buf += pkt_len;
     }
   }
@@ -263,8 +247,8 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
   /* Shared Memory directly copies data from PDU instead of creating packet (buf) */
-  if (strcmp(odev->comms, "shm") == 0) write_in_chunks(odev, p->data, pkt_len);
-  else                                 write_in_chunks(odev, buf,     pkt_len);
+  if (strcmp(odev->comms, "shm") == 0) write_in_chunks(odev, p->data, pkt_len, &(selector_to->tag));
+  else                                 write_in_chunks(odev, buf,     pkt_len, &(selector_to->tag));
 }
 
 /**********************************************************************/
@@ -434,7 +418,7 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
 /**********************************************************************/
 /* Listen for input from any open device using unix select or zmq poll  */
 /**********************************************************************/
-int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items, int *num_shm_items) {
+int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items, int *num_shm_items, device **shm_device_ptr, long *timeout) {
   int      i=0;
   char     s_zmq[256]="", s_uni[256]="", s_shm[256]="", str_new[64];
   device  *d;                   /*  device pointer */
@@ -463,22 +447,22 @@ int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_
     }
   }
   
-  /* C) load standard unix socket 'fd' into item (but not for SHM (with address offset) */
+  /* C) Get SHM device structure pointer (SHM device has an address offset) */
   for(d = dev_linked_list_root; d != NULL; d = d->next) {
     if ( (d->enabled != 0) && (d->read_fd >= 0) && (d->addr_off_r >= 0) ) {
-
       sprintf(str_new, "%s(fd=%d) ", d->id, d->read_fd);
       strcat(s_shm, str_new);
+      *shm_device_ptr = d;      /* assume just one for now */
       (*num_shm_items)++;
     }
   }
+  if (*num_shm_items > 0) *timeout = 2000;  /* set poll timeout in millisecs */
   
-
-  log_debug("====== HAL Wait for first input from %d ZMQ %s, %d Unix %s and %d SHM %s device(s)\n", *num_zmq_items, s_zmq, i-(*num_zmq_items), s_uni, *num_shm_items, s_shm);
+  log_debug("====== HAL Wait for first input: %d ZMQ %s, %d Unix %s, %d SHM %s devices (timeout=%d ms)\n", *num_zmq_items, s_zmq, i-(*num_zmq_items), s_uni, *num_shm_items, s_shm, *timeout);
   return (i);
 }
 
-/* Wait for input from any read interface */
+/* Read ZMQ and Unix socket reported by zmq_poll_init() function */
 void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items, zmq_pollitem_t  *items) {
   device         *idev;
   uint8_t        *buf;
@@ -502,6 +486,19 @@ void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items
   }
 }
 
+/* After poll timeout, check if Shared Memory has been updated */
+void read_shm_item(device *shm_device_ptr) {
+  uint8_t     *buf = NULL;
+  int          count, buf_len;
+
+  count = pdu_from_sdh_poll(shm_device_ptr);
+  while (count > 0) {
+    buf = read_input_dev_into_buffer(shm_device_ptr, &buf_len);
+    log_fatal("SHM buf = %p", buf);
+    count--;
+  }
+}
+
 /* Wait for input from any read interface */
 void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
 #ifdef MSELECT
@@ -509,22 +506,15 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
 #endif
   int             num_items, num_zmq_items=0, num_shm_items=0, rc;
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
-  long            timeout=-1;    /* Default event poll iss indefinite (-1) */
+  device         *shm_device_ptr;
+  long            timeout=-1;    /* Default event poll is indefinite (-1) */
 
-  num_items = zmq_poll_init(devs, items, &num_zmq_items, &num_shm_items);
-//  if (num_shm_items > 0) timeout = 2000;  /* set poll timeout in millisecs */
-// log_fatal("Timeout=%d\n", timeout);
-
+  num_items = zmq_poll_init(devs, items, &num_zmq_items, &num_shm_items, &shm_device_ptr, &timeout);
   while (1) {     /* Main HAL Loop */
     rc = zmq_poll(items, num_items, timeout);   /* Poll for events */
-    if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
-    if (rc < 0) {
-      log_error("Poll error rc=%d errno=%d\n", rc, errno);
-      continue;
-    }
-    else {
-      log_fatal("Poll Timeout\n");
-    }
-//    log_fatal("Exit for debug"); exit (22);
+    if (rc < 0)      log_error("Poll error rc=%d errno=%d\n", rc, errno);
+    else if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
+    else             read_shm_item(shm_device_ptr);     /* Poll has timed-out */
+//    log_fatal("Exit for debug after one round"); exit (22);
   }
 }
