@@ -148,13 +148,7 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
     }
   }
   else if (strcmp(com_type, "shm") == 0) {
-    log_fatal("TODO - Implement Shared Memory read");
-exit (111);
-    *buf_len = read(fd, buf[buf_index], PACKET_MAX);     /* read = recv for tcp with no flags */
-    if (*buf_len < 0) {
-      log_fatal("ZMQ reeive errno code: %d", errno);
-      exit(EXIT_FAILURE);
-    }
+    *buf_len = sdh_shm_poll(idev);      /* Does not copy data (will later copy directly into PDU) */
   }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
 
@@ -244,6 +238,9 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 //  log_trace("HAL writing to %s (using buf=%p)", odev->id, (void *) buf);
 //  log_pdu_trace(p, __func__);
 //  log_buf_trace("Packet", buf, pkt_len);
+  
+  
+log_fatal("Move pdu_into_sdh_sm_v1() back into pdu_into_packet with parameter odev");
   pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
   if (pkt_len <= 0) return;      // do not write if bad length
   /* Shared Memory directly copies data from PDU instead of creating packet (buf) */
@@ -487,15 +484,14 @@ void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items
 }
 
 /* After poll timeout, check if Shared Memory has been updated */
-void read_shm_item(device *shm_device_ptr) {
+void read_shm_item(device *devs, halmap *map, device *idev) {
   uint8_t     *buf = NULL;
-  int          count, buf_len;
-
-  count = pdu_from_sdh_poll(shm_device_ptr);
-  while (count > 0) {
-    buf = read_input_dev_into_buffer(shm_device_ptr, &buf_len);
-    log_fatal("SHM buf = %p", buf);
-    count--;
+  int          buf_len;
+  ;
+  while (1) {
+    buf = read_input_dev_into_buffer(idev, &buf_len); /* Get length of input (does not copy data) */
+    if (buf_len <= 0) break;
+    route_packets(buf, buf_len, idev, map, devs);     /* buffer -> PDU -> output */
   }
 }
 
@@ -514,7 +510,7 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
     rc = zmq_poll(items, num_items, timeout);   /* Poll for events */
     if (rc < 0)      log_error("Poll error rc=%d errno=%d\n", rc, errno);
     else if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
-    else             read_shm_item(shm_device_ptr);     /* Poll has timed-out */
+    else             read_shm_item(devs, map, shm_device_ptr);     /* Poll has timed-out */
 //    log_fatal("Exit for debug after one round"); exit (22);
   }
 }
