@@ -11,4 +11,4 @@ typedef struct _sdh_sm_v1 {
 
 int  sdh_shm_poll (device *idev);
 int  pdu_from_sdh_sm_v1 (pdu *out, device *idev);
-void pdu_into_sdh_sm_v1(uint8_t *out, device *odev, int pkt_len, gaps_tag *otag);
+int  pdu_into_sdh_sm_v1(device *odev, pdu *in, gaps_tag *otag);

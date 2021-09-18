@@ -147,11 +147,8 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
       exit(EXIT_FAILURE);
     }
   }
-  else if (strcmp(com_type, "shm") == 0) {
-    *buf_len = sdh_shm_poll(idev);      /* Does not copy data (will later copy directly into PDU) */
-  }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
-
+  
   (idev->count_r)++;
 
   log_debug("HAL reads  (comms=%s, format=%s) from %s into buffer (ptr=%p, idx=%d): len=%d", com_type, com_model, idev->id, (void *) buf[buf_index], buf_index, *buf_len);
@@ -198,9 +195,7 @@ void write_buf(device *odev, uint8_t *buf, int pkt_len, gaps_tag *otag) {
     if (rv <= 0) log_error("RCV ERROR on ZMQ socket %d: size=%d err=%s", odev->write_soc, rv, zmq_strerror(errno));
   }
   else if (strcmp(com_type, "shm") == 0) {
-    pdu_into_sdh_sm_v1(buf, odev, pkt_len, otag);
     rv = pkt_len;
-    log_devs_debug(odev, __func__);
   }
   else {
     log_fatal("Unknown comms type %s", com_type);
@@ -239,13 +234,11 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 //  log_pdu_trace(p, __func__);
 //  log_buf_trace("Packet", buf, pkt_len);
   
-  
-log_fatal("Move pdu_into_sdh_sm_v1() back into pdu_into_packet with parameter odev");
-  pdu_into_packet(buf, p, &pkt_len, selector_to, odev->model);
-  if (pkt_len <= 0) return;      // do not write if bad length
+  pdu_into_packet(buf, p, &pkt_len, selector_to, odev);
+  if (pkt_len <= 0) return;      // do not write if bad length or not packet found
   /* Shared Memory directly copies data from PDU instead of creating packet (buf) */
-  if (strcmp(odev->comms, "shm") == 0) write_in_chunks(odev, p->data, pkt_len, &(selector_to->tag));
-  else                                 write_in_chunks(odev, buf,     pkt_len, &(selector_to->tag));
+//  if (strcmp(odev->comms, "shm") == 0) write_in_chunks(odev, p->data, pkt_len, &(selector_to->tag));
+  if (strcmp(odev->comms, "shm") != 0) write_in_chunks(odev, buf,     pkt_len, &(selector_to->tag));
 }
 
 /**********************************************************************/
@@ -486,12 +479,10 @@ void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items
 /* After poll timeout, check if Shared Memory has been updated */
 void read_shm_item(device *devs, halmap *map, device *idev) {
   uint8_t     *buf = NULL;
-  int          buf_len;
-  ;
-  while (1) {
-    buf = read_input_dev_into_buffer(idev, &buf_len); /* Get length of input (does not copy data) */
-    if (buf_len <= 0) break;
-    route_packets(buf, buf_len, idev, map, devs);     /* buffer -> PDU -> output */
+  int          count;
+  
+  while ((count = sdh_shm_poll(idev)) > 0) {
+    route_packets(buf, count, idev, map, devs);     /* idev -> PDU -> output (buf not used) */
   }
 }
 

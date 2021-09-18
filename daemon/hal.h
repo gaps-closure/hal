@@ -75,7 +75,7 @@ typedef struct _dev {
   int           read_fd;      /* I/O handles = file descriptors */
   int           write_fd;
   void         *read_soc;     /* I/O handles - ZMQ sockets */
-  void          *write_soc;
+  void         *write_soc;
   int           count_r;      /* total packet counts */
   int           count_w;
   int           pid_in;       /* HAL-ZMQ-API process ids */
