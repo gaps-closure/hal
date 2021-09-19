@@ -8,9 +8,21 @@
 #include "packetize_sdh_sm_v1.h"
 #include "map.h"            /* get data_print */
 
+int get_next_index(int r, int w, int mode) {
+  static int next = 0;
+  int        current = next;
+  
+  if (mode == 0) return (w - next);
+  next++;
+  return (current);
+}
+
 /* Poll input device and return count of number of messages (w - r) */
 int sdh_shm_poll (device *idev) {
-  int count = (*(idev->block_r.shm_w)) - (*(idev->block_r.shm_r));
+  int r      = *(idev->block_r.shm_r);
+  int w      = *(idev->block_r.shm_w);
+  int count  = get_next_index(r, w, 0);
+  
   log_trace("Poll Shared Memory (%s %s): count=%d w=%d r=%d wo=0x%x ro=0x%x", idev->id, idev->path, count,  *(idev->block_r.shm_w), *(idev->block_r.shm_r), idev->addr_off_w, idev->addr_off_r);
   return (count);
 }
@@ -18,17 +30,20 @@ int sdh_shm_poll (device *idev) {
 /* Read message from idev (Shared Memory data and control) into buffer  */
 /* (not directly into pdu, as function name suggests for historical reasons) */
 int pdu_from_sdh_sm_v1 (pdu *out, device *idev) {
-  int count = (*(idev->block_r.shm_w)) - (*(idev->block_r.shm_r));
-  int r;
-  
-  log_fatal("Read Shared Memory (%s %s): count=%d w=%d r=%d wo=0x%x ro=0x%x", idev->id, idev->path, count,  *(idev->block_r.shm_w), *(idev->block_r.shm_r), idev->addr_off_w, idev->addr_off_r);
-    
-  r = *(idev->block_r.shm_r);
-  out->data_len = (idev->block_r.shm_l)[r];
-  log_fatal("Todo: Fill in PDU from SHM Len=%d\n", out->data_len);
+  int r      = *(idev->block_r.shm_r);
+  int w      = *(idev->block_r.shm_w);
+  int index  = get_next_index(r, w, 1);
+  int len    = (idev->block_r.shm_l)[r];
 
+  log_fatal("Read Shared Memory (%s %s): [r=%d i=%d w=%d] wo=0x%x ro=0x%x", idev->id, idev->path, r, index, w, idev->addr_off_w, idev->addr_off_r);
+  index = get_next_index(r, w, 1);
+  out->data_len = len;
+  tag_cp(&(out->psel.tag), &(idev->block_r.tag[r]));
+  out->data = (idev->block_r.shm_d)[index];
+  log_fatal("%p %0x02x %d\n", out->data, (idev->block_r.shm_d)[index][0], len);
+  log_devs_debug(idev, __func__);
   exit (111);
-  return (0);
+  return (len);
 }
 
 /* Write PDU message (in) into odev (Shared Memory) with tag 'otag' */
