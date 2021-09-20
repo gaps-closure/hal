@@ -75,6 +75,7 @@ void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p) {
   for (i=0; i<count; i++) {
     index = (i + r) % PAGES_MAX;
     len = (p->shm_l)[index];
+    if (i!=0) fprintf(fd, "                    ");
     fprintf(fd, "(i=%d l=%d ", index, len);
     tag_print(&((p->tag)[index]), stderr);
     d = (p->shm_d)[index];
@@ -129,6 +130,8 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "ga", d->guard_time_aw);
   device_print_int(fd, "gb", d->guard_time_bw);
   device_print_int(fd, "pt", d->shm_poll_time);
+  device_print_int(fd, "rr", d->shm_reset_r);
+  device_print_int(fd, "rw", d->shm_reset_w);
   fprintf(fd, "]\n");
   if ((d->addr_off_w) >= 0) device_print_shm(fd, "    SHM-w", &(d->block_w));
   if ((d->addr_off_r) >= 0) device_print_shm(fd, "    SHM-r", &(d->block_r));
@@ -395,16 +398,21 @@ void interface_open_tty(device *d) {
 /**********************************************************************/
 /* Open Device: d) Shared Memory */
 /*********t************************************************************/
-/* Initialize values of Shared Memory */
-void shm_init_local_data(dev_shm_ptrs *dev_block_ptr, dev_shm_local *local) {
+
+/* Initialize local data */
+void shm_init_local_data(dev_shm_local *local) {
   int i;
   
-  *(dev_block_ptr->shm_r) = 0;
-  *(dev_block_ptr->shm_w) = 0;
   for (i=0; i<PAGES_MAX; i++) {
     local->shm_v[i] = 0;
     local->shm_t[i] = 0;
   }
+}
+
+/* Initialize values of Shared Memory control */
+void shm_init_globl_data(dev_shm_ptrs *dev_block_ptr) {
+  *(dev_block_ptr->shm_r) = 0;
+  *(dev_block_ptr->shm_w) = 0;
 }
 
 /* Load device structure (hal.h) with pointers to Shared Memory */
@@ -437,11 +445,9 @@ void interface_open_shm(device *d) {
       exit(1);
     }
     shm_init_globl_ptrs(&(d->block_w), (sdh_sm_v1 *) shm_addr);
-    shm_init_local_data(&(d->block_w), &(d->local_w));
+    shm_init_local_data(&(d->local_w));
+    if ((d->shm_reset_w) != 0) shm_init_globl_data(&(d->block_w));
     printf("3 dev r=%p w=%p\n", d->block_w.shm_r, d->block_w.shm_w);
-
-//    log_devs_debug(d, __func__);
-    
   }
   if (d->addr_off_r >= 0) {     /* sender who reads from SHM */
     target = (off_t) d->addr_off_r;
@@ -455,8 +461,8 @@ void interface_open_shm(device *d) {
       exit(1);
     }
     shm_init_globl_ptrs(&(d->block_r), (sdh_sm_v1 *) shm_addr);
+    if ((d->shm_reset_r) != 0) shm_init_globl_data(&(d->block_r));
   }
-
 }
 
 /**********************************************************************/

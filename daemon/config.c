@@ -95,6 +95,8 @@ device *get_devices(config_t *cfg) {
       ret[i].guard_time_aw = get_param_int(dev, "guard_time_aw", 1, i);
       ret[i].guard_time_bw = get_param_int(dev, "guard_time_bw", 1, i);
       ret[i].shm_poll_time = get_param_int(dev, "shm_poll_time", 1, i);
+      ret[i].shm_reset_r   = get_param_int(dev, "shm_reset_r",   1, i);
+      ret[i].shm_reset_w   = get_param_int(dev, "shm_reset_w",   1, i);
 
       ret[i].read_fd   = -1; /* to be set when opened */
       ret[i].write_fd  = -1; /* to be set when opened */

@@ -68,6 +68,8 @@ typedef struct _dev {
   int         addr_off_w;     /* SHM address offset when writing (sender) */
   int         guard_time_aw;  /* SHM Guard time Before wrtie hold time in ns */
   int         guard_time_bw;  /* SHM Guard time After wrtie hold time in ns */
+  int         shm_reset_r;    /* 1 = Reset SHM Write; 0 = do not flush old values */
+  int         shm_reset_w;    /* 1 = Reset SHM Read;  0 = do not flush old values */
   int         shm_poll_time;  /* How often to check whether new message in SHM in ms */
   /* B) internal structures and parameters for this device */
   struct sockaddr_in socaddr_in;
