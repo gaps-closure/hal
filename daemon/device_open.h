@@ -4,12 +4,11 @@
   #define log_devs_debug(root, fn)
 #endif
 
-#if LOG_DEBUG >= LOG_LEVEL_MIN
-  #define log_shm_debug(string, block) log_log_shm(LOG_DEBUG, string, block)
+#if LOG_TRACE >= LOG_LEVEL_MIN
+  #define log_shm_trace(string, block, local) log_log_shm(LOG_TRACE, string, block, local)
 #else
-  #define log_shm_debug(string, block)
+  #define log_shm_trace(string, block, local)
 #endif
-
 
 /* Shared Memory map */
 //#define MAP_SIZE 4096UL
@@ -22,5 +21,4 @@ extern device *find_device_by_read_soc(device *, void *socket);
 extern device *find_device_by_id(device *, const char *);
 extern void devices_open(device *);
 void log_log_devs(int level, device *root, const char *fn);
-void log_log_shm(int level, char *string, dev_shm_ptrs *block);
-//void devices_print_one(device *d, FILE *fd);
+void log_log_shm(int level, char *string, dev_shm_ptrs *block, dev_shm_local *local);

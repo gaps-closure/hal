@@ -24,10 +24,11 @@
 #define PACKET_BUFFERS_MAX 2    /* increasing gives (payload mode) driver more time to read data */
 
 /**********************************************************************/
-/* Alternative HAL Modes using a) original unix select function and/or one thread per received packet */
+/* Alternative HAL Modes: a) unix select, b) one thread per Rx, c) verbose unix select */
+/* Note: Need to update or delete after addition of Shared Memory, ZMQ poll, ... */
 /**********************************************************************/
-// #define MSELECT     // Original version using unix select among HAL's read file descriptor
-// #define MTHREAD     // Multithreaded version disabled until fix input buffer to use malloc?
+// #define MSELECT     // a) Original version using unix select among HAL's read file descriptor
+// #define MTHREAD     // b) Multithreaded version disabled until fix input buffer to use malloc?
 #ifdef MTHREAD
 #include <pthread.h>
 typedef struct _thread_args {
@@ -39,7 +40,7 @@ typedef struct _thread_args {
 } thread_args;
 #endif
 
-int sel_verbose=0;      /* help debug of device saying it is ready when it is not */
+int sel_verbose=0;      /* c) help debug of device saying it is ready when it is not */
 
 /**********************************************************************/
 /* HAL Applicaiton Data Unit (ADU) Transformation */
@@ -473,10 +474,11 @@ void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items
 void read_shm_item(device *devs, halmap *map, device *idev) {
   uint8_t     *buf = NULL;
   int          count;
+  uint32_t     read_index;
   
-  while ((count = sdh_shm_poll(idev)) > 0) {
+  while ((count = sdh_shm_poll(idev, &read_index)) > 0) {
     (idev->count_r)++;
-    log_debug("HAL polls  (comms=%s, format=%s) %s: count=%d", idev->comms, idev->model, idev->id, count);
+    log_debug("HAL polls  (comms=%s, format=%s) from %s into PDU: SHM_index=%d count=%d", idev->comms, idev->model, idev->id, read_index, count);
     route_packets(buf, count, idev, map, devs);     /* idev -> PDU -> output (buf not used) */
   }
 }
@@ -494,9 +496,9 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   num_items = zmq_poll_init(devs, items, &num_zmq_items, &num_shm_items, &shm_device_ptr, &timeout);
   while (1) {     /* Main HAL Loop */
     rc = zmq_poll(items, num_items, timeout);   /* Poll for events */
-    if (rc < 0)      log_error("Poll error rc=%d errno=%d\n", rc, errno);
-    else if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
-    else             read_shm_item(devs, map, shm_device_ptr);     /* Poll has timed-out */
+    if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
+    if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
+    read_shm_item(devs, map, shm_device_ptr);   /* Poll timed-out or arrivals at other interface */
 //    log_fatal("Exit for debug after one round"); exit (22);
   }
 }

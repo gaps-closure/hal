@@ -35,7 +35,7 @@ typedef struct _root_device {
 } root_device;
 
 /**********************************************************************/
-/* Print Device Deffinition */
+/* Print Device Configurations (whose sturcute is defined in hal.h) */
 /*********t************************************************************/
 /* Print device definition element (if it exists) */
 void device_print_str(FILE *fd, char *name, const char *s) {
@@ -57,10 +57,22 @@ void device_print_hex(FILE *fd, char *name, int v) {
   if (v >= 0) fprintf(fd, " %s=0x%x", name, v);
 }
 
+/* Print Data in Shared Memory (pointed to by data pointers)  */
+void device_print_shm_data(FILE *fd, uint8_t *data, int len) {
+  int j;
+  
+  for (j=0; j<len; j++) {
+    if (j == 0) fprintf(fd, " d=0x");
+    fprintf(fd, "%02x", data[j]);
+    if ((j % 4) == 3) fprintf(fd, " ");
+  }
+  fprintf(fd, "\n");
+}
+
+/* Print Information stored in Shared Memory (and location info (v,t) stored at senders)  */
 void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p, dev_shm_local *q) {
-  int      i, j, index, r, w, count;
+  int      i, index, r, w, count;
   uint32_t len;
-  uint8_t  *d;
   
   r = *(p->shm_r);
   w = *(p->shm_w);
@@ -74,25 +86,24 @@ void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p, dev_shm_local *q) {
     len   = (p->shm_l)[index];
     fprintf(fd, "       ");
     fprintf(fd, "i=%d l=%d ", index, len);
-    if (q!=NULL) fprintf(fd, "v=%d t=%ld ", q->shm_v[index], q->shm_t[index]);
+    if (q != NULL) fprintf(fd, "v=%d t=%ld ", q->shm_v[index], q->shm_t[index]);
     tag_print(&((p->tag)[index]), stderr);
-    d = (p->shm_d)[index];
-    for (j=0; j<len; j++) {
-      if (j == 0) fprintf(fd, " d=0x");
-      fprintf(fd, "%02x", d[j]);
-      if ((j % 4) == 3) fprintf(fd, " ");
-    }
-    fprintf(fd, "\n");
+    device_print_shm_data(fd, (p->shm_d)[index], len);
   }
 }
 
-void device_print_local(dev_shm_local *p, FILE *fd) {
-  int   i;
-  
-  for (i=0; i<PAGES_MAX; i++) {
-    device_print_int(fd, "[v=%d", (p->shm_v)[i]);
-    device_print_int(fd, "t=%ld]", (p->shm_t)[i]);
-  }
+/* Print Shared Memory Device configuration */
+void device_print_shm_config(device *d, FILE *fd) {
+  device_print_hex(fd, "or", d->addr_off_r);
+  device_print_hex(fd, "ow", d->addr_off_w);
+  device_print_int(fd, "ga", d->guard_time_aw);
+  device_print_int(fd, "gb", d->guard_time_bw);
+  device_print_int(fd, "pt", d->shm_poll_time);
+  device_print_int(fd, "rr", d->shm_reset_r);
+  device_print_int(fd, "rw", d->shm_reset_w);
+  fprintf(fd, "]\n");
+  if ((d->addr_off_w) >= 0) device_print_shm(fd, "    SHM-w", &(d->block_w), &(d->local_w));
+  if ((d->addr_off_r) >= 0) device_print_shm(fd, "    SHM-r", &(d->block_r), NULL);
 }
 
 /* Print device definition */
@@ -112,7 +123,7 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "fo", d->write_fd);
   device_print_ptr(fd, "si", d->read_soc);
   device_print_ptr(fd, "so", d->write_soc);
-  
+
   device_print_str(fd, "di", d->path_r);
   device_print_str(fd, "do", d->path_w);
   device_print_int(fd, "Pi", d->pid_in);
@@ -120,32 +131,21 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "mx", d->from_mux);
   
   fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
-
-  device_print_hex(fd, "or", d->addr_off_r);
-  device_print_hex(fd, "ow", d->addr_off_w);
-  device_print_int(fd, "ga", d->guard_time_aw);
-  device_print_int(fd, "gb", d->guard_time_bw);
-  device_print_int(fd, "pt", d->shm_poll_time);
-  device_print_int(fd, "rr", d->shm_reset_r);
-  device_print_int(fd, "rw", d->shm_reset_w);
-  fprintf(fd, "]\n");
-  if ((d->addr_off_w) >= 0) device_print_shm(fd, "    SHM-w", &(d->block_w), &(d->local_w));
-  if ((d->addr_off_r) >= 0) device_print_shm(fd, "    SHM-r", &(d->block_r), NULL);
+  device_print_shm_config(d, fd);
 }
   
-void log_log_shm(int level, char *string, dev_shm_ptrs *block) {
+void log_log_shm(int level, char *string, dev_shm_ptrs *block, dev_shm_local *local) {
   FILE *fd[2];        /* log.c print devices (e.g., stdout and filename) */
   int   i;
   
   log_get_fds(level, &fd[0], &fd[1]);
   for (i=0; i<2; i++) {
     if (fd[i] != NULL) {
-      device_print_shm(fd[i], string, block, NULL);
+      device_print_shm(fd[i], string, block, local);
       fflush (fd[i]);
     }
   }
 }
-
 
 /* Print list of devices for debugging */
 void log_log_devs(int level, device *root, const char *fn)  {
