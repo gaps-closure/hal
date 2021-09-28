@@ -1,12 +1,14 @@
 /*
  * HAL device Open, Find and Print
- *   August 2021, Perspecta Labs
+ *   September 2021, Perspecta Labs
  *
- *     z) ZMQ to application
- *     u) IPC to application (unix pipe and ZMQ process)
- *     n) INET device (tcp or udp)
- *     t) Bidirectional Serial Device (tty)
- *     i) Unidirectional Serial Device (ilp)
+ * HAL supported the following comms types
+ *     z) IPC using ZMQ with application
+ *         (Old: unix pipe (IPC) with HAL-ZCAT process, then ZMQ with application)
+ *     n) INET using ethernet (tcp or udp)
+ *     t) INET using Bidirectional Serial Device (tty)
+ *     i) INET using Unidirectional Serial Device (ilp)
+ *     s) INET using Shared Memory (shm)
  */
 
 #include "hal.h"
@@ -22,11 +24,6 @@
 #define CHILD_OUT  pipe_a2h[1]
 #define CHILD_IN   pipe_h2a[0]
 #define PIPE_BUFFER_CAP  655360
-
-/* Shared Memory map */
-//#define MAP_SIZE 4096UL
-#define MAP_SIZE 1048576UL
-#define MAP_MASK (MAP_SIZE - 1)
 
 /* Store information on ILP devices associated with serial root device */
 #define ILP_MAX_DEVICES_PER_ROOT 16
@@ -60,23 +57,24 @@ void device_print_hex(FILE *fd, char *name, int v) {
   if (v >= 0) fprintf(fd, " %s=0x%x", name, v);
 }
 
-void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p) {
+void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p, dev_shm_local *q) {
   int      i, j, index, r, w, count;
   uint32_t len;
   uint8_t  *d;
   
   r = *(p->shm_r);
   w = *(p->shm_w);
-  count = (w -r) % PAGES_MAX;
+  count = sdh_shm_get_sent_count(r, w);
   fprintf(fd, " %s", name);
-  device_print_int(fd, "r", r);
-  device_print_int(fd, "w", w);
-  fprintf(fd, ": ");
+  fprintf(fd, " r=%d", r);
+  fprintf(fd, " w=%d", w);
+  fprintf(fd, " count=%d:\n", count);
   for (i=0; i<count; i++) {
     index = (i + r) % PAGES_MAX;
-    len = (p->shm_l)[index];
-    if (i!=0) fprintf(fd, "                    ");
-    fprintf(fd, "(i=%d l=%d ", index, len);
+    len   = (p->shm_l)[index];
+    fprintf(fd, "       ");
+    fprintf(fd, "i=%d l=%d ", index, len);
+    if (q!=NULL) fprintf(fd, "v=%d t=%ld ", q->shm_v[index], q->shm_t[index]);
     tag_print(&((p->tag)[index]), stderr);
     d = (p->shm_d)[index];
     for (j=0; j<len; j++) {
@@ -84,10 +82,8 @@ void device_print_shm(FILE *fd, char *name, dev_shm_ptrs *p) {
       fprintf(fd, "%02x", d[j]);
       if ((j % 4) == 3) fprintf(fd, " ");
     }
-    fprintf(fd, ")");
+    fprintf(fd, "\n");
   }
-  fprintf(fd, "\n");
-
 }
 
 void device_print_local(dev_shm_local *p, FILE *fd) {
@@ -133,10 +129,24 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "rr", d->shm_reset_r);
   device_print_int(fd, "rw", d->shm_reset_w);
   fprintf(fd, "]\n");
-  if ((d->addr_off_w) >= 0) device_print_shm(fd, "    SHM-w", &(d->block_w));
-  if ((d->addr_off_r) >= 0) device_print_shm(fd, "    SHM-r", &(d->block_r));
+  if ((d->addr_off_w) >= 0) device_print_shm(fd, "    SHM-w", &(d->block_w), &(d->local_w));
+  if ((d->addr_off_r) >= 0) device_print_shm(fd, "    SHM-r", &(d->block_r), NULL);
 }
   
+void log_log_shm(int level, char *string, dev_shm_ptrs *block) {
+  FILE *fd[2];        /* log.c print devices (e.g., stdout and filename) */
+  int   i;
+  
+  log_get_fds(level, &fd[0], &fd[1]);
+  for (i=0; i<2; i++) {
+    if (fd[i] != NULL) {
+      device_print_shm(fd[i], string, block, NULL);
+      fflush (fd[i]);
+    }
+  }
+}
+
+
 /* Print list of devices for debugging */
 void log_log_devs(int level, device *root, const char *fn)  {
   FILE *fd[2];        /* log.c print devices (e.g., stdout and filename) */
@@ -411,7 +421,7 @@ void shm_init_local_data(dev_shm_local *local) {
 
 /* Initialize values of Shared Memory control */
 void shm_init_globl_data(dev_shm_ptrs *dev_block_ptr) {
-  *(dev_block_ptr->shm_r) = 0;
+  *(dev_block_ptr->shm_r) = -1;
   *(dev_block_ptr->shm_w) = 0;
 }
 
@@ -422,8 +432,8 @@ void shm_init_globl_ptrs(dev_shm_ptrs *dev_block_ptr, sdh_sm_v1 *shm_block_ptr) 
   dev_block_ptr->shm_l = shm_block_ptr->data_len;
   dev_block_ptr->tag   = shm_block_ptr->tag;
   dev_block_ptr->shm_d = shm_block_ptr->page_data;
-  printf("shm ptrs=%p r=%p w=%p l=%p t-%p d=%p\n", shm_block_ptr, &(shm_block_ptr->index_read_oldest), &(shm_block_ptr->index_write_next), shm_block_ptr->data_len, dev_block_ptr->tag, dev_block_ptr->shm_d);
-  printf("dev ptrs=%p r=%p w=%p\n", dev_block_ptr, dev_block_ptr->shm_r, dev_block_ptr->shm_w);
+//  printf("shm ptrs=%p r=%p w=%p l=%p t-%p d=%p\n", shm_block_ptr, &(shm_block_ptr->index_read_oldest), &(shm_block_ptr->index_write_next), shm_block_ptr->data_len, dev_block_ptr->tag, dev_block_ptr->shm_d);
+//  printf("dev ptrs=%p r=%p w=%p\n", dev_block_ptr, dev_block_ptr->shm_r, dev_block_ptr->shm_w);
 }
               
 /* Use mmap to get virtual addresses of shared memory */
@@ -436,7 +446,7 @@ void interface_open_shm(device *d) {
   if (d->addr_off_w >= 0) {     /* sender who writes to SHM */
     target = (off_t) d->addr_off_w;
     offset = (target & ~MAP_MASK);
-    printf("Write target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
+    log_trace("SHM Write target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
     
     fd = d->write_fd;
     if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
@@ -447,12 +457,11 @@ void interface_open_shm(device *d) {
     shm_init_globl_ptrs(&(d->block_w), (sdh_sm_v1 *) shm_addr);
     shm_init_local_data(&(d->local_w));
     if ((d->shm_reset_w) != 0) shm_init_globl_data(&(d->block_w));
-    printf("3 dev r=%p w=%p\n", d->block_w.shm_r, d->block_w.shm_w);
   }
   if (d->addr_off_r >= 0) {     /* sender who reads from SHM */
     target = (off_t) d->addr_off_r;
     offset = (target & ~MAP_MASK);
-    printf("Read  target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
+    log_trace("SHM Read  target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
     
     fd = d->read_fd;
     if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
