@@ -91,6 +91,16 @@ int pdu_from_sdh_sm_v1 (pdu *out, device *idev) {
 /*=================================================================
  Write Functions
  =================================================================*/
+
+/* flush Snared Memory Block (shm_sync(&(odev->block_w)) */
+void shm_sync(dev_shm_ptrs *p) {
+//  printf("p=%p, len=%ld, MS_SYNC=%d\n", p->shm_r, SHM_BLOCK_SIZE, MS_SYNC);
+  if (msync((void *) (p->shm_r), (size_t) SHM_BLOCK_SIZE, MS_SYNC) < 0) {
+    perror("msync");
+    exit(1);
+  }
+}
+
 /* remove one queue entry if it has expired. Return count of deleted entries */
 void shm_invalid_one(device *odev, uint32_t index, int w, uint32_t sent_count, uint64_t c) {
   int       v;
@@ -139,6 +149,7 @@ int shm_invalid_last_K_in_Q(device *odev, uint64_t c) {
       mod_inc(&index);
     }
   }
+  shm_sync(&(odev->block_w));
   return (w);
 }
 
@@ -166,6 +177,8 @@ int pdu_into_sdh_sm_v1(device *odev, pdu *in, gaps_tag *otag) {
   struct timeval  tv;
   uint64_t        c;
   
+  ;
+  
   gettimeofday(&tv,NULL);
   c = (tv.tv_usec * 1000) + (tv.tv_sec  * 1000000000);
   index = shm_check_next_write_index(odev, c);
@@ -178,12 +191,8 @@ int pdu_into_sdh_sm_v1(device *odev, pdu *in, gaps_tag *otag) {
     mod_inc(odev->block_w.shm_w);
     //  log_devs_debug(odev, __func__);
     log_shm_trace("SHM-w", &(odev->block_w), &(odev->local_w));
+    shm_sync(&(odev->block_w));
     return (len);
   }
   return (index);
 }
-
-//if (msync((void *)odev->block_w.shm_r, MAP_SIZE, MS_SYNC) < 0) {
-//  perror("msync");
-//  exit(1);
-//}

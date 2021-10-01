@@ -423,6 +423,7 @@ void shm_init_local_data(dev_shm_local *local) {
 void shm_init_globl_data(dev_shm_ptrs *dev_block_ptr) {
   *(dev_block_ptr->shm_r) = -1;
   *(dev_block_ptr->shm_w) = 0;
+  shm_sync(dev_block_ptr);
 }
 
 /* Load device structure (hal.h) with pointers to Shared Memory */

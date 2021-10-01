@@ -9,7 +9,10 @@ typedef struct _sdh_sm_v1 {
   uint8_t   page_data[PAGES_MAX][PAGE_LEN_MAX];  /* data pages (up to PAGE_LEN_MAX) */
 } sdh_sm_v1;
 
+#define SHM_BLOCK_SIZE sizeof(sdh_sm_v1)
+
 int  sdh_shm_poll (device *idev, uint32_t *next);
 int  pdu_from_sdh_sm_v1 (pdu *out, device *idev);
 int  pdu_into_sdh_sm_v1(device *odev, pdu *in, gaps_tag *otag);
 int  sdh_shm_get_sent_count(int r, int w);
+void shm_sync(dev_shm_ptrs *p);
