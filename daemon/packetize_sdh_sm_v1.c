@@ -59,10 +59,11 @@ int sdh_shm_get_sent_count(int r, int w) {
  =================================================================*/
 /* Poll input device and return count of number of messages (w - r) */
 int sdh_shm_poll (device *idev, uint32_t *next) {
-  uint32_t  r = *(idev->block_r.shm_r);
-  uint32_t  w = *(idev->block_r.shm_w);
-  uint32_t  count;
+  uint32_t  r, w, count;
   
+  shm_sync(&(idev->block_r));
+  r = *(idev->block_r.shm_r);
+  w = *(idev->block_r.shm_w);
   *next = get_next_index(r, w, 0);
   count = get_read_count(*next, w);
   
