@@ -5,13 +5,13 @@
 
 #define HAVE_ARCH_STRUCT_FLOCK 
 
-/* Control Information about one way connection (fixed for now) */
+/* Shared Memory (Control Information about one way connection (fixed for now) */
 #define PAGE_LEN_MAX 4096       /* Max page length in Bytes (B) */
-//#define PAGES_MAX    3          /* Number of available pages (N) */
-#define PAGES_MAX    128          /* Number of available pages (N) */
-//#define PAGES_MAX    256          /* Number of available pages (N) */
-#include "../api/xdcomms.h"
+//#define PAGES_MAX    3          /* Number of available pages (N) for quick tests */
+#define PAGES_MAX    128        /* Number of available pages (N) */
+//#define PAGES_MAX    256        /* Fails on packet 255 ???? (limit to 128 pages for now) */
 
+#include "../api/xdcomms.h"
 #include <getopt.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -26,15 +26,11 @@
 #include "../log/log.h"
 #include <zmq.h>
 
-
 /**********************************************************************/
-/* HAL Daemon Linked List Device and Halmap Databases */
+/* A) HAL Daemon Network and Memory Device Information (Linked List) */
 /*********t************************************************************/
-// #define SN_LIST_WINDOW_SIZE 1000
-
+/* Pointer to shared memory block */
 typedef uint8_t (*page)[PAGE_LEN_MAX];  /* page is message ptr (up tp PAGE_LEN_MAX bytes) */
-
-/* pointer to shared memory block */
 typedef struct _dev_shm_ptrs {
   uint32_t  *shm_r;             /* Start of Read Index */
   uint32_t  *shm_w;             /* ext Write Index, in Shared Memory N*/
@@ -43,6 +39,7 @@ typedef struct _dev_shm_ptrs {
   page       shm_d;             /* Message Queue address (page 0) */
 } dev_shm_ptrs;
 
+/* SHM data strucutres local to writer */
 typedef struct _dev_shm_local {
   uint64_t   shm_t[PAGES_MAX];  /* Page create/delete time in ns, local to writer */
   int        shm_v[PAGES_MAX];  /* Page valid flag, local to writer) */
@@ -90,6 +87,9 @@ typedef struct _dev {
   struct _dev *next;          /* Deices saved as a linked list */
 } device;
 
+/**********************************************************************/
+/* B) HAL map between from and to tags (linked list) */
+/**********************************************************************/
 /* HAL Selector (used in HAL map entries and PDUs) */
 typedef struct _sel {
   const char *dev;      /* points to ID of device */
@@ -97,7 +97,6 @@ typedef struct _sel {
   gaps_tag    tag;
 } selector;
 
-/* HAL map entry (linked list) */
 typedef struct _hal {
   selector    from;
   selector    to;
@@ -106,14 +105,13 @@ typedef struct _hal {
 } halmap;
 
 /**********************************************************************/
-/* HAL Packet Storage (in PDU) */
+/* C) HAL Internal Packet Storage (PDU) (only stores pointer to packet) */
 /*********t************************************************************/
 /* HAL PDU */
 typedef struct _pdu {
   selector  psel;                   /* Input device and tag info */
   size_t    data_len;
-//  uint8_t   data[ADU_SIZE_MAX_C];   /* TODO_PDU_PTR */
-  uint8_t   *data;                  /* TODO_PDU_PTR */
+  uint8_t   *data;
 } pdu;
 
 #endif

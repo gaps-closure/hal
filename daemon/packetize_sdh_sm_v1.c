@@ -1,6 +1,6 @@
 /*
  * Copy data and control information between PDU and Shared Memory
- *   September 2021, Perspecta Labs
+ *   October 2021, Peraton Labs
  */
 
 #include "hal.h"
@@ -8,6 +8,8 @@
 #include "packetize_sdh_sm_v1.h"
 #include "map.h"            /* get data_print */
 #include <sys/mman.h>
+
+#define SHM_RECYCLE_COUNT 3
 
 /*=================================================================
  Math Functions with special modulo index arithmentic
@@ -73,6 +75,7 @@ void *shm_mmap(int fd, off_t target) {
   return (shm_addr);
 }
 
+/* open a SHM device */
 void sdh_shm_open(int *fd, const char *path) {
   if ((*fd = open(path, O_RDWR)) < 0) {
     perror(path);
@@ -86,7 +89,7 @@ void sdh_shm_open(int *fd, const char *path) {
 void *shm_dev_ON(device *d, int *fd, const char *path, off_t target) {
   void *shm_addr=NULL;
   if (*fd < 0) {
-    sdh_shm_open(fd, path);
+    sdh_shm_open(fd, path);           /* Open and update fd */
     shm_addr = shm_mmap(*fd, target);
     log_trace("New Shared Memory address=0x%x (olds: (0x%x) (0x%x))", shm_addr, d->block_r.shm_r, d->block_w.shm_r);
   }
@@ -123,12 +126,11 @@ int sdh_shm_poll (device *d, uint32_t *next) {
             
   shm_dev_ON_r(d);
 //  shm_sync(&(d->block_r));
-  r = *(d->block_r.shm_r);
-  w = *(d->block_r.shm_w);
+  r     = *(d->block_r.shm_r);
+  w     = *(d->block_r.shm_w);
   *next = get_next_index(r, w, 0);
   count = get_read_count(*next, w);
   log_trace("Poll Shared Memory (%s %s): count=%d w=%d R=%d r=%d wo=0x%x ro=0x%x", d->id, d->path, count,  w, *next, r, d->addr_off_w, d->addr_off_r);
-//  if (count == 0) shm_dev_OFF(d);       /* done with SHM for now */
   return (count);
 }
 
@@ -153,7 +155,6 @@ int pdu_from_sdh_sm_v1 (pdu *out, device *d) {
 /*=================================================================
  Write Functions
  =================================================================*/
-
 /* flush Snared Memory Block (shm_sync(&(d->block_w)) */
 void shm_sync(dev_shm_ptrs *p) {
 //  printf("p=%p, len=%ld, MS_SYNC=%d\n", p->shm_r, SHM_BLOCK_SIZE, MS_SYNC);
@@ -197,11 +198,10 @@ void shm_delete_page_test(device *d, uint32_t index, int w, uint32_t sent_count,
   }
 }
 
-/* Remove (v=0) up to the K oldest pages in queue */
+/* Remove (v=0) up to the SHM_RECYCLE_COUNT (K) oldest pages in queue */
 /* Return index to oldest page (w) or -1 if no pages available */
 int shm_invalid_last_K_in_Q(device *d, uint64_t c) {
   int         i;
-  int         K = 3;   // todo - make K a config option
   int         r = *(d->block_w.shm_r);
   int         w = *(d->block_w.shm_w);
   uint32_t    index, sent_count;
@@ -213,20 +213,19 @@ int shm_invalid_last_K_in_Q(device *d, uint64_t c) {
     *(d->block_w.shm_r) = 0;
     r = 0;
   }
-  else if (PAGES_MAX - sent_count >= K) {
+  else if (PAGES_MAX - sent_count >= SHM_RECYCLE_COUNT) {
     log_trace("SHM queue has %d entries - so no need to try to delete any entries", sent_count);
   }
-  else {       // less than K queue spots available for use
-    log_trace("SHM queue has %d entries - so try to delete entries from index %d to %d", sent_count, w, (w + K - 1) % PAGES_MAX);
+  else {       // less than SHM_RECYCLE_COUNT queue spots available for use
+    log_trace("SHM queue has %d entries - so try to delete entries from index %d to %d", sent_count, w, (w + SHM_RECYCLE_COUNT - 1) % PAGES_MAX);
     index = w;
-    for (i=0; i<K; i++) {
+    for (i=0; i<SHM_RECYCLE_COUNT; i++) {
       shm_delete_page_test(d, index, w, sent_count, c);
       mod_inc(&index);
     }
   }
   log_trace("Counts: Wr=%d Ww=%d Rr=%d Rw=%d", *(d->block_w.shm_r), *(d->block_w.shm_w), *(d->block_r.shm_r), *(d->block_r.shm_w));
   shm_sync(&(d->block_w));
-
   return (w);
 }
 
@@ -243,7 +242,7 @@ int shm_check_next_write_index(device *d, uint64_t c) {
     log_trace("todo - SHM index=%d v=%d: duration (%ld ns) vs b (%d ms) ", write_index, v, duration, d->guard_time_bw);
   }
   else {
-    log_warn("SHM write could not find valid index - should not happen with inital configuration");
+    log_warn("SHM queue has no valid index - Should not reach this code with auto-recycle policy");
   }
   return (write_index);
 }
@@ -259,10 +258,9 @@ int pdu_into_sdh_sm_v1(device *d, pdu *in, gaps_tag *otag) {
   c = (tv.tv_usec * 1000) + (tv.tv_sec  * 1000000000);
   index = shm_check_next_write_index(d, c);
   if (index >= 0) {
-    log_debug("xHAL writes (comms=%s, format=%s) into %s: len=%d idx=%d", d->comms, d->model, d->id, len, index);
-    log_debug("XXXX %p %p", (d->block_w.shm_d)[index], (uint8_t *) in->data);
+    log_trace("Copy len=%d data to SHM index=%d (%p -> %p) ", len, index, (uint8_t *) in->data, (d->block_w.shm_d)[index]);
     memcpy((d->block_w.shm_d)[index], (uint8_t *) in->data, len);
-    log_debug("yHAL writes (comms=%s, format=%s) into %s: len=%d idx=%d", d->comms, d->model, d->id, len, index);
+    log_trace("FAILS ABOVE IF PAGES_MAX=256 and INDEX=255, check block size,...");
     d->block_w.shm_l[index] = len;
     tag_cp(&(d->block_w.tag[index]), otag);
     d->local_w.shm_t[index] = c;
@@ -274,6 +272,6 @@ int pdu_into_sdh_sm_v1(device *d, pdu *in, gaps_tag *otag) {
     log_debug("HAL writes (comms=%s, format=%s) into %s: len=%d idx=%d", d->comms, d->model, d->id, len, index);
     return (len);
   }
-  log_fatal("Should not reach here...)");
-  return (index);
+  log_warn("SHM queue has no valid index - Should not reach this code with auto-recycle policy");
+  return (0);
 }

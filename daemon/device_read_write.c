@@ -1,6 +1,6 @@
 /*
  * HAL device read then write loop
- *   September 2021, Peraton Labs
+ *   October 2021, Peraton Labs
  *
  * Uses the 'comms' type (specified in the configuration file) to get/put data:
  *   1) read/write  using a network file descriptor (fd)
@@ -43,7 +43,7 @@ typedef struct _thread_args {
 int sel_verbose=0;      /* c) help debug of device saying it is ready when it is not */
 
 /**********************************************************************/
-/* HAL Applicaiton Data Unit (ADU) Transformation */
+/* A) HAL Applicaiton Data Unit (ADU) Transformation */
 /**********************************************************************/
 /* Transform ADU data (NOT YET IMPLEMENTED)  */
 pdu *codec(halmap *h, pdu *ipdu) {
@@ -68,11 +68,11 @@ pdu *codec(halmap *h, pdu *ipdu) {
 }
 
 /**********************************************************************/
-/* HAL Device Read and Write  */
+/* B) HAL Device Read */
 /**********************************************************************/
 /* Read network device (based on com_type) and store packet locally in static buf */
 /* Return buffer pointer and length */
-/* Not used for shared memory, as we can pass pointer to memory into HAL PDU without a copy into buf */
+/* Note: Not used for shared memory, just pass pointer to SHM into HAL PDU without a copy into buf */
 uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
   int                 fd;
   const char         *com_type, *com_model;
@@ -161,6 +161,9 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   return(pdu_ptr);
 }
 
+/**********************************************************************/
+/* C) HAL Device Write */
+/**********************************************************************/
 /* Write buffer (containing packet) to network interface device based on interface comms type */
 /* Not used for shared memory, as we already did a memcpy of message from PDU into shared memory */
 void write_buf(device *odev, uint8_t *buf, int pkt_len, gaps_tag *otag) {
@@ -232,7 +235,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
 }
 
 /**********************************************************************/
-/* HAL Device Process Chain (Read-Write Loop) */
+/* D) HAL Device Process Chain (Read-Write Loop) */
 /**********************************************************************/
 /* Free memory allocated for PDU */
 void pdu_delete(pdu *pdu) {
@@ -317,7 +320,7 @@ void create_routing_thread(uint8_t *buf, int buf_len, device *idev, halmap *map,
 #endif
 
 /**********************************************************************/
-/* OLD - unix select */
+/* E-OLD) Unix select */
 /**********************************************************************/
 /* TODOz - replace with ZMQ POLL */
 void select_add(int fd, int *maxrfd, fd_set *readfds){
@@ -396,8 +399,8 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
 }
 
 /**********************************************************************/
-/* Listen for input from any open network device (using zmq poll) or by */
-/* perioically (on poll timeouts) chacking shared memory circular buffer pointers */
+/* E) Listen for input from any open network device (using zmq poll) and */
+/* perioically (on poll timeouts) checking shared memory circular queue */
 /**********************************************************************/
 int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items, int *num_shm_items, device **shm_device_ptr, long *timeout) {
   int      i=0;

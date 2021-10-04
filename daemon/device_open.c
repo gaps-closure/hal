@@ -1,6 +1,6 @@
 /*
  * HAL device Open, Find and Print
- *   October 2021, Perspecta Labs
+ *   October 2021, Peraton Labs
  *
  * HAL supports the following 'comms' types
  *     z) IPC using ZMQ with application
@@ -408,7 +408,6 @@ void interface_open_tty(device *d) {
 /**********************************************************************/
 /* Open Device: d) Shared Memory */
 /*********t************************************************************/
-
 /* Initialize local data */
 void shm_init_local_data(dev_shm_local *local) {
   int i;
@@ -434,21 +433,20 @@ void shm_init_globl_ptrs(dev_shm_ptrs *dev_block_ptr, sdh_sm_v1 *shm_block_ptr) 
   dev_block_ptr->tag   = shm_block_ptr->tag;
   dev_block_ptr->shm_d = shm_block_ptr->page_data;
 //  printf("shm ptrs=%p r=%p w=%p l=%p t-%p d=%p\n", shm_block_ptr, &(shm_block_ptr->index_read_oldest), &(shm_block_ptr->index_write_next), shm_block_ptr->data_len, dev_block_ptr->tag, dev_block_ptr->shm_d);
-//  printf("dev ptrs=%p r=%p w=%p\n", dev_block_ptr, dev_block_ptr->shm_r, dev_block_ptr->shm_w);
 }
               
 /* Use mmap to get virtual addresses of shared memory */
 void interface_open_shm(device *d) {
   void *shm_addr;
   
-  log_trace("Opened SHM %s (size = %ld Bytes) using device(s): r=%s w=%s", d->id, sizeof(struct _sdh_sm_v1), d->path_r, d->path_w);
+  log_debug("Open SHM %s (size = %ld Bytes) using device(s): r=%s w=%s", d->id, SHM_BLOCK_SIZE, d->path_r, d->path_w);
   if (d->addr_off_w >= 0) {     /* sender who writes to SHM */
     shm_addr = shm_dev_ON_w(d);
     shm_init_globl_ptrs(&(d->block_w), (sdh_sm_v1 *) shm_addr);
     shm_init_local_data(&(d->local_w));
     if ((d->shm_reset_w) != 0) shm_init_globl_data(&(d->block_w));
   }
-  if (d->addr_off_r >= 0) {     /* sender who reads from SHM */
+  if (d->addr_off_r >= 0) {     /* receiver who reads from SHM */
     shm_addr = shm_dev_ON_r(d);
     shm_init_globl_ptrs(&(d->block_r), (sdh_sm_v1 *) shm_addr);
     if ((d->shm_reset_r) != 0) shm_init_globl_data(&(d->block_r));
