@@ -1,8 +1,8 @@
 /*
  * HAL device Open, Find and Print
- *   September 2021, Perspecta Labs
+ *   October 2021, Perspecta Labs
  *
- * HAL supported the following comms types
+ * HAL supports the following 'comms' types
  *     z) IPC using ZMQ with application
  *         (Old: unix pipe (IPC) with HAL-ZCAT process, then ZMQ with application)
  *     n) INET using ethernet (tcp or udp)
@@ -439,37 +439,17 @@ void shm_init_globl_ptrs(dev_shm_ptrs *dev_block_ptr, sdh_sm_v1 *shm_block_ptr) 
               
 /* Use mmap to get virtual addresses of shared memory */
 void interface_open_shm(device *d) {
-  int                  fd;
-  off_t                target = 0, offset=0;
-  void                *shm_addr;
+  void *shm_addr;
   
-  interface_open_tty(d);
+  log_trace("Opened SHM %s (size = %ld Bytes) using device(s): r=%s w=%s", d->id, sizeof(struct _sdh_sm_v1), d->path_r, d->path_w);
   if (d->addr_off_w >= 0) {     /* sender who writes to SHM */
-    target = (off_t) d->addr_off_w;
-    offset = (target & ~MAP_MASK);
-    log_trace("SHM Write target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
-    
-    fd = d->write_fd;
-    if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
-            fd, offset)) == MAP_FAILED) {
-      perror("mmap");
-      exit(1);
-    }
+    shm_addr = shm_dev_ON_w(d);
     shm_init_globl_ptrs(&(d->block_w), (sdh_sm_v1 *) shm_addr);
     shm_init_local_data(&(d->local_w));
     if ((d->shm_reset_w) != 0) shm_init_globl_data(&(d->block_w));
   }
   if (d->addr_off_r >= 0) {     /* sender who reads from SHM */
-    target = (off_t) d->addr_off_r;
-    offset = (target & ~MAP_MASK);
-    log_trace("SHM Read  target=0x%lx (%lu) offset=0x%lx\n", target, target, offset);
-    
-    fd = d->read_fd;
-    if ((shm_addr = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED,
-            fd, offset)) == MAP_FAILED) {
-      perror("mmap");
-      exit(1);
-    }
+    shm_addr = shm_dev_ON_r(d);
     shm_init_globl_ptrs(&(d->block_r), (sdh_sm_v1 *) shm_addr);
     if ((d->shm_reset_r) != 0) shm_init_globl_data(&(d->block_r));
   }

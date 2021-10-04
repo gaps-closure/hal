@@ -228,10 +228,7 @@ void write_pdu(device *odev, selector *selector_to, pdu *p) {
   /* Shared Memory directly copies data from PDU instead of creating packet (buf) */
 //  if (strcmp(odev->comms, "shm") == 0) write_in_chunks(odev, p->data, pkt_len, &(selector_to->tag));
   if (strcmp(odev->comms, "shm") != 0) write_in_chunks(odev, buf,     pkt_len, &(selector_to->tag));
-  else {
-    (odev->count_w)++;
-    log_debug("HAL writes (comms=%s, format=%s) into %s: len=%d", odev->comms, odev->model, odev->id, pkt_len);
-  }
+  else (odev->count_w)++;
 }
 
 /**********************************************************************/
@@ -473,7 +470,7 @@ void read_poll_items(device *devs, halmap *map, int num_items, int num_zmq_items
 /* After poll timeout, check if Shared Memory has been updated */
 void read_shm_item(device *devs, halmap *map, device *idev) {
   uint8_t     *buf = NULL;
-  int          count;
+  int          count=0;
   uint32_t     read_index;
   
   while ((count = sdh_shm_poll(idev, &read_index)) > 0) {
@@ -496,9 +493,11 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
   num_items = zmq_poll_init(devs, items, &num_zmq_items, &num_shm_items, &shm_device_ptr, &timeout);
   while (1) {     /* Main HAL Loop */
     rc = zmq_poll(items, num_items, timeout);   /* Poll for events */
+    log_trace("ZMQ_POLL rc=%d", rc);
     if (rc < 0) log_error("Poll error rc=%d errno=%d\n", rc, errno);
     if (rc > 0) read_poll_items(devs, map, num_items, num_zmq_items, items);
     read_shm_item(devs, map, shm_device_ptr);   /* Poll timed-out or arrivals at other interface */
 //    log_fatal("Exit for debug after one round"); exit (22);
+    shm_dev_OFF(shm_device_ptr);
   }
 }

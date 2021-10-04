@@ -7,7 +7,9 @@
 
 /* Control Information about one way connection (fixed for now) */
 #define PAGE_LEN_MAX 4096       /* Max page length in Bytes (B) */
-#define PAGES_MAX    3          /* Number of available pages (N) */
+//#define PAGES_MAX    3          /* Number of available pages (N) */
+#define PAGES_MAX    128          /* Number of available pages (N) */
+//#define PAGES_MAX    256          /* Number of available pages (N) */
 #include "../api/xdcomms.h"
 
 #include <getopt.h>
