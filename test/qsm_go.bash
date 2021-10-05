@@ -21,7 +21,7 @@ COMMS_PORT[$GREEN_ID]=22
 COMMS_PORT[$ORANGE_ID]=23
 
 # Default parameter
-DEVICE_COUNT=2
+DEVICE_COUNT=2   # ***** DO NOT CHANGE ***** until fix 'qemu-system-x86_64' command to match
 VM_COUNT=2
 FORCE=0
 KILL=0
@@ -93,7 +93,6 @@ create_backend_file() {
 run_qemu() {
   NAME="$1"
   PORT=$2
-  SBF="$3"
   SIZE_BYTES=$((BLK_SIZE_KB * BLK_COUNT * 1024))
   
   echo "Starting QEMU VM in enclave $NAME on vnc port $PORT (ssh port 22$PORT), SBF=$SIZE_BYTES Bytes, cow=${COW_SUBSCRIPT}-${NAME}.qcow2"
@@ -109,9 +108,9 @@ run_qemu() {
     -cpu host \
     -machine type=q35,accel=$ACCEL,nvdimm=on  \
     -m 4G,slots=2,maxmem=10G \
-    -object memory-backend-file,id=mem1,share=on,mem-path=$SBF,size=$SIZE_BYTES \
+    -object memory-backend-file,id=mem1,share=on,mem-path=${SBF_PREFIX}_1,size=$SIZE_BYTES \
     -device nvdimm,memdev=mem1,id=dimm1,label-size=256K \
-    -object memory-backend-file,id=mem2,share=on,mem-path=$SBF,size=$SIZE_BYTES \
+    -object memory-backend-file,id=mem2,share=on,mem-path=${SBF_PREFIX}_2,size=$SIZE_BYTES \
     -device nvdimm,memdev=mem2,id=dimm2,label-size=256K &
 # mac     -display default,show-cursor=on \
 # dram    -machine type=q35,accel=$ACCEL \
@@ -126,11 +125,11 @@ run_qemu() {
 get_options $@
 echo "$VM_COUNT VMs ($COW_SUBSCRIPT) using $DEVICE_COUNT BEFs ($SBF_PREFIX): F=$FORCE, K=$KILL, L=$LIST $*"
 ps_check
-i=0; while [ $i -lt $DEVICE_COUNT ]; do
-  create_backend_file ${SBF_PREFIX}_${COMMS_PORT[$i]}
+i=1; while [ $i -le $DEVICE_COUNT ]; do
+  create_backend_file ${SBF_PREFIX}_$i
   i=$((i+1))
 done
 i=0; while [ $i -lt $VM_COUNT ]; do
-  run_qemu ${VM_NODE[$i]} ${COMMS_PORT[$i]} ${SBF_PREFIX}_${COMMS_PORT[$i]}
+  run_qemu ${VM_NODE[$i]} ${COMMS_PORT[$i]}
   i=$((i+1))
 done
