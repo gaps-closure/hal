@@ -123,8 +123,8 @@ run_qemu() {
 
 # Main
 get_options $@
-echo "$VM_COUNT VMs ($COW_SUBSCRIPT) using $DEVICE_COUNT BEFs ($SBF_PREFIX): F=$FORCE, K=$KILL, L=$LIST $*"
 ps_check
+echo "$VM_COUNT VMs ($COW_SUBSCRIPT) using $DEVICE_COUNT BEFs ($SBF_PREFIX): F=$FORCE, K=$KILL, L=$LIST $*"
 i=1; while [ $i -le $DEVICE_COUNT ]; do
   create_backend_file ${SBF_PREFIX}_$i
   i=$((i+1))
