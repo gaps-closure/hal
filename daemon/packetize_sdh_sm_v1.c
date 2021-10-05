@@ -98,13 +98,13 @@ void *shm_dev_ON(device *d, int *fd, const char *path, off_t target) {
 
 /* Open SHM READ device */
 void *shm_dev_ON_r(device *d) {
-  log_trace("Turn SHM-R %s ON (%s fdr%d, %s fdw=%d) if not already on", d->id, d->path_r, d->read_fd, d->path_w, d->write_fd);
+  log_trace("Turn SHM-R %s ON (%s fdr=%d, %s fdw=%d) if not already on", d->id, d->path_r, d->read_fd, d->path_w, d->write_fd);
   return (shm_dev_ON(d, &(d->read_fd), d->path_r, d->addr_off_r));
 }
 
 /* Open SHM WRITE device */
 void *shm_dev_ON_w(device *d) {
-  log_trace("Turn SHM-R %s ON (%s fdr%d, %s fdw=%d) if not already on", d->id, d->path_r, d->read_fd, d->path_w, d->write_fd);
+  log_trace("Turn SHM-W %s ON (%s fdr=%d, %s fdw=%d) if not already on", d->id, d->path_r, d->read_fd, d->path_w, d->write_fd);
   return (shm_dev_ON(d, &(d->write_fd), d->path_w, d->addr_off_w));
 }
 
@@ -114,7 +114,7 @@ void shm_dev_OFF(device *d) {
   
   munmap(shm_addr, MAP_SIZE);
   d->read_fd = -1;
-  log_trace("Turn SHM-R %s OFF (%s fdr%d, %s fdw=%d)", d->id, d->path_r, d->read_fd, d->path_w, d->write_fd);
+  log_trace("Turn SHM-R %s OFF (%s fdr=%d, %s fdw=%d)", d->id, d->path_r, d->read_fd, d->path_w, d->write_fd);
 }
       
 /*=================================================================
