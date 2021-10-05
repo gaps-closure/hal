@@ -12,11 +12,13 @@ if [[ $OSTYPE == 'darwin'* ]]; then
   COW_SUBSCRIPT="ubuntu-20.04.2.0-desktop-amd64"
 fi
 
+GREEN_ID=1
+ORANGE_ID=0
 # QEMU VM node names and vnc/ssh ports (no associative arrays in MAC OS's bash 3.2)
-VM_NODE[0]="green"
-VM_NODE[1]="orange"
-COMMS_PORT[0]=22
-COMMS_PORT[1]=23
+VM_NODE[$GREEN_ID]="green"
+VM_NODE[$ORANGE_ID]="orange"
+COMMS_PORT[$GREEN_ID]=22
+COMMS_PORT[$ORANGE_ID]=23
 
 # Default parameter
 DEVICE_COUNT=2
