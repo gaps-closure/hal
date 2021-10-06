@@ -295,7 +295,7 @@ void *xdc_pub_socket()
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
     err = zmq_connect(socket, xdc_set_out(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
-    log_trace("API connects (s=%p t=%d) to %s", socket, ZMQ_PUB, xdc_set_out(NULL));
+    log_trace("API connects (spck=%p t=%d) to %s", socket, ZMQ_PUB, xdc_set_out(NULL));
     /*
      * HAL subscriber binds to address (usually publisher would bind).
      * The APP-API cannot send immediately after a connect, as there
@@ -329,7 +329,7 @@ void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
     
     if ((tag.mux) != 0) {
         len = RX_FILTER_LEN;
-        tag_cp(&tag4filter, &tag);
+        tag_encode(&tag4filter, &tag);
         filter = (void *) &tag4filter;
     } else {
         len = 0;
