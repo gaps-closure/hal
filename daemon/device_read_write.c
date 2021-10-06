@@ -160,8 +160,8 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   
   pdu_ptr = malloc(sizeof(pdu));
   *pkt_len = pdu_from_packet(pdu_ptr, buf, buf_len, idev);
-  log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", *pkt_len, (void *) buf, buf_len);
   if  (*pkt_len <= 0) return(NULL);
+  log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", *pkt_len, (void *) buf, buf_len);
   log_pdu_trace(pdu_ptr, __func__);
   return(pdu_ptr);
 }
