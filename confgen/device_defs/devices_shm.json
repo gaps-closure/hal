@@ -1,0 +1,31 @@
+{
+  "devices": [
+    {
+      "model":    "sdh_ha_v1",
+      "comms":    "zmq",
+      "mode_in":  "sub",
+      "mode_out": "pub"
+    },
+    {
+      "model":          "sdh_sm_v1",
+      "comms":          "shm",
+      "guard_time_aw":  5000,
+      "guard_time_bw":  1000,
+      "shm_poll_time":  1000,
+      "enclave_name_1": "green",
+      "path_r_1":       "/dev/pmem0",
+      "path_w_1":       "/dev/pmem0",
+      "addr_off_r_1":   4194304,
+      "addr_off_w_1":   0,
+      "shm_reset_r_1":  1,
+      "shm_reset_w_1":  1,
+      "enclave_name_2": "orange",
+      "path_r_2":       "/dev/pmem0",
+      "path_w_2":       "/dev/pmem0",
+      "addr_off_r_2":   0,
+      "addr_off_w_2":   4194304,
+      "shm_reset_r_2":  1,
+      "shm_reset_w_2":  1
+    }
+  ]
+}

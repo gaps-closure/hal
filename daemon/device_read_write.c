@@ -155,8 +155,8 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   
   pdu_ptr = malloc(sizeof(pdu));
   *pkt_len = pdu_from_packet(pdu_ptr, buf, buf_len, idev);
-  if  (*pkt_len <= 0) return(NULL);
   log_trace("HAL put data pointer (%p) to network input buffer or shared memory message into PDU. Packet Len=%d, Buffer Len=%d", (void *) buf, *pkt_len, buf_len);
+  if  (*pkt_len <= 0) return(NULL);
   log_pdu_trace(pdu_ptr, __func__);
   return(pdu_ptr);
 }

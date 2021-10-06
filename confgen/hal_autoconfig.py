@@ -75,7 +75,6 @@ def add_tty(local_enclve_name, d, dev):
         else:
             d['path']  = dev['path_2']
 
-
 # Add ipc speciffic infofrmation (address/port) to mutable dictionaty (d)
 #   connect_addr_1 is found when sending to xd gaurd (not directly to the other enclave)
 def add_inet(local_enclve_name, d, dev):
@@ -113,6 +112,29 @@ def add_ilp(local_enclve_name, d, dev):
             d['from_mux']    = dev['from_mux_2']
             d['init_enable'] = dev['init_at_2']
             
+# Add shm specific information to mutable dictionaty (d)
+def add_shm(local_enclve_name, d, dev):
+    if 'enclave_name_1' in dev:
+        if (local_enclve_name == dev['enclave_name_1']):
+            d['path_r']      = dev['path_r_1']
+            d['path_w']      = dev['path_w_1']
+            d['addr_off_r']  = dev['addr_off_r_1']
+            d['addr_off_w']  = dev['addr_off_w_1']
+            d['shm_reset_r'] = dev['shm_reset_r_1']
+            d['shm_reset_w'] = dev['shm_reset_w_1']
+        if (local_enclve_name == dev['enclave_name_2']):
+            d['path_r']      = dev['path_r_2']
+            d['path_w']      = dev['path_w_2']
+            d['addr_off_r']  = dev['addr_off_r_2']
+            d['addr_off_w']  = dev['addr_off_w_2']
+            d['shm_reset_r'] = dev['shm_reset_r_2']
+            d['shm_reset_w'] = dev['shm_reset_w_2']
+    d['guard_time_aw']   = dev['guard_time_aw']
+    d['guard_time_bw']   = dev['guard_time_bw']
+    d['shm_poll_time']   = dev['shm_poll_time']
+
+
+
 # Create HAL device configurations as a list of python dictionaries
 def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     index=0
@@ -139,6 +161,8 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
             add_ipc(local_enclve_name, d, dev, enc_info)
         elif (d['comms'] == "tty"):
             add_tty(local_enclve_name, d, dev)
+        elif (d['comms'] == "shm"):
+            add_shm(local_enclve_name, d, dev)
         index += 1
         hal_config_dev_list.append(dict(d))
     if (args.verbose): print ('\nNET Device(s) list (', index, 'devices ) =', hal_config_dev_list)
