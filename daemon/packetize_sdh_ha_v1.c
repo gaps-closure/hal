@@ -28,7 +28,7 @@ int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
   
   tag_decode(&(out->psel.tag), &(pkt->tag));
   len_decode(&(out->data_len), pkt->data_len);
-  if (get_packet_length_sdh_ha_v1(pkt, pkt->data_len) > len_in)  return (-1);   /* incomplete packet */
+  if (get_packet_length_sdh_ha_v1(pkt, out->data_len) > len_in)  return (-1);   /* incomplete packet */
   out->data = pkt->data;
   return (get_packet_length_sdh_ha_v1(pkt, out->data_len));
 }
