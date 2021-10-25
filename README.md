@@ -1,4 +1,7 @@
 # Hardware Abstraction Layer
+
+[![build](https://github.com/gaps-closure/hal/actions/workflows/main.yml/badge.svg)](https://github.com/gaps-closure/hal/actions/workflows/main.yml)
+
 This repository hosts the open source components of the Hardware Abstraction Layer (HAL). HAL provides applications within a security enclave with a simple high-level interface to communicate with application in other enclaves. Based only on the application specified [*tag*](daemon#HAL-tag), the [HAL daemon](daemon#hal-daemon) routes *cross-domain* communication to its destination via Cross Domain Guard (CDG) hardware (where provisioned security policies are enforced).
 #hal-architecture
 
