@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # Autogeneration Utilities for CLOSURE
 #
-from   codecwriter   import CodecWriter
-from   dfdlwriter    import DFDLWriter
+from   autogen.codecwriter   import CodecWriter
+from   autogen.dfdlwriter    import DFDLWriter
 from   clang.cindex  import Index, TokenKind
 from   lark.lexer    import Lexer, Token
 from   argparse      import ArgumentParser
