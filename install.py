@@ -23,6 +23,10 @@ def install_hal_includes(out: Path) -> None:
     copyfile(Path('api') / 'xdcomms.h', out_include / 'xdcomms.h')
     copyfile(Path('log') / 'log.h', out_include / 'log.h')
 
+def install_xdcomms_lib(out: Path) -> None:
+    out_lib = out / 'lib' 
+    out_lib.mkdir(parents=True, exist_ok=True)
+    copyfile(Path('api') / 'libxdcomms.so', out_lib / 'libxdcomms.so')
 
 @dataclass
 class Args:
@@ -31,6 +35,7 @@ class Args:
 def install(args: Type[Args]) -> Dict[str, str]:
     install_hal_daemon(args.output)
     install_hal_includes(args.output)
+    install_xdcomms_lib(args.output)
     install_python_package(args.output)
     return {
         "PATH": f"{args.output.resolve()}/bin",
