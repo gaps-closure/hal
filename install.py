@@ -17,12 +17,12 @@ def install_hal_daemon(out: Path) -> None:
 def install_python_package(out: Path) -> None:
     subprocess.run([sys.executable, '-m', 'pip', 'install', '.', '--upgrade', '--target', out])   
 
-def make_env(out: Path) -> None:
-    with open(out / 'closureenv', 'a') as env_f: 
-        env_f.write("\n".join([
-            f'export PYTHONPATH={out.resolve()}:$PYTHONPATH',
-            f'export PATH={out.resolve()}/bin:$PATH'
-        ]))
+def install_hal_includes(out: Path) -> None:
+    out_include = out / 'include' 
+    out_include.mkdir(parents=True, exist_ok=True)
+    copyfile(Path('api') / 'xdcomms.h', out_include / 'xdcomms.h')
+    copyfile(Path('log') / 'log.h', out_include / 'log.h')
+
 
 @dataclass
 class Args:
@@ -30,6 +30,7 @@ class Args:
 
 def install(args: Type[Args]) -> Dict[str, str]:
     install_hal_daemon(args.output)
+    install_hal_includes(args.output)
     install_python_package(args.output)
     return {
         "PATH": f"{args.output.resolve()}/bin",
