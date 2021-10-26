@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 import argparse
 from dataclasses import dataclass
-from shutil import copyfile
+from shutil import copyfile, copytree
 from pathlib import Path
 import subprocess
 import sys
@@ -28,6 +28,10 @@ def install_xdcomms_lib(out: Path) -> None:
     out_lib.mkdir(parents=True, exist_ok=True)
     copyfile(Path('api') / 'libxdcomms.so', out_lib / 'libxdcomms.so')
 
+def install_device_defs(out: Path) -> None:
+    out_etc = out / 'etc' 
+    copytree(Path('confgen') / 'device_defs', out_etc, dirs_exist_ok=True)
+
 @dataclass
 class Args:
     output: Path
@@ -36,6 +40,7 @@ def install(args: Type[Args]) -> Dict[str, str]:
     install_hal_daemon(args.output)
     install_hal_includes(args.output)
     install_xdcomms_lib(args.output)
+    install_device_defs(args.output)
     install_python_package(args.output)
     return {
         "PATH": f"{args.output.resolve()}/bin",
