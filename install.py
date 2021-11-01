@@ -17,7 +17,7 @@ def install_hal_daemon(out: Path) -> None:
     os.chmod(out_bin / 'hal', 0o755)
 
 def install_python_package(out: Path) -> None:
-    subprocess.run([sys.executable, '-m', 'pip', 'install', '.', '--upgrade', '--target', out / 'python'])   
+    subprocess.run([sys.executable, '-m', 'pip', 'install', '.', '--target', out / 'python'])   
 
 def install_hal_includes(out: Path) -> None:
     out_include = out / 'include' 
