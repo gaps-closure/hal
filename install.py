@@ -38,12 +38,13 @@ def install_device_defs(out: Path) -> None:
 class Args:
     output: Path
 
-def install(args: Type[Args]) -> Dict[str, str]:
+def install(args: Type[Args], install_python_package : bool = False) -> Dict[str, str]:
     install_hal_daemon(args.output)
     install_hal_includes(args.output)
     install_xdcomms_lib(args.output)
     install_device_defs(args.output)
-    install_python_package(args.output)
+    if install_python_package:
+        install_python_package(args.output)
     return {
         "PATH": f"{args.output.resolve()}/bin:{args.output.resolve()}/python/bin",
         "PYTHONPATH": f"{args.output.resolve()}/python",
@@ -55,7 +56,7 @@ def main() -> None:
     args = parser.parse_args(namespace=Args)
     args.output.mkdir(parents=True, exist_ok=True)
     build.build()
-    install(args)
+    install(args, True)
     
 if __name__ == '__main__':
     main()

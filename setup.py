@@ -14,6 +14,10 @@ setup(
     classifiers=["Programming Language :: Python :: 3"],
     python_requires=">=3.6",
     packages=["autogen"],
+    install_requires = [
+        "libconf",
+        "lark"
+    ],
     entry_points={
         "console_scripts": [
             "hal_autogen=autogen:autogen.main",
