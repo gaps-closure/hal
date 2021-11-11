@@ -34,6 +34,30 @@ void tag_cp (gaps_tag *tag_out, gaps_tag *tag_in) {
     tag_out->typ = tag_in->typ;
 }
 
+/* Serialize tag onto wire (TODO, Use DFDL schema) */
+void tag_encode (gaps_tag *tag_out, gaps_tag *tag_in) {
+  tag_out->mux = htonl(tag_in->mux);
+  tag_out->sec = htonl(tag_in->sec);
+  tag_out->typ = htonl(tag_in->typ);
+}
+
+/* Convert tag to local host format (TODO, Use DFDL schema) */
+void tag_decode (gaps_tag *tag_out, gaps_tag *tag_in) {
+  tag_out->mux = ntohl(tag_in->mux);
+  tag_out->sec = ntohl(tag_in->sec);
+  tag_out->typ = ntohl(tag_in->typ);
+}
+
+/* Convert tag to local host format (TODO, Use DFDL schema) */
+void len_encode (uint32_t *out, size_t len) {
+  *out = ntohl((uint32_t) len);
+}
+
+/* Convert tag to local host format (TODO, Use DFDL schema) */
+void len_decode (size_t *out, uint32_t in) {
+  *out = (uint32_t) htonl(in);
+}
+
 /**********************************************************************/
 /* D) Set API Logging to a new level */
 /**********************************************************************/
@@ -149,13 +173,13 @@ void gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *buf
   log_buf_trace("API <- raw app data:", buff_in, *buff_len);
   log_buf_trace("    -> encoded data:", p->data, *buff_len);
 
-  /* b) Create CLOSURE packet header (TODO: remove NBO ha tag, len) */
-  tag_cp(&(p->tag), tag);
+  /* b) Create CLOSURE packet header */
+  tag_encode(&(p->tag), tag);
 
 // tag_print(tag, stderr);
 // fprintf(stderr, "%s: mux = %d = %d\n", __func__, tag->mux, *((uint32_t *) p));
 
-  p->data_len = (uint32_t) *buff_len;
+  len_encode(&(p->data_len), *buff_len);
   /* TODO: preplace last two with  sizeof(*p) - ADU_SIZE_MAX_C  */
   *p_len = (*buff_len) + sizeof(p->tag) + sizeof(p->data_len);
   // TODO - return value to indicate an error
@@ -170,8 +194,8 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
   xdc_log_level(-1);            /* set logging level to default (if not set) */
 
   /* a) deserialize data from packet (TODO: remove NBO ha tag, len) */
-  tag_cp(tag, &(p->tag));
-  *len_out = (size_t) p->data_len;
+  tag_decode(tag, &(p->tag));
+  len_decode(len_out, p->data_len);
 //  fprintf(stderr, "%s\n", __func__); cmap_print();
   cm->decode (buff_out, p->data, &p_len);
   log_buf_trace("API -> raw app data:", p->data,  *len_out);
@@ -271,7 +295,7 @@ void *xdc_pub_socket()
     if (socket == NULL) exit_with_zmq_error("zmq_socket");
     err = zmq_connect(socket, xdc_set_out(NULL));
     if (err) exit_with_zmq_error("zmq_connect");
-    log_trace("API connects (s=%p t=%d) to %s", socket, ZMQ_PUB, xdc_set_out(NULL));
+    log_trace("API connects (spck=%p t=%d) to %s", socket, ZMQ_PUB, xdc_set_out(NULL));
     /*
      * HAL subscriber binds to address (usually publisher would bind).
      * The APP-API cannot send immediately after a connect, as there
@@ -305,7 +329,7 @@ void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
     
     if ((tag.mux) != 0) {
         len = RX_FILTER_LEN;
-        tag_cp(&tag4filter, &tag);
+        tag_encode(&tag4filter, &tag);
         filter = (void *) &tag4filter;
     } else {
         len = 0;

@@ -10,10 +10,10 @@
 /* Print M1 Packet */
 void sda_ha_v1_print(sdh_ha_v1 *p) {
   fprintf(stderr, "%s: ", __func__);
-  fprintf(stderr, "mux=%u ",  p->tag.mux);
-  fprintf(stderr, "sec=%u ",  p->tag.sec);
-  fprintf(stderr, "typ=%u ",  p->tag.typ);
-  data_print("Data", p->data, p->data_len);
+  fprintf(stderr, "mux=%u ",  ntohl(p->tag.mux));
+  fprintf(stderr, "sec=%u ",  ntohl(p->tag.sec));
+  fprintf(stderr, "typ=%u ",  ntohl(p->tag.typ));
+  data_print("Data", p->data, ntohl(p->data_len));
   fprintf(stderr, "\n");
 }
 
@@ -26,10 +26,10 @@ int get_packet_length_sdh_ha_v1(sdh_ha_v1  *pkt, size_t data_len) {
 int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) in;
   
-  out->data_len = pkt->data_len;
+  tag_decode(&(out->psel.tag), &(pkt->tag));
+  len_decode(&(out->data_len), pkt->data_len);
   if (get_packet_length_sdh_ha_v1(pkt, out->data_len) > len_in)  return (-1);   /* incomplete packet */
-  tag_cp(&(out->psel.tag), &(pkt->tag));
-  out->data = pkt->data;   /* TODO_PDU_PTR */
+  out->data = pkt->data;
   return (get_packet_length_sdh_ha_v1(pkt, out->data_len));
 }
 
@@ -37,9 +37,8 @@ int pdu_from_sdh_ha_v1 (pdu *out, uint8_t *in, int len_in) {
 int pdu_into_sdh_ha_v1 (uint8_t *out, pdu *in, gaps_tag *otag) {
   sdh_ha_v1  *pkt = (sdh_ha_v1 *) out;
 
-  pkt->data_len = in->data_len;
+  tag_encode(&(pkt->tag), otag);
+  len_encode(&(pkt->data_len), in->data_len);
   memcpy(pkt->data, in->data, in->data_len);
-  tag_cp(&(pkt->tag), otag);
   return (get_packet_length_sdh_ha_v1(pkt, in->data_len));
-
 }
