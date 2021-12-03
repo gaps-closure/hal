@@ -16,7 +16,7 @@ int main(int argc, char **argv)
   // connect to address given by argument
   socket.connect(addr);  
   socket.subscribe("");
-  std::cout << "Connected to" << addr << std::endl; 
+  std::cout << "Connected to " << addr << std::endl;
 
   // receive message from other enclave
   zmqpp::message recv;
