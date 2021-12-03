@@ -27,4 +27,5 @@ is compliant with the configuration. This sender/receiver is intended for the fo
 configuration:
 
 https://github.com/gaps-closure/hal/blob/develop/test/sample_zmq_bw_direct_jaga_green.cfg
+
 https://github.com/gaps-closure/hal/blob/develop/test/sample_zmq_bw_direct_liono_orange.cfg
