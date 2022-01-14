@@ -38,12 +38,12 @@ def install_device_defs(out: Path) -> None:
 class Args:
     output: Path
 
-def install(args: Type[Args], install_python_package : bool = False) -> Dict[str, str]:
+def install(args: Type[Args], should_install_python_package : bool = False) -> Dict[str, str]:
     install_hal_daemon(args.output)
     install_hal_includes(args.output)
     install_xdcomms_lib(args.output)
     install_device_defs(args.output)
-    if install_python_package:
+    if should_install_python_package:
         install_python_package(args.output)
     return {
         "PATH": f"{args.output.resolve()}/bin:{args.output.resolve()}/python/bin",

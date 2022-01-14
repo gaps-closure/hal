@@ -25,5 +25,6 @@ setup(
     },
     scripts=[
         'confgen/hal_autoconfig.py',
+        'confgen/merge_xdconf_ini.py',
     ]
 )
