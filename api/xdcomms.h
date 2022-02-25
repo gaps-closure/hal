@@ -17,6 +17,9 @@
 
 #define IPC_ADDR_DEFAULT_HALPUB "ipc:///tmp/halpub1"
 #define IPC_ADDR_DEFAULT_HALSUB "ipc:///tmp/halsub1"
+
+#pragma pack(push,1)
+
 /**********************************************************************/
 /* LIB Structures */
 /*********t************************************************************/
@@ -50,6 +53,7 @@ typedef struct _codec_map {
   codec_func_ptr  decode;
 } codec_map;
 //extern codec_map  cmap[DATA_TYP_MAX];   /* declare for global use (where?) */
+#pragma pack(pop)
 
 /* Minor exposed function prototypes */
 extern void tag_print     (gaps_tag *, FILE *);
