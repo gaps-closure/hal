@@ -4,7 +4,6 @@
 
 HHEAD='''#ifndef GMA_HEADER_FILE
 #define GMA_HEADER_FILE
-#pragma pack(1)
 
 #include <stdio.h>
 #include <stdint.h>
@@ -17,8 +16,9 @@ HHEAD='''#ifndef GMA_HEADER_FILE
 
 #include "float754.h"
 
-#define id(X) (X)
+#define codec_id(X) (X)
 
+#pragma pack(push,1)
 typedef struct _trailer_datatype {
   uint32_t seq;
   uint32_t rqr;
@@ -26,6 +26,7 @@ typedef struct _trailer_datatype {
   uint16_t mid;
   uint16_t crc;
 } trailer_datatype;
+#pragma pack(pop)
 
 '''
 
@@ -221,8 +222,8 @@ fmtstr = {
 encfn = {
   'double': 'htond',
   'ffloat': 'htonf',
-  'int8':   'id',
-  'uint8':  'id',
+  'int8':   'codec_id',
+  'uint8':  'codec_id',
   'int16':  'htons',
   'uint16': 'htons',
   'int32':  'htonl',
@@ -234,8 +235,8 @@ encfn = {
 decfn = {
   'double': 'ntohd',
   'ffloat': 'ntohf',
-  'int8':   'id',
-  'uint8':  'id',
+  'int8':   'codec_id',
+  'uint8':  'codec_id',
   'int16':  'ntohs',
   'uint16': 'ntohs',
   'int32':  'ntohl',
@@ -303,6 +304,7 @@ class CodecWriter:
     appstr = ''
     d = dtypnm.lower()
     istr   = 'datatype' if inp else 'output'
+    appstr += '#pragma pack(push,1)' + '\n'
     appstr += 'typedef struct _' + d + '_' + istr + ' {' + '\n'
     for f in flds:
       if   len(f) == 2: appstr += self.make_scalar(d,f,'header',inp)
@@ -310,6 +312,7 @@ class CodecWriter:
       else:             raise Exception('Unhandled field: ' + f)
     appstr += '  trailer_datatype trailer;' + '\n'
     appstr += '} ' + d + '_' + istr + ';' + '\n'
+    appstr += '#pragma pack(pop)' + '\n'
     return appstr + '\n'
 
   def make_dtyp_struct(self,tree):
