@@ -1,3 +1,7 @@
+#ifdef _cplusplus
+extern "C" {
+#endif /* _cplusplus */
+
 /*
  * Cross Domain (XD) Communication API between Applicaitons and GAP XD Guards
  *   December 2020, Perspecta Labs
@@ -412,3 +416,7 @@ void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
 {
   while (xdc_recv(socket, adu, tag) < 0);
 }
+
+#ifdef _cplusplus
+}
+#endif /* _cplusplus */

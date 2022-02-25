@@ -2,6 +2,18 @@
 
 #---------------------- Begin Serializer Boilerplate for GAPS ------------------------
 
+CPPHEAD='''#ifdef _cplusplus
+extern "C" {
+#endif /* _cplusplus */
+
+'''
+
+CPPTAIL='''
+#ifdef _cplusplus
+}
+#endif /* _cplusplus */
+'''
+
 HHEAD='''#ifndef GMA_HEADER_FILE
 #define GMA_HEADER_FILE
 
@@ -30,7 +42,7 @@ typedef struct _trailer_datatype {
 
 '''
 
-HTAIL='''#endif
+HTAIL='''#endif /* GMA_HEADER_FILE */
 '''
 
 FLOATH='''#ifndef _FLOAT_H_
@@ -395,11 +407,13 @@ class CodecWriter:
 
   def writeheader(self, outfname, tree):
     try:
-      hstr = HHEAD
+      hstr = CPPHEAD
+      hstr += HHEAD
       hstr += self.make_dtyp_enum(tree)
       hstr += self.make_dtyp_struct(tree)
       hstr += self.make_fn_sigs(tree)
       hstr += HTAIL
+      hstr += CPPTAIL
       with open(outfname + '.h', 'w') as f:
         f.write(hstr)
     except Exception as e:
@@ -407,11 +421,13 @@ class CodecWriter:
 
   def writecodecc(self, outfname, tree):
     try:
-      cstr = '#include "' + outfname + '.h"' + '\n\n'
+      cstr = CPPHEAD
+      cstr += '#include "' + outfname + '.h"' + '\n\n'
       for l in tree:
         cstr += self.make_print_fn(l)
         cstr += self.make_encode_fn(l)
         cstr += self.make_decode_fn(l)
+      cstr += CPPTAIL
       with open(outfname + '.c', 'w') as f:
         f.write(cstr)
     except Exception as e:
@@ -420,9 +436,13 @@ class CodecWriter:
   def writextras(self):
     try:
       with open('float754.c', 'w') as f:
+        f.write(CPPHEAD)
         f.write(FLOATC)
+        f.write(CPPTAIL)
       with open('float754.h', 'w') as f:
+        f.write(CPPHEAD)
         f.write(FLOATH)
+        f.write(CPPTAIL)
     except Exception as e:
       print("Error writing extras: ", e)
 

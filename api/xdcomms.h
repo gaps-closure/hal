@@ -1,3 +1,7 @@
+#ifdef _cplusplus
+extern "C" {
+#endif /* _cplusplus */
+
 #ifndef XDC_HEADER_FILE
 #define XDC_HEADER_FILE
 
@@ -79,4 +83,8 @@ extern void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag);
 extern void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag);
 extern int  xdc_recv(void *socket, void *adu, gaps_tag *tag);
 
-#endif
+#endif /* XDC_HEADER_FILE */
+
+#ifdef _cplusplus
+}
+#endif /* _cplusplus */

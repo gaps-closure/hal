@@ -1,3 +1,7 @@
+#ifdef _cplusplus
+extern "C" {
+#endif /* _cplusplus */
+
 /*
  * Copyright (c) 2017 rxi
  *
@@ -173,3 +177,7 @@ void log_log_buf(int level, char *str, void *data, size_t data_len) {
     }
   }
 }
+
+#ifdef _cplusplus
+}
+#endif /* _cplusplus */
