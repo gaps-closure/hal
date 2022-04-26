@@ -1,18 +1,55 @@
-#ifdef _cplusplus
-extern "C" {
-#endif /* _cplusplus */
-
 /*
  * Cross Domain (XD) Communication API between Applicaitons and GAP XD Guards
- *   December 2020, Perspecta Labs
+ *   April 2022, Peraton Labs
+ *
+ * This merged API supports two versions:
+ * 1) Legacy Version:
+ *     Supports single-threaded receiver per Cross Doamin Function (XD-func).
+ *     Socket is opened once per XD-func, minimizing protoocl delay and overhead.
+ * 2) Non-Legacy Version ('my_' API functions):
+ *     Supports multi-threaded receiver per XD-func.
+ *     Socket is opened and closed within each thread: less efficent, but thread-safe
+ *     (Orinally part of the CLOSURE RPC generator, but moved here in April 2022)
+ *       a) API passes the HAL URI into PUB and SUB socket creation functions
+ *       b) API passes each XD-func's codec map into the send and receive calls\
+ *       c) 'codec_map' directly maps data type to its data encode + decode functions
+ *          Simplifies opersation, but only supports type indexes up to DATA_TYP_MAX
+ *          (may change to use LEGACY method if need arbitary indexes)
+ *       d) Does not curretly support logging
  */
 
 #include "xdcomms.h"
 
-codec_map  cmap[DATA_TYP_MAX];
+codec_map  cmap[DATA_TYP_MAX];    /* maps data type to its data encode + decode functions */
 
 /**********************************************************************/
-/* A) Tag processing */
+/* A) Set API Logging to a new level */
+/**********************************************************************/
+void xdc_log_level(int new_level) {
+  static int do_once = 1;
+  
+  // set to default if User has not already set
+  if (new_level == -1) {
+    if (do_once == 1) {
+      log_set_quiet(0);               /* not quiet */
+      log_set_level(LOG_INFO);        /* default level */
+//      log_set_level(LOG_TRACE);       /* test */
+    }
+    return;
+  }
+  if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
+    log_set_quiet(0);
+    log_set_level(new_level);
+    log_trace("User sets API log level: %d", new_level);
+    do_once = 0;
+  }
+  else {
+    log_warn("Cannot change API to log level %d (min=%d max=%d)\n", __func__, new_level, LOG_TRACE, LOG_FATAL);
+  }
+}
+
+/**********************************************************************/
+/* B) Legacy Tag processing */
 /**********************************************************************/
 
 void tag_print (gaps_tag *tag, FILE * fd) {
@@ -63,33 +100,26 @@ void len_decode (size_t *out, uint32_t in) {
 }
 
 /**********************************************************************/
-/* D) Set API Logging to a new level */
+/* Bm) Non-Legacy Tag processing (all just aliases) */
 /**********************************************************************/
-void xdc_log_level(int new_level) {
-  static int do_once = 1;
-  
-  // set to default if User has not already set
-  if (new_level == -1) {
-    if (do_once == 1) {
-      log_set_quiet(0);               /* not quiet */
-      log_set_level(LOG_INFO);        /* default level */
-//      log_set_level(LOG_TRACE);       /* test */
-    }
-    return;
-  }
-  if ((new_level >= LOG_TRACE) && (new_level <= LOG_FATAL)) {
-    log_set_quiet(0);
-    log_set_level(new_level);
-    log_trace("User sets API log level: %d", new_level);
-    do_once = 0;
-  }
-  else {
-    log_warn("Cannot change API to log level %d (min=%d max=%d)\n", __func__, new_level, LOG_TRACE, LOG_FATAL);
-  }
+void my_tag_write (gaps_tag *tag, uint32_t mux, uint32_t sec, uint32_t typ) {
+  tag_write (tag, mux, sec, typ);
+}
+void my_tag_encode (gaps_tag *tag_out, gaps_tag *tag_in) {
+  tag_encode (tag_out, tag_in);
+}
+void my_tag_decode (gaps_tag *tag_out, gaps_tag *tag_in) {
+  tag_decode (tag_out, tag_in);
+}
+void my_len_encode (uint32_t *out, size_t len) {
+  len_encode (out, len);
+}
+void my_len_decode (size_t *out, uint32_t in) {
+  len_decode (out, in);
 }
 
 /**********************************************************************/
-/* B) CMAP table to store encoding and decoding function pointers */
+/* C) Legacy CMAP table to store encoding and decoding function pointers */
 /**********************************************************************/
 /*
  * Print Codec Table entry
@@ -161,8 +191,24 @@ void xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ) {
 }
 
 /**********************************************************************/
-/* C) Encocde/decode data into/from a HAL packet */
-/* TODO, Use DFDL schema */
+/* Cm) Non-Legacy CMAP table to store encoding and decoding function pointers */
+/**********************************************************************/
+/* Non-legacy tag data_type used as direct index, so must be less than MY_DATA_TYP_MAX */
+void my_type_check(uint32_t typ, codec_map *cmap) {
+    if ( (typ >= MY_DATA_TYP_MAX) || (cmap[typ].valid==0) ) {
+        exit (1);
+    }
+}
+
+/* tag data_type used as direct index (Legacy uses first available as index and stored data type) */
+void my_xdc_register(codec_func_ptr encode, codec_func_ptr decode, int typ, codec_map *cmap) {
+    cmap[typ].valid=1;
+    cmap[typ].encode=encode;
+    cmap[typ].decode=decode;
+}
+
+/**********************************************************************/
+/* D) Legacy Encocde/decode data into/from a HAL packet */
 /**********************************************************************/
 /*
  * Create packet (serialize data and add header)
@@ -210,6 +256,30 @@ void gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len
 // XXX: Additional Functions TBD
 //  typ = xdc_generate(spec);  /* creates encode and decode functions and typ, then use register to load them into the table */
 // Also xdc_provision function(s)
+
+/**********************************************************************/
+/* Dm) Non-Legacy Encocde/decode data into/from a HAL packet */
+/**********************************************************************/
+void my_gaps_data_encode(sdh_ha_v1 *p, size_t *p_len, uint8_t *buff_in, size_t *len_out, gaps_tag *tag, codec_map *cmap) {
+    uint32_t typ = tag->typ;
+    my_type_check(typ, cmap);
+    cmap[typ].encode (p->data, buff_in, len_out);
+    log_buf_trace("my API <- raw app data:", buff_in, *len_out);
+    log_buf_trace("       -> encoded data:", p->data, *len_out);
+    my_tag_encode(&(p->tag), tag);
+    log_trace("A");
+    my_len_encode(&(p->data_len), *len_out);
+    log_trace("B");
+    *p_len = (*len_out) + sizeof(p->tag) + sizeof(p->data_len);
+    log_trace("my_gaps_data_encode: typ=%d p_len=%d", typ, p_len);
+}
+void my_gaps_data_decode(sdh_ha_v1 *p, size_t p_len, uint8_t *buff_out, size_t *len_out, gaps_tag *tag, codec_map *cmap) {
+    uint32_t typ = tag->typ;
+    my_type_check(typ, cmap);
+    my_tag_decode(tag, &(p->tag));
+    my_len_decode(len_out, p->data_len);
+    cmap[typ].decode (buff_out, p->data, &p_len);
+    }
 
 /**********************************************************************/
 /* E) Set and Get APP-HAL API Addresses */
@@ -263,7 +333,7 @@ char *xdc_set_out(char *addr_in) {
 }
 
 /**********************************************************************/
-/* F) ZMQ-based Communication Setup */
+/* F) Legacy ZMQ-based Communication Setup */
 /**********************************************************************/
 /*
  * Exit with ZMQ error message
@@ -276,7 +346,7 @@ void exit_with_zmq_error(const char* where) {
 /*
  * Get zmq context (and create if not already created) - once per process
  */
-void *xdc_ctx() {
+void *xdc_ctx(void) {
   static void *ctx = NULL;
   if (ctx == NULL) {
     xdc_log_level(-1);            /* set logging level to default (if not set) */
@@ -290,8 +360,7 @@ void *xdc_ctx() {
 /*
  * Open ZMQ Publisher socket, connecting to HAL subscriber listening at addreess set by xdc_set_out:
  */
-void *xdc_pub_socket()
-{
+void *xdc_pub_socket(void) {
     int      err;
     void    *socket;
 
@@ -313,8 +382,7 @@ void *xdc_pub_socket()
  * Open non-blocking ZMQ Subscriber socket, with timeout specified in milliseconds
  * (HAL is a ZMQ Publisher listening on the address configured by xdc_set_in)
  */
-void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
-{
+void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout) {
     int      err, len;
     void    *socket;
     gaps_tag tag4filter;
@@ -350,14 +418,61 @@ void *xdc_sub_socket_non_blocking(gaps_tag tag, int timeout)
 /*
  * Open ZMQ Subscriber socket, connecting to HAL publisher listening at addreess set by xdc_set_in:
  */
-void *xdc_sub_socket(gaps_tag tag)
-{
+void *xdc_sub_socket(gaps_tag tag) {
   return (xdc_sub_socket_non_blocking(tag, -1));      /* Recv call blocks forever */
 //  return (xdc_sub_socket_non_blocking(tag, 10000));       /* Receive call block for 10 seconds */
 }
 
 /**********************************************************************/
-/* G) ZMQ Communication Send and Receive */
+/* Fm) Non-Legacy ZMQ-based Communication Setup (URI per thread) */
+/**********************************************************************/
+void *my_xdc_pub_socket(void *ctx, const char *outuri) {
+    int err;
+    void *socket;
+    socket = zmq_socket(ctx, ZMQ_PUB);
+    err = zmq_connect(socket, outuri);
+    assert(err == 0);
+    return socket;
+}
+
+void *my_xdc_sub_socket(gaps_tag tag, void *ctx, const char *inuri) {
+    int err;
+    gaps_tag tag4filter;
+    void *socket;
+    socket = zmq_socket(ctx, ZMQ_SUB);
+    err = zmq_connect(socket, inuri);
+    my_tag_encode(&tag4filter, &tag);
+    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, (void *) &tag4filter, RX_FILTER_LEN);
+    assert(err == 0);
+    return socket;
+}
+
+void *my_xdc_sub_socket_non_blocking(gaps_tag tag, void *ctx, int timeout, const char *inuri) {
+    int  err, len;
+    void    *socket;
+    gaps_tag tag4filter;
+    void    *filter;
+    socket = zmq_socket(ctx, ZMQ_SUB);
+    if (timeout>=0) {
+        err = zmq_setsockopt(socket, ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
+        assert(err == 0);
+    }
+    err = zmq_connect(socket, inuri);
+    if ((tag.mux) != 0) {
+        len = RX_FILTER_LEN;
+        my_tag_encode(&tag4filter, &tag);
+        filter = (void *) &tag4filter;
+    } else {
+        len = 0;
+        filter = (void *) "";
+    }
+    err = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, filter, len);
+    assert(err == 0);
+    return socket;
+}
+
+/**********************************************************************/
+/* G) Legacy ZMQ Communication Send and Receive */
 /**********************************************************************/
 /*
  * Send ADU to HAL (HAL is the ZMQ subscriber) in a sdh_ha_v1 packet
@@ -385,11 +500,10 @@ void xdc_asyn_send(void *socket, void *adu, gaps_tag *tag) {
 }
 
 /*
- * Receive ADU from HAL (HAL is the ZMQ publisher) from a sdh_ha_v1 packet
+ * Receive ADU from HAL (HAL is ZMQ publisher) from a sdh_ha_v1 packet
  * Returs size of packet received (timeout/error if < 0)
  */
-int xdc_recv(void *socket, void *adu, gaps_tag *tag)
-{
+int xdc_recv(void *socket, void *adu, gaps_tag *tag) {
   sdh_ha_v1   packet;
   void *p =  &packet;
   size_t      adu_len;
@@ -409,14 +523,40 @@ int xdc_recv(void *socket, void *adu, gaps_tag *tag)
 }
 
 /*
- * Receive ADU from HAL (HAL is the ZMQ publisher)
- * Blocks until it gets a valid adu
+ * Receive ADU from HAL (HAL is the ZMQ publisher) - Blocks until it gets a valid adu
  */
-void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag)
-{
+void xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag) {
   while (xdc_recv(socket, adu, tag) < 0);
 }
 
-#ifdef _cplusplus
+/**********************************************************************/
+/* Gm) Non-Legacy ZMQ Communication Send and Receive */
+/**********************************************************************/
+void my_xdc_asyn_send(void *socket, void *adu, gaps_tag *tag, codec_map *cmap) {
+    sdh_ha_v1    packet, *p=&packet;
+    size_t       packet_len;
+    size_t adu_len;         /* Size of ADU is calculated by encoder */
+    log_trace("my API send encodes ");
+    my_gaps_data_encode(p, &packet_len, adu, &adu_len, tag, cmap);
+    log_buf_trace("my API sends Packet", (uint8_t *) p, packet_len);
+    int bytes = zmq_send (socket, (void *) p, packet_len, 0);
+    if (bytes <= 0) fprintf(stderr, "send error %s %d ", zmq_strerror(errno), bytes);
 }
-#endif /* _cplusplus */
+
+void my_xdc_blocking_recv(void *socket, void *adu, gaps_tag *tag, codec_map *cmap) {
+    sdh_ha_v1 packet;
+    void *p = &packet;
+    log_trace("my API waiting to recv packet");
+    int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
+    size_t adu_len;
+    my_gaps_data_decode(p, size, adu, &adu_len, tag, cmap);
+}
+
+int my_xdc_recv(void *socket, void *adu, gaps_tag *tag, codec_map *cmap) {
+    sdh_ha_v1 packet;
+    void *p = &packet;
+    int size = zmq_recv(socket, p, sizeof(sdh_ha_v1), 0);
+    size_t adu_len;
+    my_gaps_data_decode(p, size, adu, &adu_len, tag, cmap);
+    return size;
+}
