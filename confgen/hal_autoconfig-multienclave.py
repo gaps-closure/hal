@@ -25,9 +25,6 @@ import sys
 def is_long_int(i): return False
 libconf.is_long_int = is_long_int
         
-# XXX: ugly, ought not to be global
-dev_lkup = {}
-
 def get_args():
     parser = argparse.ArgumentParser(description='Create HAL configuration file')
     parser.add_argument('-d', '--json_devices_file',  help='Input JSON file name of HAL device conig', type=str, default='device_defs/devices_socat.json')
@@ -120,6 +117,8 @@ def add_ilp(local_enclve_name, d, dev):
 def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     index=0
     hal_config_dev_list = []
+    dev_lkup = {}
+
     for dev in dev_dict['devices']:
         if (args.verbose): print('create_device_cfg:', dev)
         # skip if network device other than tty does not mention local_enclve_name (needed for ilip)
@@ -131,7 +130,6 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
         if 'enabled' in dev: d['enabled'] = dev['enabled']
         else:                d['enabled'] = 1
         d['id']         = 'xdd'+str(index)
-        # XXX: ugly, ought not to be global
         # Use first enabled device for enclave pair
         if 'enclave_name_1' in dev and 'enclave_name_2' in dev and d['enabled'] == 1:
             x = dev['enclave_name_1']
@@ -156,10 +154,10 @@ def create_device_cfg(dev_dict, enc_info, local_enclve_name):
     if (index < 2):
       print('\nEXITING: Could not find device info about enclave', local_enclve_name)
       sys.exit()
-    return (hal_config_dev_list)
+    return (hal_config_dev_list, dev_lkup)
 
 # Create HAL maps as a list of python dictionaries
-def create_maps(local_enclve_name, halmaps, dev_list):
+def create_maps(local_enclve_name, halmaps, dev_list, dev_lkup):
     # Use only first enabled app device 
     for dev in dev_list:
         if (dev['enabled'] == 1):
@@ -179,19 +177,20 @@ def create_maps(local_enclve_name, halmaps, dev_list):
         d['to_typ']   = m['typ']
         d['codec']    = 'NULL'
         
-        dev_net = dev_lkup[(m['from'],m['to'])]
-        if (local_enclve_name == m['from']):
-            d['to_dev']   = dev_net
-            d['from_dev'] = dev_app
-            # print ('d =', d)
-            hal_config_map_list.append(dict(d))
-        elif (local_enclve_name == m['to']):
-            d['to_dev']   = dev_app
-            d['from_dev'] = dev_net
-            # print ('d =', d)
-            hal_config_map_list.append(dict(d))
+        if (m['from'],m['to']) in dev_lkup:
+            dev_net = dev_lkup[(m['from'],m['to'])]
+            if (local_enclve_name == m['from']):
+                d['to_dev']   = dev_net
+                d['from_dev'] = dev_app
+                # print ('d =', d)
+                hal_config_map_list.append(dict(d))
+            elif (local_enclve_name == m['to']):
+                d['to_dev']   = dev_app
+                d['from_dev'] = dev_net
+                # print ('d =', d)
+                hal_config_map_list.append(dict(d))
         else:
-            print ('Skipping entry not germane to %s : %s' % (local_enclve_name, m))
+            print ('Skipping entry, when processing enclave %s : %s' % (local_enclve_name, m))
              
     if (args.verbose): print('MAPs =', hal_config_map_list)
     return(hal_config_map_list)
@@ -224,7 +223,7 @@ if __name__=='__main__':
     for enc_info in map_dict['enclaves']:
         e = enc_info['enclave']
         if (args.verbose):  print ('\nProcessing enclave', e)
-        dev_list = create_device_cfg(dev_dict, enc_info, e)
-        map_list = create_maps(e, enc_info['halmaps'], dev_list)
+        dev_list,dev_lkup = create_device_cfg(dev_dict, enc_info, e)
+        map_list = create_maps(e, enc_info['halmaps'], dev_list, dev_lkup)
         cfg_dict = combine_lists_into_dict(dev_list, map_list)
         write_hal_config_file(op + e + '.cfg', cfg_dict)
