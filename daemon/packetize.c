@@ -12,6 +12,8 @@ int pdu_from_packet(pdu *out, uint8_t *in, int len_in, device *idev) {
     
   out->psel.dev  = strdup(idev->id);
   out->psel.ctag = -1;
+    log_trace("Packizer reads packet from %s of len=%d", idev->model, len_in);
+
     
   if      (strcmp(idev->model, "sdh_ha_v1")    == 0) pdu_len = pdu_from_sdh_ha_v1 (out, in, len_in);
   else if (strcmp(idev->model, "sdh_socat_v1") == 0) pdu_len = pdu_from_sdh_ha_v1 (out, in, len_in);

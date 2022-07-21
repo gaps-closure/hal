@@ -142,10 +142,11 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
   }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
 
-  (idev->count_r)++;
-
-  log_debug("HAL reads  (comms=%s, format=%s) from %s into buffer (ptr=%p, idx=%d): len=%d", com_type, com_model, idev->id, (void *) buf[buf_index], buf_index, *buf_len);
-  log_buf_trace("Read Packet", buf[buf_index], *buf_len);
+  if (*buf_len > 0) {
+    (idev->count_r)++;
+    log_debug("HAL reads  (comms=%s, format=%s) from %s into buffer (ptr=%p, idx=%d): len=%d", com_type, com_model, idev->id, (void *) buf[buf_index], buf_index, *buf_len);
+    log_buf_trace("Read Packet", buf[buf_index], *buf_len);
+  }
   
 //log_trace("mux=%d", *((uint32_t *) buf[buf_index]));
 

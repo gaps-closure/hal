@@ -34,7 +34,7 @@ void child_kill(int pid) {
 
 void socket_kill(int fd) {
   if (fd != -1) {
-    fprintf(stderr, "closing fd=%d\n", fd);
+//    fprintf(stderr, "closing fd=%d\n", fd);
     close (fd);
   }
 }
