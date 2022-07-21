@@ -297,7 +297,7 @@ void create_tcp_listen_thread(device *d) {
 
 /* Open network socket and return its fd: optionally bind (bind_flag=1) and connect (bind_flag=0 & tcp) */
 int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *serv_addr, int bind_flag) {
-  int fd, comm_type;
+  int fd, comm_type, opt = 1;
 
   /* a) Copy IP destination information into sockaddr_in struture */
   serv_addr->sin_family = AF_INET;
@@ -308,12 +308,18 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
     exit(EXIT_FAILURE);
   }
   
-  /* b) Create socket */
+  /* b1) Create socket */
   if ( strcmp(d->comms, "udp") == 0) comm_type = SOCK_DGRAM;
   else                               comm_type = SOCK_STREAM;
   if ((fd = socket(AF_INET, comm_type, 0)) < 0)
   {
     log_fatal("Socket creation error for %s\n", d->id);
+    exit(EXIT_FAILURE);
+  }
+  
+  // b2) Forcefully attaching socket to the port
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+    log_fatal("Socket option error for %s\n", d->id);
     exit(EXIT_FAILURE);
   }
 
