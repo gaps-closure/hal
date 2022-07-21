@@ -49,12 +49,14 @@ typedef struct _dev {
   struct sockaddr_in socaddr_out;
   int         read_fd;     /* I/O handles = file descriptors */
   int         write_fd;
+  int         listen_fd;
   void       *read_soc;    /* I/O handles - ZMQ sockets */
   void       *write_soc;
   int         count_r;     /* total packet counts */
   int         count_w;
   int         pid_in;      /* HAL-ZMQ-API process ids */
   int         pid_out;
+  int         tcp_conn;    /* TCP device that connects to TCP listner */
   struct _dev *next;       /* Deices saved as a linked list */
 } device;
 

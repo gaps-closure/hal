@@ -90,6 +90,7 @@ device *get_devices(config_t *cfg) {
       ret[i].path_w      = get_param_str(dev, "path_w",      1, i);
       ret[i].from_mux    = get_param_int(dev, "from_mux",    1, i);
 
+      ret[i].listen_fd = -1; /* to be set when opened (if tcp) */
       ret[i].read_fd   = -1; /* to be set when opened */
       ret[i].write_fd  = -1; /* to be set when opened */
       ret[i].read_soc  = NULL; /* to be set when opened */
@@ -98,7 +99,9 @@ device *get_devices(config_t *cfg) {
       ret[i].pid_out   = -1; /* to be set when opened */
       ret[i].count_r   =  0;
       ret[i].count_w   =  0;
+      ret[i].tcp_conn  = -1; /* to be set when opened */
 
+//      fprintf(stderr, "LISTEN FD = %d\n", ret[i].listen_fd);
       /*
       for(int j = 0; j < SN_LIST_WINDOW_SIZE; j++) {
         ret[i].sn_list_r[j]=-1;

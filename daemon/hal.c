@@ -32,6 +32,13 @@ void child_kill(int pid) {
   }
 }
 
+void socket_kill(int fd) {
+  if (fd != -1) {
+    fprintf(stderr, "closing fd=%d\n", fd);
+    close (fd);
+  }
+}
+
 /* Signal Handler for SIGINT - print statistics */
 device   *root_dev;
 void sigintHandler(int sig_num)
@@ -44,6 +51,9 @@ void sigintHandler(int sig_num)
       strcat(s, str_new);
       child_kill(d->pid_out);
       child_kill(d->pid_in);
+      socket_kill (d->write_fd);
+      socket_kill (d->read_fd);
+//      socket_kill (d->listen_fd);
     }
   }
   fprintf(stderr, "\nDevice read-write summary: %s\n", s);
