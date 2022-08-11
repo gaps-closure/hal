@@ -94,7 +94,7 @@ uint32_t  mux_2_1 = 2, sec_2_1 = 2, typ_2_1 = DATA_TYP_POSITION;    /* reply tag
 bool any_rx               = false;
 int  rx_count             = 0;
 int  burst_size           = 1;
-int  log_level            = 2;
+int  log_level            = -1;   // default 
 int  enclave              = 1;
 int  reverse_flow         = 0;    // normally enclave1 = client; enclave-2 = server
 int  mode_uni             = 0;    // 0=RPC e1=client, e2=server   (1=UNI: e1=source, e2=sink)
