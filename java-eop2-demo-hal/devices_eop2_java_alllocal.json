@@ -1,0 +1,40 @@
+{
+  "devices": [
+    {
+      "model":    "sdh_ha_v1",
+      "comms":    "zmq",
+      "mode_in":  "sub",
+      "mode_out": "pub"
+    },
+    {
+      "model":          "sdh_bw_v1",
+      "path":           "lo",
+      "comms":          "tcp",
+      "enclave_name_1": "purple_E",
+      "listen_addr_1":  "127.0.0.1",
+      "listen_port_1":  6789,
+      "connect_addr_1": "127.0.0.1",
+      "connect_port_1": 6788,
+      "enclave_name_2":  "orange_E",
+      "listen_addr_2":  "127.0.0.1",
+      "listen_port_2":  6788,
+      "connect_addr_2": "127.0.0.1",
+      "connect_port_2": 6789
+    },
+    {
+      "model":          "sdh_bw_v1",
+      "path":           "lo",
+      "comms":          "tcp",
+      "enclave_name_1": "purple_E",
+      "listen_addr_1":  "127.0.0.1",
+      "listen_port_1":  6791,
+      "connect_addr_1": "127.0.0.1",
+      "connect_port_1": 6790,
+      "enclave_name_2":  "green_E",
+      "listen_addr_2":  "127.0.0.1",
+      "listen_port_2":  6790,
+      "connect_addr_2": "127.0.0.1",
+      "connect_port_2": 6791
+    }
+  ]
+}

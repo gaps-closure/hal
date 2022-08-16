@@ -1,6 +1,6 @@
 /*
  * HAL device read and write (loop)
- *   January 2021, Perspecta Labs
+ *   July 2022, Peratom Labs
  */
 
 /**********************************************************************/
@@ -142,10 +142,11 @@ uint8_t *read_input_dev_into_buffer(device *idev, int *buf_len) {
   }
   else {log_fatal("unknown comms type %s", com_type); exit(EXIT_FAILURE);}
 
-  (idev->count_r)++;
-
-  log_debug("HAL reads  (comms=%s, format=%s) from %s into buffer (ptr=%p, idx=%d): len=%d", com_type, com_model, idev->id, (void *) buf[buf_index], buf_index, *buf_len);
-  log_buf_trace("Read Packet", buf[buf_index], *buf_len);
+  if (*buf_len > 0) {
+    (idev->count_r)++;
+    log_debug("HAL reads  (comms=%s, format=%s) from %s into buffer (ptr=%p, idx=%d): len=%d", com_type, com_model, idev->id, (void *) buf[buf_index], buf_index, *buf_len);
+    log_buf_trace("Read Packet", buf[buf_index], *buf_len);
+  }
   
 //log_trace("mux=%d", *((uint32_t *) buf[buf_index]));
 
@@ -161,7 +162,7 @@ pdu *read_pdu_from_buffer(device *idev, uint8_t *buf, int buf_len, int *pkt_len)
   pdu_ptr = malloc(sizeof(pdu));
   *pkt_len = pdu_from_packet(pdu_ptr, buf, buf_len, idev);
   if  (*pkt_len <= 0) return(NULL);
-  log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", *pkt_len, (void *) buf, buf_len);
+//  log_trace("HAL extracted packet of len=%d from Input buf (%p) of len=%d", *pkt_len, (void *) buf, buf_len);
   log_pdu_trace(pdu_ptr, __func__);
   return(pdu_ptr);
 }
@@ -315,6 +316,7 @@ void create_routing_thread(uint8_t *buf, int buf_len, device *idev, halmap *map,
 /**********************************************************************/
 /* Listen for input from any open device using unix select or zmq poll  */
 /**********************************************************************/
+#ifdef MSELECT
 /* TODOz - replace with ZMQ POLL */
 void select_add(int fd, int *maxrfd, fd_set *readfds){
   if (fd > 0) {
@@ -390,8 +392,46 @@ void read_wait_loop2(device *devs, halmap *map, int hal_wait_us) {
     }
   }
 }
+#endif
 
-int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t *items, int *num_zmq_items) {
+/*
+ * Connect a TCP client device to its remote TCP listener
+ */
+void tcp_connect_now(device *d) {
+  struct sockaddr_in *serv_addr;
+  char   addr[88];
+  
+  serv_addr = &(d->socaddr_out);
+  if(inet_ntop(AF_INET, (const char *) &(serv_addr->sin_addr), addr, 88)<=0) {
+    log_fatal("Invalid address or Address not supported for %s", d->id);
+    exit(EXIT_FAILURE);
+  }
+  log_trace("Attempting to connect to a remote server (%s:%d) using local device %s (fd=%d, type=%s) ", addr, ntohs(serv_addr->sin_port), d->id, d->write_fd, d->comms);
+  while (connect(d->write_fd, (struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0) {
+//    log_trace("Connection failed for %s", d->id);
+    sleep(1);
+  }
+  log_trace("Successfully connected to remote server (%s:%d)", addr, ntohs(serv_addr->sin_port));
+}
+
+/* Connect all INET devices to see if they use TCP clients (and hence need to connect) */
+void tcp_connect_all(device *dev_linked_list_root) {
+  device *d;
+
+  for(d = dev_linked_list_root; d != NULL; d = d->next) {
+//    log_trace("%s listen fd = %d", d->id, d->listen_fd);
+    if ((d->listen_fd) != -1) tcp_connect_now(d);
+  }
+}
+  
+/*
+ * Set the Array structure with the desired input ØMQ socket and standard socket fd
+ * Set the desired event(s) on those sockets.
+ *   ZMQ_POLLIN  - at least one message received may be read without blocking from
+ *                 the a) 0MQ socket or b) the standrd socket fd
+ *   ZMQ_POLLERR - an error exists on the standard socket fd (not on 0MQ)
+ */
+int zmq_poll_init(device *dev_linked_list_root, zmq_pollitem_t items[], int *num_zmq_items) {
   int      i=0;
   char     s[256]="", str_new[64];
   device  *d;                   /*  device pointer */
@@ -427,12 +467,14 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
 #ifdef MSELECT
   read_wait_loop2(devs, map, hal_wait_us);
 #endif
-  int             num_items, num_zmq_items, i, rc;
+  int             num_items, num_zmq_items;  /* number of items in the items array */
   zmq_pollitem_t  items[MAX_POLL_ITEMS];
   device         *idev;
   uint8_t        *buf;
-  int             buf_len;
+  int             buf_len, i, rc;
 
+  tcp_connect_all(devs);
+  sleep(1);
   num_items = zmq_poll_init(devs, items, &num_zmq_items);
   while (1) {     /* Main HAL Loop */
     rc = zmq_poll(items, num_items, -1);    /* Poll for events indefinitely (-1) */
@@ -442,12 +484,13 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
       continue;
     }
     for (i = 0; i < num_items; i++) {
-//      log_trace("Checking device %d", i);
-      if (items[i].revents & ZMQ_POLLIN) {  /* Any returned events (stored in items[].revents)? */
+//      log_trace("device %d - EVENTS=0x%x REVENTS=0x%d", i, items[i].events, items[i].revents);
+      if (items[i].revents & ZMQ_POLLIN) {   /* Data ready to be read */
         if (i < num_zmq_items) idev = find_device_by_read_soc(devs, items[i].socket);
         else                   idev = find_device_by_read_fd (devs, items[i].fd);
-        if (idev == NULL)      log_warn("Device not found for input\n");
+        if (idev == NULL)      log_warn("Device %s not found for input\n", idev);
         else {
+//          log_trace("%s ready to be read", idev->id);
           buf = read_input_dev_into_buffer(idev, &buf_len);
 #ifdef MTHREAD
           create_routing_thread(buf, buf_len, idev, map, devs);
@@ -456,6 +499,7 @@ void read_wait_loop(device *devs, halmap *map, int hal_wait_us) {
 #endif
         }
       }
+//       if (items[j].revents & ZMQ_POLLERR ) {  /* Error on standard fd */
     }
   }
 }

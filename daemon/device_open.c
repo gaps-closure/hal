@@ -11,6 +11,10 @@
 
 #include "hal.h"
 #include "../api/xdcomms.h"
+#include <pthread.h>
+typedef struct _thread_args {
+  device *dev;
+} thread_args;
 
 /* Define IPC parent-child process file descriptors */
 #define PARENT_IN  pipe_a2h[0]
@@ -57,6 +61,7 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_str(fd, "mo", d->mode_out);
   device_print_int(fd, "pi", d->port_in);
   device_print_int(fd, "po", d->port_out);
+  device_print_int(fd, "fl", d->listen_fd);
   device_print_int(fd, "fi", d->read_fd);
   device_print_int(fd, "fo", d->write_fd);
   device_print_ptr(fd, "si", d->read_soc);
@@ -67,6 +72,7 @@ void devices_print_one(device *d, FILE *fd)  {
   device_print_int(fd, "Po", d->pid_out);
   device_print_int(fd, "mx", d->from_mux);
   fprintf(fd, " ci=%d co=%d", d->count_r, d->count_w);
+  device_print_int(fd, "tc", d->tcp_conn);
   fprintf(fd, "]\n");
 }
   
@@ -254,10 +260,45 @@ void interface_open_ipc(device *d) {
 /**********************************************************************/
 /* Open Device; b) INET (TCP or UDP)  */
 /*********t************************************************************/
+/* Listen for TCP connection on device */
+void *tcp_listen_thread(void *vargp) {
+  thread_args                *p = vargp;
+  device                     *d = (p->dev);
+  struct sockaddr_in  *cli_addr = &(d->socaddr_in);
+  socklen_t                 len = sizeof(cli_addr);
+  int                    connfd;
+  
+  if ((listen(d->listen_fd, 5)) < 0) {
+    fprintf(stderr, "Thread listen failed on %s...\n", d->id);
+    exit(0);
+  }
+  log_trace("Server Thread listening on %s (fd=%d) for connection request on TCP port %d", d->id, d->listen_fd, ntohs(d->socaddr_in.sin_port));
+  if ((connfd = accept(d->listen_fd, (struct sockaddr *) cli_addr, &len)) < 0) {
+    fprintf(stderr, "Thread accept failed on %s...\n", d->id);
+    exit(0);
+  }
+  log_trace("Server Thread accepted TCP client on %s (new fd=%d) and exiting thread", d->id, connfd);
+  d->read_fd = connfd;
+  if (d->write_fd == -1) d->write_fd = connfd;
+//  fprintf(stderr, "fd=(l=%d, r=%d, w=%d)\n", d->listen_fd, d->read_fd, d->write_fd);
+  close (d->listen_fd);
+  pthread_exit(NULL);
+}
+
+/* Create thread to listen for TCP connect packets on device (d) */
+void create_tcp_listen_thread(device *d) {
+  thread_args  args;
+  pthread_t    thread_id;             /* structure with thread ID */
+
+  args.dev = d;
+  pthread_create(&thread_id, NULL, tcp_listen_thread, (void *) &args);
+  sleep (1);
+}
+
 /* Open network socket and return its fd: optionally bind (bind_flag=1) and connect (bind_flag=0 & tcp) */
 int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *serv_addr, int bind_flag) {
-  int fd, comm_type;
-  
+  int fd, comm_type, opt = 1;
+
   /* a) Copy IP destination information into sockaddr_in struture */
   serv_addr->sin_family = AF_INET;
   serv_addr->sin_port = htons(port);
@@ -267,50 +308,69 @@ int inet_open_socket(device *d, const char *addr, int port, struct sockaddr_in *
     exit(EXIT_FAILURE);
   }
   
-  /* b) Create socket */
+  /* b1) Create socket */
   if ( strcmp(d->comms, "udp") == 0) comm_type = SOCK_DGRAM;
   else                               comm_type = SOCK_STREAM;
   if ((fd = socket(AF_INET, comm_type, 0)) < 0)
   {
-    log_fatal("\nSocket creation error for %s\n", d->id);
+    log_fatal("Socket creation error for %s\n", d->id);
+    exit(EXIT_FAILURE);
+  }
+  
+  // b2) Forcefully attaching socket to the port
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+    log_fatal("Socket option error for %s\n", d->id);
     exit(EXIT_FAILURE);
   }
 
   // c1) Bind the socket with the HAL server address
   if (bind_flag == 1) {
-    if ( bind(fd, (const struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0 )
+    if (bind(fd, (const struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0 )
     {
-      perror("\nbind failed");
-      printf("%s\n", addr);
+      log_fatal("Bind Failed on ""%s:%d\n", addr, port);
       exit(EXIT_FAILURE);
+    }
+    log_trace("Device %s has a INET %s server listening on %s port %d", d->id, d->comms, addr, port);
+    if ( strcmp(d->comms, "tcp") == 0) {
+      d->listen_fd = fd;
+//      log_trace("Device %s creating a listen thresd", d->id);
+      create_tcp_listen_thread(d);
     }
   }
   /* c2) Connect the socket (if not UDP) */
   else {
-    if ( strcmp(d->comms, "udp") != 0) {
-      if (connect(fd, (struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0)
-      {
-        printf("\nConnection Failed for %s %s\n", d->id, d->path);
-        exit(EXIT_FAILURE);
-      }
+    if ( strcmp(d->comms, "tcp") == 0) {
+      d->tcp_conn = 1;
     }
+    log_trace("Device %s has a INET %s client sending to %s port %d", d->id, d->comms, addr, port);
   }
+
   return(fd);
 }
     
 /* Open a network socket for read-write and store the fds (in the device structure) */
 void interface_open_inet(device *d) {
   int fd_out = -1, fd_in = -1;
-  
+  d->listen_fd = -1;    /* Should not need this ?? (already set in config.c) */
+//  log_trace("xDevice %s has a INET FD-out %d FD-in %d (l=%d, r=%d w=%d)", d->id, fd_out, fd_in, d->listen_fd, d->read_fd, d->write_fd);
+
   /* Create socket and connect if required */
   if (strlen(d->addr_out) > 0) fd_out = inet_open_socket(d, d->addr_out, d->port_out, &(d->socaddr_out), 0);
   if (strlen(d->addr_in)  > 0) fd_in  = inet_open_socket(d, d->addr_in,  d->port_in,  &(d->socaddr_in),  1);
-
+//  log_trace("INET Device %s sending to %s (%s) port %d (%d) "ptr1=%p ptr2=%p", d->id, d->addr_in, &(d->socaddr_out.sin_addr), d->port_out, ntohs(d->socaddr_out.sin_port, &(d->socaddr_out), &(d->socaddr_out.sin_addr));
+  
   /* Save file descriptors */
-  if ( (fd_out == -1) && (fd_in == -1) ) {log_fatal("\nNo address speciffied for interface %s\n", d->id); exit(EXIT_FAILURE);}
-  if ( (fd_out == -1) && (fd_in != -1) ) {d->read_fd = fd_in;  d->write_fd = fd_in;}
-  if ( (fd_out != -1) && (fd_in == -1) ) {d->read_fd = fd_out; d->write_fd = fd_out;}
-  if ( (fd_out != -1) && (fd_in != -1) ) {d->read_fd = fd_in;  d->write_fd = fd_out;}
+  if ( (fd_out == -1) && (fd_in == -1) ) {log_fatal("\nNo address specified for interface %s\n", d->id); exit(EXIT_FAILURE);}
+  if ( (fd_out != -1) && (fd_in == -1) ) {d->read_fd   = fd_out; d->write_fd = fd_out;}
+  if ( (fd_out == -1) && (fd_in != -1) ) {
+    if ( strcmp(d->comms, "tcp") ==  0 ) {d->listen_fd = fd_in;}
+    else                                 {d->read_fd   = fd_in;  d->write_fd = fd_in;}
+  }
+  if ( (fd_out != -1) && (fd_in != -1) ) {
+    if ( strcmp(d->comms, "tcp") ==  0 ) {d->listen_fd = fd_in;  d->write_fd = fd_out;}
+    else                                 {d->read_fd   = fd_in;  d->write_fd = fd_out;}
+  }
+//  log_trace("yDevice %s has a INET FD-out %d FD-in %d (l=%d, r=%d w=%d)", d->id, fd_out, fd_in, d->listen_fd, d->read_fd, d->write_fd);
 }
 
 /**********************************************************************/
@@ -478,7 +538,8 @@ void devices_open(device *dev_linked_list_root) {
     else if   (!strncmp(d->comms, "ilp", 3))                                      interface_open_ilp(d);
     else if   (!strncmp(d->comms, "zmq", 3))                                      interface_open_zmq(d);
     else { log_fatal("Device %s [%s] unknown", d->id, d->comms); exit(EXIT_FAILURE);}
-// fprintf(stderr, "Open succeeded for %s [%s] (with fdr=%d fdw=%d)\n", d->id, d->path, d->read_fd, d->write_fd);
+//    log_trace("Open succeeded for %s (with fdr=%d fdw=%d, Next_ptr=%p)", d->id, d->read_fd, d->write_fd, d->next);
+
   }
   interface_open_ilp(NULL);
 }
