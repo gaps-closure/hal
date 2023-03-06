@@ -24,7 +24,7 @@
       </xsl:when>
       <xsl:otherwise>
         <!-- <xsl:value-of select="concat('Blocking: ', $MUX, ',', $SEC, ',', $TYP)"/> -->
-	<xsl:value-of select=""/>
+	<xsl:value-of select="concat('', '')"/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
