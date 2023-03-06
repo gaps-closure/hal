@@ -23,7 +23,8 @@
         <xsl:apply-templates select="node()"/>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:value-of select="concat('\<!--', 'Blocking: ', $MUX, ',', $SEC, ',', $TYP, ' --\>')"/>
+        <!-- <xsl:value-of select="concat('Blocking: ', $MUX, ',', $SEC, ',', $TYP)"/> -->
+	<xsl:value-of select=""/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
