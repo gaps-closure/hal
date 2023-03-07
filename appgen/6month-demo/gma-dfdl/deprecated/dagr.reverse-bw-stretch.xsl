@@ -1,44 +1,23 @@
 <?xml version="1.0"?>
-<xsl:stylesheet version="1.0" 
-	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-	xmlns:gma="urn:gma:1.0">
-  <xsl:output method="xml" indent="yes"/>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:gma="urn:gma:1.0">
+  <xsl:output method="xml" indent="yes" />
 
-  <xsl:strip-space elements="*"/>
+  <xsl:variable name="M" select="/gma:GapsPDU/gma:SDHBWPDU/gma:SDHBWHeader/tagm" />
+  <xsl:variable name="S" select="/gma:GapsPDU/gma:SDHBWPDU/gma:SDHBWHeader/tags" />
+  <xsl:variable name="T" select="/gma:GapsPDU/gma:SDHBWPDU/gma:SDHBWHeader/tagt" />
 
-  <xsl:template match="@* | node()">
-    <xsl:copy>
-      <xsl:apply-templates select="@* | node()"/>
-    </xsl:copy>
-  </xsl:template>
-
-  <xsl:variable name="MUX" select="/gma:GapsPDU/gma:SDHBWPDU/gma:SDHBWHeader/tagm"/>
-  <xsl:variable name="SEC" select="/gma:GapsPDU/gma:SDHBWPDU/gma:SDHBWHeader/tags"/>
-  <xsl:variable name="TYP" select="/gma:GapsPDU/gma:SDHBWPDU/gma:SDHBWHeader/tagt"/>
-
-  <xsl:template match="/gma:GapsPDU">
+  <!-- process GapsPDU/SDHBWPDU with matching tags, applying additional transforms as needed -->
+  <xsl:template match="node()|@*">
     <xsl:choose>
-      <xsl:when test="($MUX = '2' and $SEC = '2' and $TYP = '1') or ($MUX = '2' and $SEC = '2' and $TYP = '2')">
-        <!-- <xsl:copy-of select="."/> -->
-        <xsl:apply-templates select="node()"/>
-      </xsl:when>
-      <xsl:otherwise>
-        <!-- <xsl:value-of select="concat('Blocking: ', $MUX, ',', $SEC, ',', $TYP)"/> -->
-	<xsl:value-of select="concat('', '')"/>
-      </xsl:otherwise>
+      <xsl:when test="($M = '2' and $S = '2' and $T = '2')"> <xsl:copy> <xsl:apply-templates /> </xsl:copy> </xsl:when>
+      <xsl:when test="($M = '2' and $S = '2' and $T = '1')"> <xsl:copy> <xsl:apply-templates /> </xsl:copy> </xsl:when>
+      <xsl:otherwise />
     </xsl:choose>
   </xsl:template>
 
-  <!-- zeroize Position.z when tag is 2,2,1 -->
-  <xsl:template match="/gma:GapsPDU/gma:SDHBWPDU/gma:Position/z">
-    <xsl:choose>
-      <xsl:when test="$MUX = '2' and $SEC = '2' and $TYP = '1'">
-        <z>0.0</z>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:copy><xsl:value-of select="."/></xsl:copy>
-      </xsl:otherwise>
-    </xsl:choose>
-  </xsl:template>
+  <!-- zeroize the z coordinate of Position -->
+  <xsl:template match="/gma:GapsPDU/gma:SDHBWPDU/gma:Position/z/text()">0.0</xsl:template>
 
 </xsl:stylesheet>
+
+  
