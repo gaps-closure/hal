@@ -81,6 +81,7 @@ OPTIONS: are one of the following:
    1 = only if source is application - read on different node to write
  -n : number of length tests
  -o : source data initialization offset value (before writing)
+ -r : number of test runs for each a) memory pair type, b) payload length and c) copy function
 Experiment IDs (default runs all experiments):
    0 = write to host heap
    1 = read from host heap
@@ -88,7 +89,6 @@ Experiment IDs (default runs all experiments):
    3 = read from host mmap
    4 = write to shared escape mmap
    5 = read from shared escape mmap
- -r : number of test runs for each a) memory pair type, b) payload length and c) copy function
 ```
 
 ## Test Program Results

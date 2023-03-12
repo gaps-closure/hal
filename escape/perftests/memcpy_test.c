@@ -332,6 +332,7 @@ void opts_print(void) {
         );
   printf(" -n : number of length tests\n");
   printf(" -o : source data initialization offset value (before writing)\n");
+  printf(" -r : number of test runs for each a) memory pair type, b) payload length and c) copy function\n");
   printf("Experiment IDs (default runs all experiments):\n"
          "\t 0 = write to host heap\n"
          "\t 1 = read from host heap\n"
@@ -340,7 +341,6 @@ void opts_print(void) {
          "\t 4 = write to shared escape mmap\n"
          "\t 5 = read from shared escape mmap\n"
         );
-  printf(" -r : number of test runs for each a) memory pair type, b) payload length and c) copy function\n");
 }
 
 /* Get script's command line options */
