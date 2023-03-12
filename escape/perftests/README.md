@@ -6,8 +6,8 @@ This directory has software to copy blocks of data between application memory an
 - [TESTBED SETUP](#testbed-setup)
 - [TESTBED CONFIGURATION](#testbed-configuration)
 - [TEST PROGRAM](#test-program)
-- [RUN TEST PROGRAM AND PLOT SCRIPT](#RUN TEST PROGRAM AND PLOT SCRIPT)
-- [EXAMPLE TEST RESULTS](#EXAMPLE TEST RESULTS)
+- [RUN TEST PROGRAM AND PLOT SCRIPT](#run-test-program-and-plot-script)
+- [EXAMPLE TEST RESULTS](#example-test-results)
 
 ## TESTBED SETUP
 The testbed uses the Intel *Extended Secure Capabilities Architecture Platform and Evaluation* System (ESCAPE Box). 
