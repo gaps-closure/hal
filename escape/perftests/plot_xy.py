@@ -48,10 +48,11 @@ def plot_init(mem_type):
 def plot_display_and_save(mem_type):
   plt.legend()
   plt.savefig('fig_' + mem_type.replace(" ", "_" ) + '.png')
-  plt.show()
+  if (args.display): plt.show()
 
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='Plot memory copy throughput against copy size')
+  parser.add_argument('-d', '--display', help='Display results', action='store_true')
   parser.add_argument('-i', '--input_filename', help='Input filename (prefix)', type=str, default='results.csv')
   parser.add_argument('-v', '--verbose', help='Print debug', action='store_true')
   args = parser.parse_args()

@@ -67,6 +67,12 @@ It links with the apex memory copy files: [apex_memmove.c](apex_memmove.c) [apex
 To run the test program and plot the results type:
 ```
 make && sudo ./memcpy_test  
+
+# Run test with greater sampling
+make && sudo ./memcpy_test -r 100
+
+# Run quick tests on just Escape Memory (write and read) with lower sampling
+make && sudo ./memcpy_test -r 2 4 5
 ```
 
 Below shows the list of options the memory copy test program 
@@ -92,11 +98,15 @@ Experiment IDs (default runs all experiments):
 ```
 
 ## EXAMPLE TEST RESULTS
-A simgple python script can plot the results from the ESCAPE test program: [results.csv](results.csv): The script [plot_xy.py](plot_xy.py) will both display the plots and save them into files.
+A simgple python script can plot the results from the ESCAPE test program: [results.csv](results.csv).
+The script [plot_xy.py](plot_xy.py) will save the results into files: e.g., [(fig_App_writes_to_escape-mmap.png](fig_App_writes_to_escape-mmap.png].
 
 To run the plot script simply type:
 ```
 python3 plot_xy.py 
+
+# To display the results one at a time
+python3 plot_xy.py -d
 ```
 Current example plot result from a single ESCAPE box are shown below:
 
