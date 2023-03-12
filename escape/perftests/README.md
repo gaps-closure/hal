@@ -41,7 +41,18 @@ To see
 
 
 ## TEST Program
-Current results are shown below
+Current example results are shown below
 
 ![x](fig_App_reads_from_escape-mmap.png "App reads from escape-mmap")
-!(fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
+*Plot Title*
+
+![x](fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
+
+![x](fig_App_reads_from_host-heap.png "App reads from host-heap")
+
+![x](fig_App_writes_to_host-heap.png "App writes to host-heap")
+
+![x](fig_App_reads_from_escape-mmap.png "App reads from escape-mmap")
+
+![x](fig_App_writes_to_host-mmap.png "App writes to escape-mmap")
+
