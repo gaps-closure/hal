@@ -43,21 +43,20 @@ The test program runs memory throughput test for varying
 3. Copy functions.
 
 There are currently six Memory pair types. The application data is always on the host heap (using malloc()). The applicaiton will both read and write to/from one of three memory types:
-1. Host heap: using malloc() from host memory).
-2. Host mmap: using mmap() from host memory).
-3. ESCAPE mmap: using mmap() from FPGA memory). 
+1. Host heap: using malloc() from host memory.
+2. Host mmap: using mmap() from host memory.
+3. ESCAPE mmap: using mmap() from FPGA memory. 
 
 Payload length are (by default) a range of lengths up to 16 GB (except for host mmap memory, which linux limits the allowed size)
 
 The test program uses three copy functions:
-1. glibc memory copy: memcpy()
-2. naive memory copy: using incrementing unsigned long C pointers (*d++ = *s++)
+1. glibc memory copy: memcpy().
+2. naive memory copy: using incrementing unsigned long C pointers (*d++ = *s++).
 3. Apex memory copy: https://www.codeproject.com/Articles/1110153/Apex-memmove-the-fastest-memcpy-memmove-on-x-x-EVE
 
-- 
 
 ## Running the Test Program and plot script
-The ESCAPE test program is in a singlefile: *memory_test.c*
+The ESCAPE test program is in a singlefile: [memory_test.c](memory_test.c)
 
 It links with the apex memory copy files: *apex_memmove.{c,h}*
 
@@ -68,6 +67,28 @@ To run the test program and plot the results type:
 ```
 make && sudo ./memcpy_test  
 python3 plot_xy.py 
+```
+
+Below shows the list of options the memory copy test program 
+```
+amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ ./memcpy_test -h
+Memory speed test for GAPS CLOSURE project
+Usage: ./escape_test [OPTIONS]... [Experiment ID List]
+OPTIONS: are one of the following:
+ -h : print this message
+ -i : which source data is initialized
+   0 = all sources (default)
+   1 = only if source is application - read on different node to write
+ -n : number of length tests
+ -o : source data initialization offset value (before writing)
+Experiment IDs (default runs all experiments):
+   0 = write to host heap
+   1 = read from host heap
+   2 = write to host mmap
+   3 = read from host mmap
+   4 = write to shared escape mmap
+   5 = read from shared escape mmap
+ -r : number of test runs for each a) memory pair type, b) payload length and c) copy function
 ```
 
 ## Test Program Results
