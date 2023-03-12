@@ -14,6 +14,7 @@
 
 // 1) experiment iteration parameters
 #define DEFAULT_TEST_RUNS      5                // Number of iterations for given types, lengths and copy-func
+#define DEF_NUM_PAYLOAD_LEN    9                // Default Number of payload lengths (in list)
 #define MAX_NUM_PAYLOAD_LEN    10               // MAX Number of payload lengths (in list)
 static unsigned long  payload_len_list[MAX_NUM_PAYLOAD_LEN] = {0x10, 0x100, 0x400, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000, 0x1000000, 0x10000000};
 
@@ -330,7 +331,7 @@ void opts_print(void) {
          "\t 0 = all sources (default)\n"
          "\t 1 = only if source is application - read on different node to write\n"
         );
-  printf(" -n : number of length tests\n");
+  printf(" -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
   printf(" -o : source data initialization offset value (before writing)\n");
   printf(" -r : number of test runs for each a) memory pair type, b) payload length and c) copy function\n");
   printf("Experiment IDs (default runs all experiments):\n"
@@ -361,6 +362,7 @@ void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, i
         break;
       case 'n':
         *payload_len_num = atoi(optarg);
+        if ((*payload_len_num) > MAX_NUM_PAYLOAD_LEN) *payload_len_num = DEF_NUM_PAYLOAD_LEN;
         break;
       case 'o':
         *data_offset = atoi(optarg);
@@ -396,13 +398,13 @@ void config_print(int data_offset, int source_init, int payload_len_num, int num
 /* Run Shared Memory Experiment */
 int main(int argc, char *argv[]) {
   int  num_mem_pairs;
-  int  anon            = 0;                 // default to not backed by a file
-  int  data_offset     = 0;                 // default to data bytes start at 0
-  int  source_init     = 0;                 // default to initialize all sources
-  int  payload_len_num = 9;                 // default to first nine lengths
-  int  mem_pair_list[MAX_MEM_PAIRS];        // List of memory pair indexes to run
-  int  num_test_runs   = DEFAULT_TEST_RUNS; // default to first nine lengths
-  FILE *fptr;                               // file pointer to work with files
+  int  anon            = 0;                    // default to not backed by a file
+  int  data_offset     = 0;                    // default to data bytes start at 0
+  int  source_init     = 0;                    // default to initialize all sources
+  int  payload_len_num = DEF_NUM_PAYLOAD_LEN;  // default to first nine lengths
+  int  mem_pair_list[MAX_MEM_PAIRS];           // List of memory pair indexes to run
+  int  num_test_runs   = DEFAULT_TEST_RUNS;    // default to first nine lengths
+  FILE *fptr;                                  // file pointer to work with files
   
   get_options(argc, argv, mem_pair_list, &data_offset, &source_init, &payload_len_num, &num_test_runs, &num_mem_pairs, &anon);
   config_print(data_offset, source_init, payload_len_num, num_test_runs, num_mem_pairs, mem_pair_list);

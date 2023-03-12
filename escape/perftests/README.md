@@ -79,7 +79,7 @@ OPTIONS: are one of the following:
  -i : which source data is initialized
    0 = all sources (default)
    1 = only if source is application - read on different node to write
- -n : number of length tests
+ -n : number of length tests (default=9, maximum = 10)
  -o : source data initialization offset value (before writing)
  -r : number of test runs for each a) memory pair type, b) payload length and c) copy function
 Experiment IDs (default runs all experiments):
