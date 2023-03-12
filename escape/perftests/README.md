@@ -1,5 +1,5 @@
 ## Escape Performance Testing
-This directory has software to copy blocks of data between application memory and mmapped ESCAPE shared memory, both on a single linux desktop and between two linux desktops. It compares ESCAPE performance with the performance when: a) using heap or mmapped memory on a single linux desktop, and b) the maximum memory bandwidth.
+This directory has software and example results of raw memory copy performance on the ESCAPE Box, without CLOSURE/HAL. 
 
 ## Contents
 
@@ -39,12 +39,13 @@ The resulting memory map for each laptop is shown in the figure below
 ![x](escape_box_linux_memory_map.png "Escape Box Memory Map")
 
 ## TEST PROGRAM
-The test program runs memory throughput test for varying 
-1. Memory pair types.
-2. Payload lengths.
-3. Copy functions.
+The test program can run both a single ESCAPE box or between the two ESCAPE box machines (*escape-green* and *escape-orange*). It test memory throughput for varying:
+1. Memory Pair Types
+2. Payload Lengths.
+3. Copy Functions.
 
-There are currently six Memory pair types. The application data is always on the host heap (using malloc()). The applicaiton will both read and write to/from one of three memory types:
+There are currently six Memory pair types. The application data is always on the host heap (created using glibc malloc()). 
+The applicaiton will read (or write) from (or to) one of three memory types:
 1. Host heap: using malloc() from host memory.
 2. Host mmap: using mmap() from host memory.
 3. ESCAPE mmap: using mmap() from FPGA memory. 
@@ -57,18 +58,15 @@ The test program uses three copy functions:
 3. Apex memory copy: https://www.codeproject.com/Articles/1110153/Apex-memmove-the-fastest-memcpy-memmove-on-x-x-EVE
 
 
-## RUN TEST PROGRAM AND PLOT SCRIPT
-The ESCAPE test program is in a singlefile: [memory_test.c](memory_test.c)
+It compares ESCAPE performance with the performance when: a) using heap or mmapped memory on a single linux desktop, and b) the maximum memory bandwidth.
 
-It links with the apex memory copy files: *apex_memmove.{c,h}*
-
-A simgple python script to plot the results from the ESCAPE test program (results.csv) is in the file: *plot_xy.py*
-It both displays the plots and saves them to files.
+## RUN TEST PROGRAM
+The ESCAPE test program is in a singlefile: [memcpy_test.c](memcpy_test.c)
+It links with the apex memory copy files: [apex_memmove.c](apex_memmove.c) [apex_memmove.h](apex_memmove.h)
 
 To run the test program and plot the results type:
 ```
 make && sudo ./memcpy_test  
-python3 plot_xy.py 
 ```
 
 Below shows the list of options the memory copy test program 
@@ -94,7 +92,13 @@ Experiment IDs (default runs all experiments):
 ```
 
 ## EXAMPLE TEST RESULTS
-Current example results from a single ESCAPE box are shown below:
+A simgple python script can plot the results from the ESCAPE test program: [results.csv](results.csv): The script [plot_xy.py](plot_xy.py) will both display the plots and save them into files.
+
+To run the plot script simply type:
+```
+python3 plot_xy.py 
+```
+Current example plot result from a single ESCAPE box are shown below:
 
 ![x](fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
 
