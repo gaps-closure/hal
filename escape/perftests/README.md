@@ -34,7 +34,7 @@ GRUB_CMDLINE_LINUX="memmap=16G\\\$130G"
 
 The resulting memory map for each laptop is shown in the figure below 
 
-![escape box memory map](escape_box_linux_memory_map.jpg "Escape Box Memory Map")
+![x](escape_box_linux_memory_map.png "Escape Box Memory Map")
 
 ## TEST Program
 To see 
@@ -43,16 +43,26 @@ To see
 ## TEST Program
 Current example results are shown below
 
-![x](fig_App_reads_from_escape-mmap.png "App reads from escape-mmap")
-*Plot Title*
-
 ![x](fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
 
-![x](fig_App_reads_from_host-heap.png "App reads from host-heap")
+*App writes to escape-mmap*
+
+![x](fig_App_reads_from_escape-mmap.png "App reads from escape-mmap")
+
+*App reads from escape-mmap*
 
 ![x](fig_App_writes_to_host-heap.png "App writes to host-heap")
 
-![x](fig_App_reads_from_escape-mmap.png "App reads from escape-mmap")
+*App writes to host-heap*
+
+![x](fig_App_reads_from_host-heap.png "App reads from host-heap")
+
+*App reads from escape-mmap*
 
 ![x](fig_App_writes_to_host-mmap.png "App writes to escape-mmap")
 
+*App writes to host-mmap*
+
+![x](fig_App_reads_from_host-mmap.png "App reads from host-mmap")
+
+*App reads from escape-mmap*
