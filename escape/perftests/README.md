@@ -75,6 +75,8 @@ make && sudo ./memcpy_test -r 100
 make && sudo ./memcpy_test -r 2 4 5
 ```
 
+The results will be store in a csv-formatted file: [results.csv](results.csv)
+
 Below shows the list of options the memory copy test program 
 ```
 amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ ./memcpy_test -h
@@ -98,8 +100,8 @@ Experiment IDs (default runs all experiments):
 ```
 
 ## EXAMPLE TEST RESULTS
-A simgple python script can plot the results from the ESCAPE test program: [results.csv](results.csv).
-The script [plot_xy.py](plot_xy.py) will save the results into files: e.g., [(fig_App_writes_to_escape-mmap.png](fig_App_writes_to_escape-mmap.png].
+A simgple python script can plot the results [results.csv](results.csv) from the ESCAPE test program.
+The script [plot_xy.py](plot_xy.py) will save each greaph into a separate files: e.g., [(fig_App_writes_to_escape-mmap.png](fig_App_writes_to_escape-mmap.png].
 
 To run the plot script simply type:
 ```
