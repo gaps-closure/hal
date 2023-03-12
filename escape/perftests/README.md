@@ -3,11 +3,11 @@ This directory has software to copy blocks of data between application memory an
 
 ## Contents
 
-- [ESCAPE LINUX CONFIGURATION](#escape-linux-config)
+- [TESTBED SETUP](#testbed-setup)
 - [TEST PROGRAM](#test-program)
 
 
-## TESTBED CONFIGURATION
+## TESTBED SETUP
 The testbed uses the Intel *Extended Secure Capabilities Architecture Platform and Evaluation* System (ESCAPE Box). 
 The system consists of two (Trenton single blade servers) laptops *escape-green* and *escape-orange*. 
 
@@ -37,32 +37,50 @@ The resulting memory map for each laptop is shown in the figure below
 ![x](escape_box_linux_memory_map.png "Escape Box Memory Map")
 
 ## TEST Program
-To see 
+The test program runs memory throughput test for varying 
+1. Memory pair types.
+2. Payload lengths.
+3. Copy functions.
 
+There are currently six Memory pair types. The application data is always on the host heap (using malloc()). The applicaiton will both read and write to/from one of three memory types:
+1. Host heap: using malloc() from host memory).
+2. Host mmap: using mmap() from host memory).
+3. ESCAPE mmap: using mmap() from FPGA memory). 
 
-## TEST Program
-Current example results are shown below
+Payload length are (by default) a range of lengths up to 16 GB (except for host mmap memory, which linux limits the allowed size)
+
+The test program uses three copy functions:
+1. glibc memory copy: memcpy()
+2. naive memory copy: using incrementing unsigned long C pointers (*d++ = *s++)
+3. Apex memory copy: https://www.codeproject.com/Articles/1110153/Apex-memmove-the-fastest-memcpy-memmove-on-x-x-EVE
+
+- 
+
+## Running the Test Program and plot script
+The ESCAPE test program is in a singlefile: *memory_test.c*
+
+It links with the apex memory copy files: *apex_memmove.{c,h}*
+
+A simgple python script to plot the results from the ESCAPE test program (results.csv) is in the file: *plot_xy.py*
+It both displays the plots and saves them to files.
+
+To run the test program and plot the results type:
+```
+make && sudo ./memcpy_test  
+python3 plot_xy.py 
+```
+
+## Test Program Results
+Current example results from a single ESCAPE box are shown below:
 
 ![x](fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
 
-*App writes to escape-mmap*
-
 ![x](fig_App_reads_from_escape-mmap.png "App reads from escape-mmap")
-
-*App reads from escape-mmap*
 
 ![x](fig_App_writes_to_host-heap.png "App writes to host-heap")
 
-*App writes to host-heap*
-
 ![x](fig_App_reads_from_host-heap.png "App reads from host-heap")
-
-*App reads from escape-mmap*
 
 ![x](fig_App_writes_to_host-mmap.png "App writes to escape-mmap")
 
-*App writes to host-mmap*
-
 ![x](fig_App_reads_from_host-mmap.png "App reads from host-mmap")
-
-*App reads from escape-mmap*
