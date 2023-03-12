@@ -4,8 +4,10 @@ This directory has software to copy blocks of data between application memory an
 ## Contents
 
 - [TESTBED SETUP](#testbed-setup)
+- [TESTBED CONFIGURATION](#testbed-configuration)
 - [TEST PROGRAM](#test-program)
-
+- [RUN TEST PROGRAM AND PLOT SCRIPT](#RUN TEST PROGRAM AND PLOT SCRIPT)
+- [EXAMPLE TEST RESULTS](#EXAMPLE TEST RESULTS)
 
 ## TESTBED SETUP
 The testbed uses the Intel *Extended Secure Capabilities Architecture Platform and Evaluation* System (ESCAPE Box). 
@@ -16,7 +18,7 @@ The system consists of two (Trenton single blade servers) laptops *escape-green*
 Each laptop can access 16GB of shared memory on an FPGA card. 
 The FPGA shared memory access is controled through a rule table within the FPGA, which can be configured to control which areas of memory that can be read and written by each laptop.
 
-### Grub
+## TESTBED CONFIGURATION
 The two laptops have Ubuntu 20.04.1 OS, with a 64-bit memory bus connected to 130 GB of local DDR4 memory with Bandwidth of 2933 MT/s. 
 Each laptop therefore has a memory bandwidth of 2.933 x 8 = 23.46 GB/s.
 Below shows the memory configuration file to add the 16 GB of FPGA shared memory and the resulting memory layout
@@ -36,7 +38,7 @@ The resulting memory map for each laptop is shown in the figure below
 
 ![x](escape_box_linux_memory_map.png "Escape Box Memory Map")
 
-## TEST Program
+## TEST PROGRAM
 The test program runs memory throughput test for varying 
 1. Memory pair types.
 2. Payload lengths.
@@ -55,7 +57,7 @@ The test program uses three copy functions:
 3. Apex memory copy: https://www.codeproject.com/Articles/1110153/Apex-memmove-the-fastest-memcpy-memmove-on-x-x-EVE
 
 
-## Running the Test Program and plot script
+## RUN TEST PROGRAM AND PLOT SCRIPT
 The ESCAPE test program is in a singlefile: [memory_test.c](memory_test.c)
 
 It links with the apex memory copy files: *apex_memmove.{c,h}*
@@ -91,7 +93,7 @@ Experiment IDs (default runs all experiments):
    5 = read from shared escape mmap
 ```
 
-## Test Program Results
+## EXAMPLE TEST RESULTS
 Current example results from a single ESCAPE box are shown below:
 
 ![x](fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
