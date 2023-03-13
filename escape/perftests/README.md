@@ -16,7 +16,7 @@ The system consists of two (Trenton single blade servers) laptops *escape-green*
 [1] Intel, "Extended Secure Capabilities Architecture Platform and Evaluation (ESCAPE) System Bring Up Document," February 17, 2022.
 
 Each laptop can access 16GB of shared memory on an FPGA card. 
-The FPGA shared memory access is controled through a rule table within the FPGA, which can be configured to control which areas of memory that can be read and written by each laptop.
+The FPGA shared memory access is controlled through a rule table within the FPGA, which can be configured to control which areas of memory that can be read and written by each laptop.
 
 ## TESTBED CONFIGURATION
 The two laptops have Ubuntu 20.04.1 OS, with a 64-bit memory bus connected to 130 GB of local DDR4 memory with Bandwidth of 2933 MT/s. 
@@ -134,8 +134,8 @@ The results will also be store in a csv-formatted file: [results.csv](results.cs
 
 
 ## PLOT TEST RESULTS
-A simgple python script can plot the results [results.csv](results.csv) from the ESCAPE test program.
-The script [plot_xy.py](plot_xy.py) will save each greaph into a separate files: e.g., [(fig_App_writes_to_escape-mmap.png](fig_App_writes_to_escape-mmap.png].
+A small python script can plot the results [results.csv](results.csv) from the ESCAPE test program.
+The script [plot_xy.py](plot_xy.py) will save each graph into a separate files: e.g., [(fig_App_writes_to_escape-mmap.png](fig_App_writes_to_escape-mmap.png].
 
 To run the plot script simply type:
 ```
