@@ -7,7 +7,7 @@ This directory has software and example results of raw memory copy performance o
 - [TESTBED CONFIGURATION](#testbed-configuration)
 - [TEST PROGRAM](#test-program)
 - [RUN TEST PROGRAM AND PLOT SCRIPT](#run-test-program-and-plot-script)
-- [EXAMPLE TEST RESULTS](#example-test-results)
+- [PLOT TEST RESULTS](#plot-test-results)
 
 ## TESTBED SETUP
 The testbed uses the Intel *Extended Secure Capabilities Architecture Platform and Evaluation* System (ESCAPE Box). 
@@ -75,8 +75,6 @@ make && sudo ./memcpy_test -r 100
 make && sudo ./memcpy_test -r 2 4 5
 ```
 
-The results will be store in a csv-formatted file: [results.csv](results.csv)
-
 Below shows the list of options the memory copy test program 
 ```
 amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ ./memcpy_test -h
@@ -99,7 +97,43 @@ Experiment IDs (default runs all experiments):
    5 = read from shared escape mmap
 ```
 
-## EXAMPLE TEST RESULTS
+The test results are printed on the terminal. Below shows an example for a small run:
+```
+amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ sudo ./memcpy_test -n 3 0 1
+PAGE_MASK=0x00000fff data_off=0 source_init=0 payload_len_num=3 runs=5 num_mem_pairs=2 [ 0 1 ]
+App Memory uses host Heap [len=0x10000000 Bytes] at virtual address 0x7fc37325a010
+--------------------------------------------------------------------------------------
+    sour data [len=0x10000000 bytes]: 0x fffefdfcfbfaf9f8 f7f6f5f4f3f2f1f0 ... 1716151413121110 f0e0d0c0b0a0908 706050403020100
+0) App writes to host-heap (fd=-1, vir-addr=0x7fc363259010, phy-addr=0x0, len=268.435456 MB)
+      16 bytes using glibc_memcpy =   0.364 GB/s (5 runs: ave delta = 0.000000044 secs)
+      16 bytes using naive_memcpy =   0.556 GB/s (5 runs: ave delta = 0.000000029 secs)
+      16 bytes using  apex_memcpy =   0.136 GB/s (5 runs: ave delta = 0.000000118 secs)
+     256 bytes using glibc_memcpy =   3.488 GB/s (5 runs: ave delta = 0.000000073 secs)
+     256 bytes using naive_memcpy =   5.470 GB/s (5 runs: ave delta = 0.000000047 secs)
+     256 bytes using  apex_memcpy =   2.500 GB/s (5 runs: ave delta = 0.000000102 secs)
+    1024 bytes using glibc_memcpy =  15.059 GB/s (5 runs: ave delta = 0.000000068 secs)
+    1024 bytes using naive_memcpy =  14.105 GB/s (5 runs: ave delta = 0.000000073 secs)
+    1024 bytes using  apex_memcpy =  18.963 GB/s (5 runs: ave delta = 0.000000054 secs)
+    dest data [len=0x400 bytes]: 0x fffefdfcfbfaf9f8 f7f6f5f4f3f2f1f0 ... 1716151413121110 f0e0d0c0b0a0908 706050403020100
+--------------------------------------------------------------------------------------
+    sour data [len=0x10000000 bytes]: 0x fffefdfcfbfaf9f8 f7f6f5f4f3f2f1f0 ... 1716151413121110 f0e0d0c0b0a0908 706050403020100
+1) App reads from host-heap (fd=-1, vir-addr=0x7fc363259010, phy-addr=0x0, len=268.435456 MB)
+      16 bytes using glibc_memcpy =   1.013 GB/s (5 runs: ave delta = 0.000000016 secs)
+      16 bytes using naive_memcpy =   0.305 GB/s (5 runs: ave delta = 0.000000052 secs)
+      16 bytes using  apex_memcpy =   0.415 GB/s (5 runs: ave delta = 0.000000039 secs)
+     256 bytes using glibc_memcpy =   7.232 GB/s (5 runs: ave delta = 0.000000035 secs)
+     256 bytes using naive_memcpy =   8.205 GB/s (5 runs: ave delta = 0.000000031 secs)
+     256 bytes using  apex_memcpy =   3.325 GB/s (5 runs: ave delta = 0.000000077 secs)
+    1024 bytes using glibc_memcpy =  12.518 GB/s (5 runs: ave delta = 0.000000082 secs)
+    1024 bytes using naive_memcpy =  14.670 GB/s (5 runs: ave delta = 0.000000070 secs)
+    1024 bytes using  apex_memcpy =  27.676 GB/s (5 runs: ave delta = 0.000000037 secs)
+    dest data [len=0x400 bytes]: 0x fffefdfcfbfaf9f8 f7f6f5f4f3f2f1f0 ... 1716151413121110 f0e0d0c0b0a0908 706050403020100
+```
+
+The results will also be store in a csv-formatted file: [results.csv](results.csv)
+
+
+## PLOT TEST RESULTS
 A simgple python script can plot the results [results.csv](results.csv) from the ESCAPE test program.
 The script [plot_xy.py](plot_xy.py) will save each greaph into a separate files: e.g., [(fig_App_writes_to_escape-mmap.png](fig_App_writes_to_escape-mmap.png].
 

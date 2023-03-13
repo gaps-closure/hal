@@ -1,5 +1,5 @@
-// Memory Speed Tests varying memory pair types, payload lengths and copy functions
-//    March 10, 2023
+// Memory Speed Tests varying memory type-pairs, copy sizes and copy algorithms.
+//    March 13, 2023
 // Usage:  ./memcpy_test -h
 
 #include <stdio.h>
@@ -13,28 +13,28 @@
 #include "apex_memmove.h" // memcpyA
 
 // 1) experiment iteration parameters
-#define DEFAULT_TEST_RUNS      5                // Number of iterations for given types, lengths and copy-func
-#define DEF_NUM_PAYLOAD_LEN    9                // Default Number of payload lengths (in list)
-#define MAX_NUM_PAYLOAD_LEN    10               // MAX Number of payload lengths (in list)
-static unsigned long  payload_len_list[MAX_NUM_PAYLOAD_LEN] = {0x10, 0x100, 0x400, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000, 0x1000000, 0x10000000};
+#define DEFAULT_TEST_RUNS      5          // Iterations per type-pair, copy size, copy algorithm
+#define DEF_NUM_PAYLOAD_LEN    9          // Default Number of copy sizes
+#define MAX_NUM_PAYLOAD_LEN    10         // MAX Number of copy sizes (in list)
+static unsigned long  copy_size_list[MAX_NUM_PAYLOAD_LEN] = {0x10, 0x100, 0x400, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000, 0x1000000, 0x10000000};
 
 
 // 2) Memory allocation parameters
-//#define LEN_HOST_HEAP        0x10000000UL     // 256 MB (mmap param #2)
-//#define LEN_HOST_MMAP        0x100000UL       // 1   MB  (<= 0x100000  allowed for /dev/mem)  XXX Fails
-//#define LEN_HOST_HEAP        0x1000000UL      // 16  MB (<= 0x1000000 prevents memcpy buf overflow)
-#define LEN_HOST_HEAP        0x10000000UL     // 256  MB (<= 0x1000000 prevents memcpy buf overflow)
-#define LEN_HOST_MMAP        0x80000UL        // 0.5 MB
-#define LEN_ESCA_MMAP        0x10000000UL     // 256 MB
-#define PAGE_MASK            (sysconf(_SC_PAGE_SIZE) - 1)    // Normally 4K - 1
-#define MMAP_ADDR_ESCAPE     0x2080000000UL   // mmap physical memory address @ 130 GB
-#define MMAP_ADDR_HOST       0x0UL            // System selectsmmap physical memory address
+//#define LEN_HOST_HEAP      0x10000000UL     // 256 MB (mmap param #2)
+//#define LEN_HOST_MMAP      0x100000UL       // 1   MB  (<= 0x100000  allowed for /dev/mem)  XXX Fails
+//#define LEN_HOST_HEAP      0x1000000UL      // 16  MB (<= 0x1000000 prevents memcpy buf overflow)
+#define LEN_HOST_HEAP      0x10000000UL     // 256  MB (<= 0x1000000 prevents memcpy buf overflow)
+#define LEN_HOST_MMAP      0x80000UL        // 0.5 MB
+#define LEN_ESCA_MMAP      0x10000000UL     // 256 MB
+#define PAGE_MASK          (sysconf(_SC_PAGE_SIZE) - 1)    // Normally 4K - 1
+#define MMAP_ADDR_ESCAPE   0x2080000000UL   // mmap physical memory address @ 130 GB
+#define MMAP_ADDR_HOST     0x0UL            // System selectsmmap physical memory address
 
 // 3) Other
-#define BYTES_PER_WORD       (sizeof(unsigned long)/sizeof(char))
-#define MAX_MEM_PAIRS        6                 // Number of memory type combos: 4,5 only on escape boxes
-#define MAX_NAME_LEN         32
-#define BILLION              1000000000
+#define BYTES_PER_WORD     (sizeof(unsigned long)/sizeof(char))
+#define MAX_MEM_PAIRS      6                // Number of memory type combos: 4,5 only on escape boxes
+#define MAX_NAME_LEN       32
+#define BILLION            1000000000
 #define FATAL do { fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", \
     __LINE__, __FILE__, errno, strerror(errno)); exit(1); } while(0)
 
@@ -102,13 +102,6 @@ void clear_data(char *d, unsigned long len_in_bytes) {
 //  print_data(__func__, d - len_in_bytes, len_in_bytes);
 }
 
-// no longer used (faster?)
-void clear_data2(char *d, unsigned long len_in_bytes) {
-  unsigned long   len_in_words=len_in_bytes/BYTES_PER_WORD;
-  unsigned long  *w = (unsigned long *) d;
-  for (int i = 0; i < len_in_words; i++) *w++ = 0;
-}
-
 //**************************************************************************************
 // C) Test with different memcpy memthods and different payload lengths
 //**************************************************************************************
@@ -154,19 +147,19 @@ void batch_tests_for_given_length(char *destin, char *source, unsigned long payl
           
 
 // X axis payload: 16B, 256B, 1024B, 4KB, 64KB (video demo), 1MB, 4MB, 16MB  (>= 0x28UL to print data)
-void run_per_payload_length(char *source, char *destin, int data_offset, unsigned long pa_map_length, int payload_len_num, int num_test_runs, unsigned long  *payload_len_list, FILE *fptr, char *mem_pair_label) {
+void run_per_payload_length(char *source, char *destin, int data_offset, unsigned long pa_map_length, int payload_len_num, int num_test_runs, unsigned long  *copy_size_list, FILE *fptr, char *mem_pair_label) {
 
 #ifdef DEBUG
   fprintf(stderr, "%s\n", __func__);
 #endif // DEBUG
   for (int indexL=0; indexL<payload_len_num; indexL++) {
-    if (payload_len_list[indexL] > pa_map_length) {
-      fprintf(stderr, "    Cannot run test with payload length (0x%lx) > mapped length (0x%lx)\n", payload_len_list[indexL], pa_map_length);
+    if (copy_size_list[indexL] > pa_map_length) {
+      fprintf(stderr, "    Cannot run test with payload length (0x%lx) > mapped length (0x%lx)\n", copy_size_list[indexL], pa_map_length);
       break;
     }
-    batch_tests_for_given_length(destin, source, payload_len_list[indexL], fptr, mem_pair_label, num_test_runs);
+    batch_tests_for_given_length(destin, source, copy_size_list[indexL], fptr, mem_pair_label, num_test_runs);
   }
-  print_data("    dest", destin, payload_len_list[payload_len_num-1]);
+  print_data("    dest", destin, copy_size_list[payload_len_num-1]);
 }
 
 //**************************************************************************************
@@ -228,9 +221,10 @@ void mem_deallocate(int fd, void *pa_virt_addr, unsigned long pa_map_length) {
   else        free(pa_virt_addr);
 }
 
-// Open shared memory of different types for source (read) or destination (write)
-//   mem: host DDR heap, host DDR mmap, ESCAPE device DDR mmap
-//   op: read, write, write then read from other side
+// Open shared memory for source (read) or destination (write)
+//   applic memory: host DDR heap
+//   shared memory: host DDR heap, host DDR mmap, or ESCAPE device DDR mmap
+//   operation:     application writes or reads from shared memory
 void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source, char **destin, int data_offset, int source_init, int anon, int *fd, void **pa_virt_addr, unsigned long *pa_map_length, int *payload_len_num) {
   
   *fd = -1;
@@ -238,7 +232,7 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
     case 0:
       strcpy(mem_pair_label, "App writes to host-heap");
       *pa_map_length = LEN_HOST_HEAP;
-      *source        = app_mem;                               // Source of write is applicaiton memory
+      *source        = app_mem;                               // Source of write is app memory
       set_data(*source, *pa_map_length, data_offset);
       if ((*destin = malloc(*pa_map_length)) == NULL) FATAL;  // Destimation of write in host heap
       log_results(indexM, mem_pair_label, fd, *destin, 0, *pa_map_length);
@@ -249,16 +243,16 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
       *pa_map_length = LEN_HOST_HEAP;
       if ((*source = malloc(*pa_map_length)) == NULL) FATAL;  // Source of read is host heap
       if (source_init==0) set_data(*source, *pa_map_length, data_offset);
-      *destin = app_mem;                             // Destimation of read is applicaiton memory
+      *destin = app_mem;                                      // Destimation of read is app memory
       log_results(indexM, mem_pair_label, fd, *source, 0, *pa_map_length);
-      *pa_virt_addr = *source;   /* for free() */
+      *pa_virt_addr = *source;                                // for free()
       break;
     case 2:
       strcpy(mem_pair_label, "App writes to host-mmap");
       *pa_map_length = LEN_HOST_MMAP;
-      *source = app_mem;                                                     // Source of write is app mem
+      *source = app_mem;                                      // Source of write is app mem
       set_data(*source, *pa_map_length, data_offset);
-      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, anon); // write to host mmap
+      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, anon); // to host mmap
       log_results(indexM, mem_pair_label, fd, *destin, 0, *pa_map_length);
       break;
     case 3:
@@ -266,15 +260,15 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
       *pa_map_length = LEN_HOST_MMAP;
       *source = mmalloc(PROT_READ | PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, anon); // Source of write is host mmap
       if (source_init==0) set_data(*source, *pa_map_length, data_offset);
-      *destin = app_mem;                                                     // Write to app memory
+      *destin = app_mem;                                       // Write to app memory
       log_results(indexM, mem_pair_label, fd, *source, 0, *pa_map_length);
       break;
     case 4:
       strcpy(mem_pair_label, "App writes to escape-mmap");
       *pa_map_length = LEN_ESCA_MMAP;
-      *source = app_mem;                                                     // Source of write is app mem
+      *source = app_mem;                                        // Source of write is app mem
       set_data(*source, *pa_map_length, data_offset);
-      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, anon); // write to ESCAPE mmap
+      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, anon); // to ESCAPE mmap
       log_results(indexM, mem_pair_label, fd, *destin, MMAP_ADDR_ESCAPE, *pa_map_length);
       break;
     case 5:
@@ -282,7 +276,7 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
       *pa_map_length = LEN_ESCA_MMAP;
       *source = mmalloc(PROT_READ | PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, anon); // Write to ESCAPE mmap
       if (source_init==0) set_data(*source, *pa_map_length, data_offset);
-      *destin = app_mem;                             // Destimation of write is applicaiton memory
+      *destin = app_mem;                             // Destimation of write is app memory
       log_results(indexM, mem_pair_label, fd, *source, MMAP_ADDR_ESCAPE, *pa_map_length);
       break;
     default:
@@ -291,7 +285,7 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
   }
 }
 
-// Test with different Memory types (host heap, host mmap, escape mmap)
+// Test with application (on host heap) writing or reading to/from host heap, host mmap, or escape mmap
 void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offset, int source_init, int payload_len_num, int num_test_runs, int anon, FILE *fptr) {
   int            i, fd = -1;
   void          *pa_virt_addr;
@@ -303,14 +297,13 @@ void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offs
   for (i=0; i<num_mem_pairs; i++) {
     fprintf(stderr, "--------------------------------------------------------------------------------------\n");
     mem_allocate(mem_pair_list[i], mem_pair_label, app_mem, &source, &destin, data_offset, source_init, anon, &fd, &pa_virt_addr, &pa_map_length, &payload_len_num);
-    run_per_payload_length(source, destin, data_offset, pa_map_length, payload_len_num, num_test_runs, payload_len_list, fptr, mem_pair_label);
+    run_per_payload_length(source, destin, data_offset, pa_map_length, payload_len_num, num_test_runs, copy_size_list, fptr, mem_pair_label);
 #ifdef DEBUG
     fprintf(stderr, "Deallocating memroy: fd=%d pa_virt_addr=%p pa_map_len=%ld mem_typ_pair_indexM=%d\n", fd, pa_virt_addr, pa_map_length, mem_pair_list[i]);
 #endif // DEBUG
     mem_deallocate(fd, pa_virt_addr, pa_map_length);
   }
 }
-
 
 //**************************************************************************************
 // E) Get user options for test
@@ -329,12 +322,12 @@ void opts_print(void) {
   printf(" -h : print this message\n");
   printf(" -i : which source data is initialized\n"
          "\t 0 = all sources (default)\n"
-         "\t 1 = only if source is application - read on different node to write\n"
+         "\t 1 = only if source is application - so can read on different node to write\n"
         );
   printf(" -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
   printf(" -o : source data initialization offset value (before writing)\n");
   printf(" -r : number of test runs for each a) memory pair type, b) payload length and c) copy function\n");
-  printf("Experiment IDs (default runs all experiments):\n"
+  printf("Experiment IDs (default = all) is for application data (on host heap) to:\n"
          "\t 0 = write to host heap\n"
          "\t 1 = read from host heap\n"
          "\t 2 = write to host mmap\n"
