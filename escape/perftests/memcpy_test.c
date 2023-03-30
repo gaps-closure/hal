@@ -1,5 +1,5 @@
 // Memory Speed Tests varying memory type-pairs, copy sizes and copy algorithms.
-//    March 13, 2023
+//    March 24, 2023
 // Usage:  ./memcpy_test -h
 
 #include <stdio.h>
@@ -11,13 +11,14 @@
 #include <errno.h>
 #include <sys/mman.h>     // mmap
 #include "apex_memmove.h" // memcpyA
+#include "thread_pool.h"  // Thread pool and Job Queue
 
 // 1) experiment iteration parameters
 #define DEFAULT_TEST_RUNS      5          // Iterations per type-pair, copy size, copy algorithm
 #define DEF_NUM_PAYLOAD_LEN    9          // Default Number of copy sizes
 #define MAX_NUM_PAYLOAD_LEN    10         // MAX Number of copy sizes (in list)
 static unsigned long  copy_size_list[MAX_NUM_PAYLOAD_LEN] = {0x10, 0x100, 0x400, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000, 0x1000000, 0x10000000};
-
+static char           copy_type_label_list[] = {'g', 'n', 'a'};  // glibc_memcpy, naive_memcpy, apex_memcpy
 
 // 2) Memory allocation parameters
 //#define LEN_HOST_HEAP      0x10000000UL     // 256 MB (mmap param #2)
@@ -26,9 +27,9 @@ static unsigned long  copy_size_list[MAX_NUM_PAYLOAD_LEN] = {0x10, 0x100, 0x400,
 #define LEN_HOST_HEAP      0x10000000UL     // 256  MB (<= 0x1000000 prevents memcpy buf overflow)
 #define LEN_HOST_MMAP      0x80000UL        // 0.5 MB
 #define LEN_ESCA_MMAP      0x10000000UL     // 256 MB
-#define PAGE_MASK          (sysconf(_SC_PAGE_SIZE) - 1)    // Normally 4K - 1
 #define MMAP_ADDR_ESCAPE   0x2080000000UL   // mmap physical memory address @ 130 GB
 #define MMAP_ADDR_HOST     0x0UL            // System selectsmmap physical memory address
+#define PAGE_MASK          (sysconf(_SC_PAGE_SIZE) - 1)    // Normally 4K - 1
 
 // 3) Other
 #define BYTES_PER_WORD     (sizeof(unsigned long)/sizeof(char))
@@ -37,6 +38,8 @@ static unsigned long  copy_size_list[MAX_NUM_PAYLOAD_LEN] = {0x10, 0x100, 0x400,
 #define BILLION            1000000000
 #define FATAL do { fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", \
     __LINE__, __FILE__, errno, strerror(errno)); exit(1); } while(0)
+
+extern int jobCount;
 
 //#define DEBUG
 //#define PRINT_DATA
@@ -66,14 +69,14 @@ void print_delta(char cpy_type[MAX_NAME_LEN], unsigned long delta_nsec, unsigned
   }
 }
 
-void write_delta(char cpy_type[MAX_NAME_LEN], unsigned long delta_nsec, unsigned long bytes_per_run, int num_runs, FILE *fptr, char *mem_pair_label) {
+void write_delta(char cpy_type[MAX_NAME_LEN], unsigned long delta_nsec, unsigned long bytes_per_run, int num_runs, FILE *fptr, char *mem_pair_label, int thread_count) {
   if (delta_nsec > 0) {
-    fprintf(fptr, "%s, %ld, %s, %.3f, %d\n", mem_pair_label, bytes_per_run, cpy_type, get_rate(bytes_per_run, num_runs, delta_nsec), num_runs);
+    fprintf(fptr, "%s,%ld,%s,%.3f,%d,%d\n", mem_pair_label, bytes_per_run, cpy_type, get_rate(bytes_per_run, num_runs, delta_nsec), num_runs, thread_count);
   }
 }
 
 void write_header(FILE *fptr) {
-  fprintf(fptr, "Experiment Description, Copy lenth (Bytes), Copy Type, Throughput (Gbps), Number of Runs\n");
+  fprintf(fptr, "Experiment Description, Copy lenth (Bytes), Copy Type, Throughput (GBps), Number of Runs, Number of Threads\n");
 }
 
 //**************************************************************************************
@@ -103,51 +106,113 @@ void clear_data(char *d, unsigned long len_in_bytes) {
 }
 
 //**************************************************************************************
-// C) Test with different memcpy memthods and different payload lengths
+// C) Process Copy Test Job for different memory copy functions (possibly using a Thread pool)
 //**************************************************************************************
 // Dumb memory copy using 8-byte words
 void naive_memcpy(unsigned long *d, const unsigned long *s, unsigned long len_in_words) {
   for (int i = 0; i < len_in_words; i++) *d++ = *s++;
 }
 
-void process_results(unsigned long payload_len, FILE *fptr, char *mem_pair_label, struct timespec ts, struct timespec te, char *cpy_type, char *destin, int num_test_runs) {
-  unsigned long    delta_nsec=0;
+void job_execute(Job *j1) {
+#ifdef DEBUG
+  fprintf(stderr, "%s type=%c: %p <- %p (l=%d)\n", __func__, j1->type, j1->destin, j1->source, j1->length);
+#endif // DEBUG
+  switch (j1->type) {
+    case 'a':
+      apex_memcpy(j1->destin, j1->source, j1->length);
+      break;
+    case 'g':
+      memcpy(j1->destin, j1->source, j1->length);
+      break;
+    case 'n':
+      naive_memcpy((unsigned long *) j1->destin, (const unsigned long *) j1->source, (j1->length)/BYTES_PER_WORD);
+      break;
+    default:
+      fprintf(stderr, "Unknown type - %c\n", j1->type);
+      exit(1);
+  }
+}
 
+void s2d_with_threads(char type, int num_test_runs, char *destin, char *source, unsigned long payload_len, int thread_count) {
+  Job  j1;  // Job description (contains its operation and i/o parameters)
+
+  j1.type   = type;
+  j1.destin = destin;
+  j1.source = source;
+  j1.length = payload_len;
+  for (int j=0; j < num_test_runs; j++) job_push(j1);             //  copy jobs into job queue
+#ifdef DEBUG
+  fprintf(stderr, "%s type=%c n=%d: %p <- %p (l=%d) total jobs=%d\n", __func__, j1.type, num_test_runs, j1.destin, j1.source, j1.length, jobCount);
+#endif // DEBUG
+  job_wait_until_done(thread_count);
+}
+
+void s2d_without_threads(char type, int num_test_runs, char *destin, char *source, unsigned long payload_len) {
+  switch (type) {
+    case 'a':
+      for (int j=0; j < num_test_runs; j++) apex_memcpy(destin, source, payload_len);
+      break;
+    case 'g':
+      for (int j=0; j < num_test_runs; j++) memcpy(destin, source, payload_len);
+      break;
+    case 'n':
+      for (int j=0; j < num_test_runs; j++) naive_memcpy((unsigned long *) destin, (const unsigned long *) source, payload_len/BYTES_PER_WORD);
+      break;
+    default:
+      fprintf(stderr, "Unknown type - %c\n", type);
+      exit(1);
+  }
+}
+
+void copy_source2destin(char type, int num_test_runs, char *destin, char *source, unsigned long payload_len, int thread_count) {
+  if (thread_count <= 0) s2d_without_threads(type, num_test_runs, destin, source, payload_len);
+  else                      s2d_with_threads(type, num_test_runs, destin, source, payload_len, thread_count);
+}
+
+//**************************************************************************************
+// D) Test with different payload lengths
+//**************************************************************************************
+void process_results(char type, int num_test_runs, int thread_count, char *destin, unsigned long payload_len, FILE *fptr, char *mem_pair_label, struct timespec ts, struct timespec te) {
+  unsigned long    delta_nsec=0;
+  
+  // a) get label for copy type
+  char    cpy_type[] = "glibc_memcpy";
+  switch (type) {
+    case 'a':
+      strcpy(cpy_type, " apex_memcpy");
+      break;
+    case 'n':
+      strcpy(cpy_type, "naive_memcpy");
+      break;
+  }
+  
+  // b) Calculate delta and print/write results
   get_delta(ts, te, &delta_nsec);
   print_delta(cpy_type, delta_nsec, payload_len, num_test_runs);
-  write_delta(cpy_type, delta_nsec, payload_len, num_test_runs, fptr, mem_pair_label);
+  write_delta(cpy_type, delta_nsec, payload_len, num_test_runs, fptr, mem_pair_label, thread_count);
 #ifdef PRINT_DATA
   print_data("memcpy1", destin, payload_len);
 #endif // PRINT_DATA
 //  clear_data(destin, payload_len);
 }
 
-// Different memcpy methods
-void batch_tests_for_given_length(char *destin, char *source, unsigned long payload_len, FILE *fptr, char *mem_pair_label, int num_test_runs) {
+// Run for each memory copy method
+void batch_tests_for_given_length(char *destin, char *source, unsigned long payload_len, FILE *fptr, char *mem_pair_label, int num_test_runs, int thread_count) {
   struct timespec  ts, te;
-  
+
 #ifdef DEBUG
   fprintf(stderr, "%s: L=0x%lx d=%p s=%p d-s=0x%x\n", __func__, payload_len, destin, source, abs((int) (destin - source)));
 #endif // DEBUG
-  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);         // nanosecond clock
-  for (int j=0; j < num_test_runs; j++) memcpy(destin, source, payload_len);
-  clock_gettime(CLOCK_MONOTONIC_RAW, &te);
-  process_results(payload_len, fptr, mem_pair_label, ts, te, "glibc_memcpy", destin, num_test_runs);
-          
-  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-  for (int j=0; j < num_test_runs; j++) naive_memcpy((unsigned long *) destin, (const unsigned long *) source, payload_len/BYTES_PER_WORD);
-  clock_gettime(CLOCK_MONOTONIC_RAW, &te);
-  process_results(payload_len, fptr, mem_pair_label, ts, te, "naive_memcpy", destin, num_test_runs);
-
-  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-  for (int j=0; j < num_test_runs; j++) apex_memcpy(destin, source, payload_len);
-  clock_gettime(CLOCK_MONOTONIC_RAW, &te);
-  process_results(payload_len, fptr, mem_pair_label, ts, te, " apex_memcpy", destin, num_test_runs);
+  for(int i=0; i < sizeof(copy_type_label_list); i++) {
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);         // nanosecond clock
+    copy_source2destin(copy_type_label_list[i], num_test_runs, destin, source, payload_len, thread_count);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &te);
+    process_results(copy_type_label_list[i], num_test_runs, thread_count, destin, payload_len, fptr, mem_pair_label, ts, te);
+  }
 }
-          
 
 // X axis payload: 16B, 256B, 1024B, 4KB, 64KB (video demo), 1MB, 4MB, 16MB  (>= 0x28UL to print data)
-void run_per_payload_length(char *source, char *destin, int data_offset, unsigned long pa_map_length, int payload_len_num, int num_test_runs, unsigned long  *copy_size_list, FILE *fptr, char *mem_pair_label) {
+void run_per_payload_length(char *source, char *destin, int data_offset, unsigned long pa_map_length, int payload_len_num, int num_test_runs, unsigned long  *copy_size_list, FILE *fptr, char *mem_pair_label, int thread_count) {
 
 #ifdef DEBUG
   fprintf(stderr, "%s\n", __func__);
@@ -157,13 +222,13 @@ void run_per_payload_length(char *source, char *destin, int data_offset, unsigne
       fprintf(stderr, "    Cannot run test with payload length (0x%lx) > mapped length (0x%lx)\n", copy_size_list[indexL], pa_map_length);
       break;
     }
-    batch_tests_for_given_length(destin, source, copy_size_list[indexL], fptr, mem_pair_label, num_test_runs);
+    batch_tests_for_given_length(destin, source, copy_size_list[indexL], fptr, mem_pair_label, num_test_runs, thread_count);
   }
   print_data("    dest", destin, copy_size_list[payload_len_num-1]);
 }
 
 //**************************************************************************************
-// D) Allocate (and deallocate) different memory types
+// E) Allocate (and deallocate) different memory types
 //**************************************************************************************
 // Close shared mmap memory
 void mmdealloc(int fd, void *pa_virt_addr, unsigned long pa_map_length) {
@@ -286,7 +351,7 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
 }
 
 // Test with application (on host heap) writing or reading to/from host heap, host mmap, or escape mmap
-void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offset, int source_init, int payload_len_num, int num_test_runs, int anon, FILE *fptr) {
+void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offset, int source_init, int payload_len_num, int num_test_runs, int thread_count, int anon, FILE *fptr) {
   int            i, fd = -1;
   void          *pa_virt_addr;
   unsigned long  pa_map_length;
@@ -297,16 +362,19 @@ void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offs
   for (i=0; i<num_mem_pairs; i++) {
     fprintf(stderr, "--------------------------------------------------------------------------------------\n");
     mem_allocate(mem_pair_list[i], mem_pair_label, app_mem, &source, &destin, data_offset, source_init, anon, &fd, &pa_virt_addr, &pa_map_length, &payload_len_num);
-    run_per_payload_length(source, destin, data_offset, pa_map_length, payload_len_num, num_test_runs, copy_size_list, fptr, mem_pair_label);
+    run_per_payload_length(source, destin, data_offset, pa_map_length, payload_len_num, num_test_runs, copy_size_list, fptr, mem_pair_label, thread_count);
 #ifdef DEBUG
-    fprintf(stderr, "Deallocating memroy: fd=%d pa_virt_addr=%p pa_map_len=%ld mem_typ_pair_indexM=%d\n", fd, pa_virt_addr, pa_map_length, mem_pair_list[i]);
+    fprintf(stderr, "Deallocating memory: fd=%d pa_virt_addr=%p pa_map_len=%ld mem_typ_pair_indexM=%d\n", fd, pa_virt_addr, pa_map_length, mem_pair_list[i]);
 #endif // DEBUG
+    fprintf(stderr, "Deallocating memory: fd=%d pa_virt_addr=%p pa_map_len=0x%lx mem_typ_pair_indexM=%d\n", fd, pa_virt_addr, pa_map_length, mem_pair_list[i]);
+
     mem_deallocate(fd, pa_virt_addr, pa_map_length);
+    fprintf(stderr, "%s Done\n", __func__);
   }
 }
 
 //**************************************************************************************
-// E) Get user options for test
+// F) Get user options for test
 //**************************************************************************************
 void init_mem_pair_list(int *mem_pair_list, int *num_mem_pairs) {
   for (; *num_mem_pairs<MAX_MEM_PAIRS; (*num_mem_pairs)++) {
@@ -326,7 +394,7 @@ void opts_print(void) {
         );
   printf(" -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
   printf(" -o : source data initialization offset value (before writing)\n");
-  printf(" -r : number of test runs for each a) memory pair type, b) payload length and c) copy function\n");
+  printf(" -r : number of test runs per a) memory pair type, b) payload length and c) copy function (default=%d)\n", DEFAULT_TEST_RUNS);
   printf("Experiment IDs (default = all) is for application data (on host heap) to:\n"
          "\t 0 = write to host heap\n"
          "\t 1 = read from host heap\n"
@@ -335,13 +403,15 @@ void opts_print(void) {
          "\t 4 = write to shared escape mmap\n"
          "\t 5 = read from shared escape mmap\n"
         );
+  printf(" -t : number of worker threads in thread pool (default=0)\n");
+
 }
 
 /* Get script's command line options */
-void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, int *source_init, int *payload_len_num, int *num_test_runs, int *num_mem_pairs, int *anon) {
+void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, int *source_init, int *payload_len_num, int *num_test_runs, int *num_mem_pairs, int *thread_count, int *anon) {
   int  opt;
   
-  while((opt = getopt(argc, argv, ":ahi:n:o:r:")) != EOF) {
+  while((opt = getopt(argc, argv, ":ahi:n:o:r:t:")) != EOF) {
     switch (opt) {
       case 'a':
         *anon = 1;
@@ -363,6 +433,9 @@ void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, i
       case 'r':
         *num_test_runs = atoi(optarg);
         break;
+      case 't':
+        *thread_count = atoi(optarg);
+        break;
       case ':':
         fprintf(stderr, "Option -%c needs a value\n", optopt);
         opts_print();
@@ -380,30 +453,32 @@ void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, i
   if (*num_mem_pairs == 0) init_mem_pair_list(mem_pair_list, num_mem_pairs);  // set default
 }
 
-void config_print(int data_offset, int source_init, int payload_len_num, int num_test_runs, int num_mem_pairs, int *mem_pair_list) {
+void config_print(int data_offset, int source_init, int payload_len_num, int num_test_runs, int num_mem_pairs, int *mem_pair_list, int thread_count) {
   int i;
   
-  fprintf(stderr, "PAGE_MASK=0x%08lx data_off=%d source_init=%d payload_len_num=%d runs=%d num_mem_pairs=%d [ ", PAGE_MASK, data_offset, source_init, payload_len_num, num_test_runs, num_mem_pairs);
+  fprintf(stderr, "PAGE_MASK=0x%08lx data_off=%d source_init=%d payload_len_num=%d runs=%d thread count=%d num_mem_pairs=%d [ ", PAGE_MASK, data_offset, source_init, payload_len_num, num_test_runs, thread_count, num_mem_pairs);
   for (i=0; i<num_mem_pairs; i++) fprintf(stderr, "%d ", mem_pair_list[i]);
   fprintf(stderr, "]\n");
 }
 
 /* Run Shared Memory Experiment */
 int main(int argc, char *argv[]) {
-  int  num_mem_pairs;
-  int  anon            = 0;                    // default to not backed by a file
-  int  data_offset     = 0;                    // default to data bytes start at 0
-  int  source_init     = 0;                    // default to initialize all sources
-  int  payload_len_num = DEF_NUM_PAYLOAD_LEN;  // default to first nine lengths
-  int  mem_pair_list[MAX_MEM_PAIRS];           // List of memory pair indexes to run
-  int  num_test_runs   = DEFAULT_TEST_RUNS;    // default to first nine lengths
-  FILE *fptr;                                  // file pointer to work with files
+  FILE *fptr;                                  // file pointer for result file
+  int   num_mem_pairs;
+  int   anon            = 0;                    // default to not backed by a file
+  int   data_offset     = 0;                    // default to data bytes start at 0
+  int   source_init     = 0;                    // default to initialize all sources
+  int   payload_len_num = DEF_NUM_PAYLOAD_LEN;  // default to first nine lengths
+  int   mem_pair_list[MAX_MEM_PAIRS];           // List of memory pair indexes to run
+  int   num_test_runs   = DEFAULT_TEST_RUNS;    // default to first nine lengths
+  int   thread_count    = 0;                    // default is to have no worker threads
   
-  get_options(argc, argv, mem_pair_list, &data_offset, &source_init, &payload_len_num, &num_test_runs, &num_mem_pairs, &anon);
-  config_print(data_offset, source_init, payload_len_num, num_test_runs, num_mem_pairs, mem_pair_list);
-  fptr = fopen("results.csv", "w");   // opening file in writing mode
-  write_header(fptr);
-  run_per_mem_type_pair(mem_pair_list, num_mem_pairs, data_offset, source_init, payload_len_num, num_test_runs, anon, fptr);
+  get_options(argc, argv, mem_pair_list, &data_offset, &source_init, &payload_len_num, &num_test_runs, &num_mem_pairs, &thread_count, &anon);
+  config_print(data_offset, source_init, payload_len_num, num_test_runs, num_mem_pairs, mem_pair_list, thread_count);
+  fptr = fopen("results.csv", "w");            // opening results file in write mode
+  write_header(fptr);                          // row[0] is the label for each column
+  if (thread_count > 0) thread_pool_create (thread_count);
+  run_per_mem_type_pair(mem_pair_list, num_mem_pairs, data_offset, source_init, payload_len_num, num_test_runs, thread_count, anon, fptr);
   fclose(fptr);
   return 0;
 }
