@@ -1,5 +1,6 @@
 ## Escape Performance Testing
-This directory has software and example results of raw memory copy performance on the ESCAPE Box, without CLOSURE/HAL. 
+This directory has scripts to measure and plot raw memory copy performance on the Intel ESCAPE Box, 
+without CLOSURE/HAL. 
 
 ## Contents
 
@@ -11,7 +12,7 @@ This directory has software and example results of raw memory copy performance o
 
 ## TESTBED SETUP
 The testbed uses the Intel *Extended Secure Capabilities Architecture Platform and Evaluation* System (ESCAPE Box). 
-The system consists of two (Trenton single blade servers) laptops *escape-green* and *escape-orange*. 
+The system consists of two laptops (Trenton single blade servers):  *escape-green* and *escape-orange*. 
 
 [1] Intel, "Extended Secure Capabilities Architecture Platform and Evaluation (ESCAPE) System Bring Up Document," February 17, 2022.
 
@@ -39,43 +40,44 @@ The resulting memory map for each laptop is shown in the figure below
 ![x](escape_box_linux_memory_map.png "Escape Box Memory Map")
 
 ## TEST PROGRAM
-The test program can run both a single ESCAPE box or between the two ESCAPE box machines (*escape-green* and *escape-orange*). It test memory throughput for varying:
+The test program can run both a single ESCAPE box or between the two ESCAPE boxes (*escape-green* and *escape-orange*). It tests memory throughput for varying:
 1. Memory Pair Types
 2. Payload Lengths.
 3. Copy Functions.
+4. Number of worker threads.
 
-There are currently six Memory pair types. The application data is always on the host heap (created using glibc malloc()). 
-The applicaiton will read (or write) from (or to) one of three memory types:
-1. Host heap: using malloc() from host memory.
-2. Host mmap: using mmap() from host memory.
-3. ESCAPE mmap: using mmap() from FPGA memory. 
+The test runs between application and one of three types of shared memory. 
+1. Host heap:   using malloc() from host memory.
+2. Host mmap:   using open() and mmap() of host memory.
+3. ESCAPE mmap: using open() and mmap() of FPGA memory. 
+The application (source or destination) data is always on the host heap (created using malloc()). 
 
-Payload length are (by default) a range of lengths up to 16 GB (except for host mmap memory, which linux limits the allowed size)
-
-The test program uses three copy functions:
+The applicaiton will read (or write) from (or to) the shared memory, creating a six experiemnt types (2 (read or write) x 3 (memory types) = 6)
+For each of the six experiment types, it runs a range of Payload length up to 16 GB (except for host mmap memory, which linux limits up to 512K). 
+The test program also tests using three copy functions:
 1. glibc memory copy: memcpy().
 2. naive memory copy: using incrementing unsigned long C pointers (*d++ = *s++).
 3. Apex memory copy: https://www.codeproject.com/Articles/1110153/Apex-memmove-the-fastest-memcpy-memmove-on-x-x-EVE
 
+For each length it runs tests 5 times or as specified by the test script parameter: see [TEST PROGRAM PARAMETERS](#test-program-parameters)
 
-It compares ESCAPE performance with the performance when: a) using heap or mmapped memory on a single linux desktop, and b) the maximum memory bandwidth.
 
 ## RUN TEST PROGRAM
 The ESCAPE test program is in a singlefile: [memcpy_test.c](memcpy_test.c)
 It links with the apex memory copy files: [apex_memmove.c](apex_memmove.c) [apex_memmove.h](apex_memmove.h)
-
-To run the test program and plot the results type:
+It outputs results into a single file: by default *results.csv*
+To run the test program:
 ```
 make && sudo ./memcpy_test  
 
 # Run test with greater sampling
-make && sudo ./memcpy_test -r 100
+make && sudo ./memcpy_test -r 1000
 
 # Run quick tests on just Escape Memory (write and read) with lower sampling
 make && sudo ./memcpy_test -r 2 4 5
 ```
 
-Below shows the list of options the memory copy test program 
+### TEST PROGRAM PARAMETERS
 ```
 amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ ./memcpy_test -h
 Memory speed test for GAPS CLOSURE project
@@ -144,7 +146,8 @@ python3 plot_xy.py
 # To display the results one at a time
 python3 plot_xy.py -d
 ```
-Current example plot result from a single ESCAPE box are shown below:
+Example plots from a single ESCAPE box are shown below, showing writing
+and reading from each type of shared memory:
 
 ![x](fig_App_writes_to_escape-mmap.png "App writes to escape-mmap")
 
@@ -157,3 +160,11 @@ Current example plot result from a single ESCAPE box are shown below:
 ![x](fig_App_writes_to_host-mmap.png "App writes to escape-mmap")
 
 ![x](fig_App_reads_from_host-mmap.png "App reads from host-mmap")
+
+Two recent (May 2023) ESACPE memory performance plots are shown below.
+These include perfromance improvements from a) removing file 
+synchronization and b) Using all the CPUs on the ESCAPE BOX:
+
+![x](example_ESCAPE_write_plot_using_48cpus.png "ESCAPE writes")
+
+![x](example_ESCAPE_read_plot_using_48cpus.png "ESCAPE reads")

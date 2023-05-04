@@ -254,7 +254,8 @@ char *mmalloc(int protection, unsigned long phys_addr, int *fd, void **pa_virt_a
 //  flags |= MAP_PRIVATE | MAP_POPULATE | MAP_LOCKED;
 
   if (anon > 0) flags |= MAP_ANONYMOUS;
-  if((*fd = open("/dev/mem", O_RDWR | O_SYNC)) == -1) FATAL;
+//  if((*fd = open("/dev/mem", O_RDWR | O_SYNC)) == -1) FATAL;
+  if((*fd = open("/dev/mem", O_RDWR)) == -1) FATAL;     // Higher perfromance by removing file sync
   pa_phys_addr   = phys_addr & ~PAGE_MASK;    // Align physical addr (offset) to be at multiple of page size.
   *pa_map_length = (*pa_map_length) + phys_addr - pa_phys_addr;     // Increase len due to phy addr alignment
   *pa_virt_addr  = mmap(0, *pa_map_length, protection, flags, *fd, pa_phys_addr);
