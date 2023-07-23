@@ -1,6 +1,14 @@
-// Memory Speed Tests varying memory type-pairs, copy sizes and copy algorithms.
-//    March 24, 2023
-// Usage:  ./memcpy_test -h
+// Memory Speed Tests between application and shared memory for different:
+//   a) memory type-pairs: host, mmap and ESCAPE FPGA,
+//   b) data lengths
+//   c) copy algorithms: glibc_memcpy, naive_memcpy, apex_memcpy
+
+// July 19, 2023
+//   Usage:  ./memcpy_test -h
+
+// Test sync (changing value of -o option to see when orange receives from green)
+// amcauley@escape-green:~/gaps/build/hal/escape/perftests$ sudo ./memcpy_test -z 1 -n 1 -r 1 -o 4  4
+// amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ sudo memtest 0x2080000000 32 w r
 
 #include <stdio.h>
 #include <string.h>
@@ -164,9 +172,29 @@ void s2d_without_threads(char type, int num_test_runs, char *destin, char *sourc
   }
 }
 
-void copy_source2destin(char type, int num_test_runs, char *destin, char *source, unsigned long payload_len, int thread_count) {
-  if (thread_count <= 0) s2d_without_threads(type, num_test_runs, destin, source, payload_len);
-  else                      s2d_with_threads(type, num_test_runs, destin, source, payload_len, thread_count);
+void s2d_with_sleep(int fd, int num_test_runs, char *destin, char *source, unsigned long payload_len, int sleep_seconds) {
+//  void *base = (void *) destin;
+//  int rv;
+  
+  for (int j=0; j < payload_len; j++) {
+    fprintf(stderr, "%s: j = %d of %ld (z=%d) %p <- %p\n", __func__, j, payload_len, sleep_seconds, destin, source);
+    memcpy(destin++, source++, 4);
+    sleep(sleep_seconds);
+    // Try to synchronize - neither fsync nor msync work with /dev/mem
+//    if (j%4 == 3) {
+//      rv = fsync(fd);
+//      if ((rv = msync(base, 4096, MS_SYNC)) < 0) {
+//        perror("msync");
+//        exit(1);
+//      }
+  }
+
+}
+
+void copy_source2destin(char type, int num_test_runs, char *destin, char *source, unsigned long payload_len, int thread_count, int sleep_seconds, int fd) {
+  if (sleep_seconds > 0)           s2d_with_sleep(fd,   num_test_runs, destin, source, payload_len, sleep_seconds);
+  else if (thread_count <= 0) s2d_without_threads(type, num_test_runs, destin, source, payload_len);
+  else                           s2d_with_threads(type, num_test_runs, destin, source, payload_len, thread_count);
 }
 
 //**************************************************************************************
@@ -197,7 +225,7 @@ void process_results(char type, int num_test_runs, int thread_count, char *desti
 }
 
 // Run for each memory copy method
-void batch_tests_for_given_length(char *destin, char *source, unsigned long payload_len, FILE *fptr, char *mem_pair_label, int num_test_runs, int thread_count) {
+void batch_tests_for_given_length(char *destin, char *source, unsigned long payload_len, FILE *fptr, char *mem_pair_label, int num_test_runs, int thread_count, int sleep_seconds, int fd) {
   struct timespec  ts, te;
 
 #ifdef DEBUG
@@ -205,14 +233,14 @@ void batch_tests_for_given_length(char *destin, char *source, unsigned long payl
 #endif // DEBUG
   for(int i=0; i < sizeof(copy_type_label_list); i++) {
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);         // nanosecond clock
-    copy_source2destin(copy_type_label_list[i], num_test_runs, destin, source, payload_len, thread_count);
+    copy_source2destin(copy_type_label_list[i], num_test_runs, destin, source, payload_len, thread_count, sleep_seconds, fd);
     clock_gettime(CLOCK_MONOTONIC_RAW, &te);
     process_results(copy_type_label_list[i], num_test_runs, thread_count, destin, payload_len, fptr, mem_pair_label, ts, te);
   }
 }
 
 // X axis payload: 16B, 256B, 1024B, 4KB, 64KB (video demo), 1MB, 4MB, 16MB  (>= 0x28UL to print data)
-void run_per_payload_length(char *source, char *destin, int data_offset, unsigned long pa_map_length, int payload_len_num, int num_test_runs, unsigned long  *copy_size_list, FILE *fptr, char *mem_pair_label, int thread_count) {
+void run_per_payload_length(char *source, char *destin, int data_offset, unsigned long pa_map_length, int payload_len_num, int num_test_runs, unsigned long  *copy_size_list, FILE *fptr, char *mem_pair_label, int thread_count, int sleep_seconds, int fd) {
 
 #ifdef DEBUG
   fprintf(stderr, "%s\n", __func__);
@@ -222,7 +250,7 @@ void run_per_payload_length(char *source, char *destin, int data_offset, unsigne
       fprintf(stderr, "    Cannot run test with payload length (0x%lx) > mapped length (0x%lx)\n", copy_size_list[indexL], pa_map_length);
       break;
     }
-    batch_tests_for_given_length(destin, source, copy_size_list[indexL], fptr, mem_pair_label, num_test_runs, thread_count);
+    batch_tests_for_given_length(destin, source, copy_size_list[indexL], fptr, mem_pair_label, num_test_runs, thread_count, sleep_seconds, fd);
   }
   print_data("    dest", destin, copy_size_list[payload_len_num-1]);
 }
@@ -243,25 +271,35 @@ void mmdealloc(int fd, void *pa_virt_addr, unsigned long pa_map_length) {
 
 // Open shared mmap memory at given Physical address
 //   Returns file descriptor and page-aligned address/length, so can deallocate
-char *mmalloc(int protection, unsigned long phys_addr, int *fd, void **pa_virt_addr, unsigned long *pa_map_length, int anon) {
+char *mmalloc(int protection, unsigned long phys_addr, int *fd, void **pa_virt_addr, unsigned long *pa_map_length, int mmap_anon, int open_sync) {
   void          *virt_addr;
   unsigned long  pa_phys_addr;       /* page aligned physical address (offset) */
-  int            flags = 0;
-    flags |= MAP_SHARED;
-//  flags |= MAP_HUGETLB | MAP_HUGE_1GB;
-//  flags |= MAP_NORESERVE;
-//  flags |= MAP_HUGETLB;
-//  flags |= MAP_PRIVATE | MAP_POPULATE | MAP_LOCKED;
+  int            open_flags = O_RDWR;
+  int            mmap_flags = MAP_SHARED;
+//  int rv;
+    
+//  mmap_flags |= MAP_HUGETLB | MAP_HUGE_1GB;
+//  mmap_flags |= MAP_NORESERVE;
+//  mmap_flags |= MAP_HUGETLB;
+//  mmap_flags |= MAP_PRIVATE | MAP_POPULATE | MAP_LOCKED;
 
-  if (anon > 0) flags |= MAP_ANONYMOUS;
-//  if((*fd = open("/dev/mem", O_RDWR | O_SYNC)) == -1) FATAL;
-  if((*fd = open("/dev/mem", O_RDWR)) == -1) FATAL;     // Higher perfromance by removing file sync
+  if (open_sync > 0) open_flags |= O_SYNC;      // Though Higher perfromance by removing file sync
+  if (mmap_anon > 0) mmap_flags |= MAP_ANONYMOUS;
+  if ((*fd = open("/dev/mem", open_flags)) == -1) FATAL;
+//  if((*fd = open("/dev/mem", O_RDWR)) == -1) FATAL;
   pa_phys_addr   = phys_addr & ~PAGE_MASK;    // Align physical addr (offset) to be at multiple of page size.
   *pa_map_length = (*pa_map_length) + phys_addr - pa_phys_addr;     // Increase len due to phy addr alignment
-  *pa_virt_addr  = mmap(0, *pa_map_length, protection, flags, *fd, pa_phys_addr);
+  *pa_virt_addr  = mmap(0, *pa_map_length, protection, mmap_flags, *fd, pa_phys_addr);
   if (*pa_virt_addr == (void *) MAP_FAILED) FATAL;   // MAP_FAILED = -1
   virt_addr      = *pa_virt_addr + phys_addr - pa_phys_addr;   // add offset to page aligned addr
   fprintf(stderr, "    Shared mmap'ed DDR [len=0x%lx Bytes] starts at virtual address %p\n", *pa_map_length, virt_addr);
+  
+  // Tried to sync here, but also does not work
+//  if ((rv = msync(virt_addr, 4096, MS_SYNC)) < 0) {
+//    fprintf(stderr, "rv=%d, addd/4K=%p len=0x%lx (%ld)\n", rv, (virt_addr), *pa_map_length, *pa_map_length);
+//    perror("msync");
+//    exit(1);
+//  }
 
 #ifdef __TEST_USE_MLOCK__
   int lockerr;
@@ -277,21 +315,24 @@ char *mmalloc(int protection, unsigned long phys_addr, int *fd, void **pa_virt_a
   return (virt_addr);
 }
 
-void log_results(int indexM, char *mem_pair_label, int *fd, char *v_addr, unsigned long p_addr, unsigned long pa_map_length) {
-  fprintf(stderr, "%d) %s (fd=%d, vir-addr=%p, phy-addr=0x%lx, len=%f MB)\n",
-          indexM, mem_pair_label, *fd, v_addr, p_addr, (double) pa_map_length/1000000);
-}
-
 void mem_deallocate(int fd, void *pa_virt_addr, unsigned long pa_map_length) {
   if (fd > 0) mmdealloc(fd, pa_virt_addr, pa_map_length);
   else        free(pa_virt_addr);
+}
+
+//**************************************************************************************
+// F) Run tests
+//**************************************************************************************
+void log_results(int indexM, char *mem_pair_label, int *fd, char *v_addr, unsigned long p_addr, unsigned long pa_map_length) {
+  fprintf(stderr, "%d) %s (fd=%d, vir-addr=%p, phy-addr=0x%lx, len=%f MB)\n",
+          indexM, mem_pair_label, *fd, v_addr, p_addr, (double) pa_map_length/1000000);
 }
 
 // Open shared memory for source (read) or destination (write)
 //   applic memory: host DDR heap
 //   shared memory: host DDR heap, host DDR mmap, or ESCAPE device DDR mmap
 //   operation:     application writes or reads from shared memory
-void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source, char **destin, int data_offset, int source_init, int anon, int *fd, void **pa_virt_addr, unsigned long *pa_map_length, int *payload_len_num) {
+void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source, char **destin, int data_offset, int source_init, int mmap_anon, int open_sync, int *fd, void **pa_virt_addr, unsigned long *pa_map_length, int *payload_len_num) {
   
   *fd = -1;
   switch (indexM) {
@@ -318,13 +359,13 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
       *pa_map_length = LEN_HOST_MMAP;
       *source = app_mem;                                      // Source of write is app mem
       set_data(*source, *pa_map_length, data_offset);
-      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, anon); // to host mmap
+      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, mmap_anon, open_sync); // to host mmap
       log_results(indexM, mem_pair_label, fd, *destin, 0, *pa_map_length);
       break;
     case 3:
       strcpy(mem_pair_label, "App reads from host-mmap");
       *pa_map_length = LEN_HOST_MMAP;
-      *source = mmalloc(PROT_READ | PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, anon); // Source of write is host mmap
+      *source = mmalloc(PROT_READ | PROT_WRITE, MMAP_ADDR_HOST, fd, pa_virt_addr, pa_map_length, mmap_anon, open_sync); // Source of write is host mmap
       if (source_init==0) set_data(*source, *pa_map_length, data_offset);
       *destin = app_mem;                                       // Write to app memory
       log_results(indexM, mem_pair_label, fd, *source, 0, *pa_map_length);
@@ -334,13 +375,13 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
       *pa_map_length = LEN_ESCA_MMAP;
       *source = app_mem;                                        // Source of write is app mem
       set_data(*source, *pa_map_length, data_offset);
-      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, anon); // to ESCAPE mmap
+      *destin = mmalloc(PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, mmap_anon, open_sync); // to ESCAPE mmap
       log_results(indexM, mem_pair_label, fd, *destin, MMAP_ADDR_ESCAPE, *pa_map_length);
       break;
     case 5:
       strcpy(mem_pair_label, "App reads from escape-mmap");
       *pa_map_length = LEN_ESCA_MMAP;
-      *source = mmalloc(PROT_READ | PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, anon); // Write to ESCAPE mmap
+      *source = mmalloc(PROT_READ | PROT_WRITE, MMAP_ADDR_ESCAPE, fd, pa_virt_addr, pa_map_length, mmap_anon, open_sync); // Write to ESCAPE mmap
       if (source_init==0) set_data(*source, *pa_map_length, data_offset);
       *destin = app_mem;                             // Destimation of write is app memory
       log_results(indexM, mem_pair_label, fd, *source, MMAP_ADDR_ESCAPE, *pa_map_length);
@@ -352,7 +393,7 @@ void mem_allocate(int indexM, char *mem_pair_label, char *app_mem, char **source
 }
 
 // Test with application (on host heap) writing or reading to/from host heap, host mmap, or escape mmap
-void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offset, int source_init, int payload_len_num, int num_test_runs, int thread_count, int anon, FILE *fptr) {
+void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offset, int source_init, int payload_len_num, int num_test_runs, int thread_count, int sleep_seconds, int mmap_anon, int open_sync, FILE *fptr) {
   int            i, fd = -1;
   void          *pa_virt_addr;
   unsigned long  pa_map_length;
@@ -362,8 +403,8 @@ void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offs
   fprintf(stderr, "App Memory uses host Heap [len=0x%lx Bytes] at virtual address %p\n", LEN_HOST_HEAP, app_mem);
   for (i=0; i<num_mem_pairs; i++) {
     fprintf(stderr, "--------------------------------------------------------------------------------------\n");
-    mem_allocate(mem_pair_list[i], mem_pair_label, app_mem, &source, &destin, data_offset, source_init, anon, &fd, &pa_virt_addr, &pa_map_length, &payload_len_num);
-    run_per_payload_length(source, destin, data_offset, pa_map_length, payload_len_num, num_test_runs, copy_size_list, fptr, mem_pair_label, thread_count);
+    mem_allocate(mem_pair_list[i], mem_pair_label, app_mem, &source, &destin, data_offset, source_init, mmap_anon, open_sync, &fd, &pa_virt_addr, &pa_map_length, &payload_len_num);
+    run_per_payload_length(source, destin, data_offset, pa_map_length, payload_len_num, num_test_runs, copy_size_list, fptr, mem_pair_label, thread_count, sleep_seconds, fd);
 #ifdef DEBUG
     fprintf(stderr, "Deallocating memory: fd=%d pa_virt_addr=%p pa_map_len=%ld mem_typ_pair_indexM=%d\n", fd, pa_virt_addr, pa_map_length, mem_pair_list[i]);
 #endif // DEBUG
@@ -375,7 +416,7 @@ void run_per_mem_type_pair (int *mem_pair_list, int num_mem_pairs, int data_offs
 }
 
 //**************************************************************************************
-// F) Get user options for test
+// G) Get user options for test
 //**************************************************************************************
 void init_mem_pair_list(int *mem_pair_list, int *num_mem_pairs) {
   for (; *num_mem_pairs<MAX_MEM_PAIRS; (*num_mem_pairs)++) {
@@ -385,18 +426,18 @@ void init_mem_pair_list(int *mem_pair_list, int *num_mem_pairs) {
 }
 
 void opts_print(void) {
-  printf("Memory speed test for GAPS CLOSURE project\n");
+  printf("Shared Memory speed/function test for GAPS CLOSURE project\n");
   printf("Usage: ./escape_test [OPTIONS]... [Experiment ID List]\n");
   printf("OPTIONS: are one of the following:\n");
   printf(" -h : print this message\n");
   printf(" -i : which source data is initialized\n"
-         "\t 0 = all sources (default)\n"
-         "\t 1 = only if source is application - so can read on different node to write\n"
+         "\t 0 = all sources (default) - both applicaiton or shared memory as source of data\n"
+         "\t 1 = only if source is application - use current shared memory content as source (so can read on different node/process than writer)\n"
         );
   printf(" -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
   printf(" -o : source data initialization offset value (before writing)\n");
   printf(" -r : number of test runs per a) memory pair type, b) payload length and c) copy function (default=%d)\n", DEFAULT_TEST_RUNS);
-  printf("Experiment IDs (default = all) is for application data (on host heap) to:\n"
+  printf("memory pair type IDs (default = all) for application (using host heap) to:\n"
          "\t 0 = write to host heap\n"
          "\t 1 = read from host heap\n"
          "\t 2 = write to host mmap\n"
@@ -405,17 +446,19 @@ void opts_print(void) {
          "\t 5 = read from shared escape mmap\n"
         );
   printf(" -t : number of worker threads in thread pool (default=0)\n");
+  printf(" -z : read/write with given number of second sleep between each (default z=0)\n");
+
 
 }
 
 /* Get script's command line options */
-void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, int *source_init, int *payload_len_num, int *num_test_runs, int *num_mem_pairs, int *thread_count, int *anon) {
+void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, int *source_init, int *payload_len_num, int *num_test_runs, int *num_mem_pairs, int *thread_count, int *sleep_seconds, int *mmap_anon, int *open_sync) {
   int  opt;
   
-  while((opt = getopt(argc, argv, ":ahi:n:o:r:t:")) != EOF) {
+  while((opt = getopt(argc, argv, ":ahi:n:o:r:t:yz:")) != EOF) {
     switch (opt) {
       case 'a':
-        *anon = 1;
+        *mmap_anon = 1;
         break;
       case 'h':
         opts_print();
@@ -437,6 +480,12 @@ void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, i
       case 't':
         *thread_count = atoi(optarg);
         break;
+      case 'y':
+        *open_sync = 0;
+        break;
+      case 'z':
+        *sleep_seconds = atoi(optarg);
+        break;
       case ':':
         fprintf(stderr, "Option -%c needs a value\n", optopt);
         opts_print();
@@ -454,10 +503,10 @@ void get_options(int argc, char *argv[], int *mem_pair_list, int *data_offset, i
   if (*num_mem_pairs == 0) init_mem_pair_list(mem_pair_list, num_mem_pairs);  // set default
 }
 
-void config_print(int data_offset, int source_init, int payload_len_num, int num_test_runs, int num_mem_pairs, int *mem_pair_list, int thread_count) {
+void config_print(int data_offset, int source_init, int payload_len_num, int num_test_runs, int num_mem_pairs, int *mem_pair_list, int thread_count, int sleep_seconds) {
   int i;
   
-  fprintf(stderr, "PAGE_MASK=0x%08lx data_off=%d source_init=%d payload_len_num=%d runs=%d thread count=%d num_mem_pairs=%d [ ", PAGE_MASK, data_offset, source_init, payload_len_num, num_test_runs, thread_count, num_mem_pairs);
+  fprintf(stderr, "PAGE_MASK=0x%08lx data_off=%d source_init=%d payload_len_num=%d runs=%d thread count=%d sleep=%d num_mem_pairs=%d [ ", PAGE_MASK, data_offset, source_init, payload_len_num, num_test_runs, thread_count, sleep_seconds, num_mem_pairs);
   for (i=0; i<num_mem_pairs; i++) fprintf(stderr, "%d ", mem_pair_list[i]);
   fprintf(stderr, "]\n");
 }
@@ -466,20 +515,22 @@ void config_print(int data_offset, int source_init, int payload_len_num, int num
 int main(int argc, char *argv[]) {
   FILE *fptr;                                  // file pointer for result file
   int   num_mem_pairs;
-  int   anon            = 0;                    // default to not backed by a file
+  int   mmap_anon       = 0;                    // default to backed by a file
+  int   open_sync       = 1;                    // default to open memory with sync flag
   int   data_offset     = 0;                    // default to data bytes start at 0
   int   source_init     = 0;                    // default to initialize all sources
   int   payload_len_num = DEF_NUM_PAYLOAD_LEN;  // default to first nine lengths
   int   mem_pair_list[MAX_MEM_PAIRS];           // List of memory pair indexes to run
   int   num_test_runs   = DEFAULT_TEST_RUNS;    // default to first nine lengths
   int   thread_count    = 0;                    // default is to have no worker threads
+  int   sleep_seconds   = 0;
   
-  get_options(argc, argv, mem_pair_list, &data_offset, &source_init, &payload_len_num, &num_test_runs, &num_mem_pairs, &thread_count, &anon);
-  config_print(data_offset, source_init, payload_len_num, num_test_runs, num_mem_pairs, mem_pair_list, thread_count);
+  get_options(argc, argv, mem_pair_list, &data_offset, &source_init, &payload_len_num, &num_test_runs, &num_mem_pairs, &thread_count, &sleep_seconds, &mmap_anon, &open_sync);
+  config_print(data_offset, source_init, payload_len_num, num_test_runs, num_mem_pairs, mem_pair_list, thread_count, sleep_seconds);
   fptr = fopen("results.csv", "w");            // opening results file in write mode
   write_header(fptr);                          // row[0] is the label for each column
   if (thread_count > 0) thread_pool_create (thread_count);
-  run_per_mem_type_pair(mem_pair_list, num_mem_pairs, data_offset, source_init, payload_len_num, num_test_runs, thread_count, anon, fptr);
+  run_per_mem_type_pair(mem_pair_list, num_mem_pairs, data_offset, source_init, payload_len_num, num_test_runs, thread_count, sleep_seconds, mmap_anon, open_sync, fptr);
   fclose(fptr);
   return 0;
 }
