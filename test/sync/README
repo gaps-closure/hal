@@ -1,8 +1,8 @@
 start HAL on liono (orange)
 cd ~/gaps/build/hal/test/sync
-../../daemon/hal -l 2 ./sync_orange.cfg
+../../daemon/hal -l 0 ./sync_orange.cfg
 
 start HAL on jaga (green)
 cd ~/gaps/build/hal/test/sync
-../../daemon/hal -l 2 ./sync_green.cfg
+../../daemon/hal -l 0 ./sync_green.cfg
 
