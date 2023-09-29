@@ -6,3 +6,11 @@ start HAL on jaga (green)
 cd ~/gaps/build/hal/test/sync
 ../../daemon/hal -l 0 ./sync_green.cfg
 
+generating hal configuration
+----------------------------
+from ~/gaps/build/hal/test/sync, run the fllowing
+
+1. cp ~/gaps/build/apps/sync/partitioned/multithreaded/xdconf.ini .
+
+2. ../../confgen/hal_autoconfig.py -d ../../confgen/device_defs/devices_jaga_liono.json -x ./xdconf.ini -p sync -o .
+
