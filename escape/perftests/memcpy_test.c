@@ -85,7 +85,7 @@ void write_delta(char cpy_type[MAX_NAME_LEN], unsigned long delta_nsec, unsigned
 }
 
 void write_header(FILE *fptr) {
-  fprintf(fptr, "Experiment Description, Copy lenth (Bytes), Copy Type, Throughput (GBps), Number of Runs, Number of Threads\n");
+  fprintf(fptr, "Experiment Description, Copy length (Bytes), Copy Type, Throughput (GBps), Number of Runs, Number of Threads\n");
 }
 
 //**************************************************************************************
