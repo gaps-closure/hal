@@ -1,13 +1,14 @@
 // Memory Speed Tests between application and shared memory for different:
-//   a) memory type-pairs: host, mmap and ESCAPE FPGA,
+//   a) memory type-pairs: host, mmap and ESCAPE FPGA mmap,
 //   b) data lengths
 //   c) copy algorithms: glibc_memcpy, naive_memcpy, apex_memcpy
 
-// July 19, 2023
+// July 21, 2023
 //   Usage:  ./memcpy_test -h
-
-// Test sync (changing value of -o option to see when orange receives from green)
-// amcauley@escape-green:~/gaps/build/hal/escape/perftests$ sudo ./memcpy_test -z 1 -n 1 -r 1 -o 4  4
+//
+//    e) sync: -y flag = O_SYNC off -z 1 = sleep 1 second for each writre
+//             -o option to see when orange receives new data from green
+// amcauley@escape-green:~/gaps/build/hal/escape/perftests$ sudo ./memcpy_test -z 1 -n 1 -r 1 -o 4 4
 // amcauley@escape-orange:~/gaps/build/hal/escape/perftests$ sudo memtest 0x2080000000 32 w r
 
 #include <stdio.h>
@@ -426,8 +427,8 @@ void init_mem_pair_list(int *mem_pair_list, int *num_mem_pairs) {
 }
 
 void opts_print(void) {
-  printf("Shared Memory speed/function test for GAPS CLOSURE project\n");
-  printf("Usage: ./escape_test [OPTIONS]... [Experiment ID List]\n");
+  printf("Shared Memory performance test for GAPS CLOSURE project\n");
+  printf("Usage: ./memcpy_test [OPTIONS]... [Experiment ID List]\n");
   printf("OPTIONS: are one of the following:\n");
   printf(" -h : print this message\n");
   printf(" -i : which source data is initialized\n"
