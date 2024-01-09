@@ -443,9 +443,9 @@ void opts_print(void) {
   printf("Experiment ID List (default = all):\n"
          "\t 0 = tool writes to host heap\n"
          "\t 1 = tool reads from host heap\n"
-         "\t 2 = tool writed to host mmap\n"
-         "\t 3 = tool readd from host mmap\n"
-         "\t 4 = tool writed to shared escape mmap\n"
+         "\t 2 = tool writes to host mmap\n"
+         "\t 3 = tool reads from host mmap\n"
+         "\t 4 = tool writes to shared escape mmap\n"
          "\t 5 = tool reads from shared escape mmap\n"
         );
   printf("EXAMPLES:\n");
