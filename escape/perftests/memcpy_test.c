@@ -427,29 +427,30 @@ void init_mem_pair_list(int *mem_pair_list, int *num_mem_pairs) {
 }
 
 void opts_print(void) {
-  printf("Shared Memory performance test for GAPS CLOSURE project\n");
-  printf("Usage: ./memcpy_test [OPTIONS]... [Experiment ID List]\n");
-  printf("OPTIONS: are one of the following:\n");
-  printf(" -h : print this message\n");
-  printf(" -i : which source data is initialized\n"
+  printf("Shared Memory performance test tool for GAPS CLOSURE project\n");
+  printf("Usage: [sudo] ./memcpy_test [OPTIONS]... [Experiment ID List]\n");
+  printf("'sudo' required if using shared memory: /dev/mem (Experiment ID 2, 3, 4, 5)\n");
+  printf("OPTIONS:\n");
+  printf("   -i : which source data is initialized\n"
          "\t 0 = all sources (default) - both applicaiton or shared memory as source of data\n"
          "\t 1 = only if source is application - use current shared memory content as source (so can read on different node/process than writer)\n"
         );
-  printf(" -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
-  printf(" -o : source data initialization offset value (before writing)\n");
-  printf(" -r : number of test runs per a) memory pair type, b) payload length and c) copy function (default=%d)\n", DEFAULT_TEST_RUNS);
-  printf("memory pair type IDs (default = all) for application (using host heap) to:\n"
-         "\t 0 = write to host heap\n"
-         "\t 1 = read from host heap\n"
-         "\t 2 = write to host mmap\n"
-         "\t 3 = read from host mmap\n"
-         "\t 4 = write to shared escape mmap\n"
-         "\t 5 = read from shared escape mmap\n"
+  printf("   -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
+  printf("   -o : source data initialization offset value (before writing)\n");
+  printf("   -r : number of test runs per a) memory pair type, b) payload length and c) copy function (default=%d)\n", DEFAULT_TEST_RUNS);
+  printf("   -t : number of worker threads in thread pool (default=0)\n");
+  printf("   -z : read/write with given number of second sleep between each (default z=0)\n");
+  printf("Experiment ID List (default = all):\n"
+         "\t 0 = tool writes to host heap\n"
+         "\t 1 = tool reads from host heap\n"
+         "\t 2 = tool writed to host mmap\n"
+         "\t 3 = tool readd from host mmap\n"
+         "\t 4 = tool writed to shared escape mmap\n"
+         "\t 5 = tool reads from shared escape mmap\n"
         );
-  printf(" -t : number of worker threads in thread pool (default=0)\n");
-  printf(" -z : read/write with given number of second sleep between each (default z=0)\n");
-
-
+  printf("EXAMPLES:\n");
+  printf("   sudo ./memcpy_test\n");
+  printf("   ./memcpy_test 0 1 -r 1000 -n 2\n");
 }
 
 /* Get script's command line options */
