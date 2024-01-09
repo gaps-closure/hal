@@ -432,7 +432,7 @@ void opts_print(void) {
   printf("'sudo' required if using shared memory: /dev/mem (Experiment ID 2, 3, 4, 5)\n");
   printf("OPTIONS:\n");
   printf("   -i : which source data is initialized\n"
-         "\t 0 = all sources (default) - both applicaiton or shared memory as source of data\n"
+         "\t 0 = all sources (default) - both when application or shared memory is the source of data\n"
          "\t 1 = only if source is application - use current shared memory content as source (so can read on different node/process than writer)\n"
         );
   printf("   -n : number of length tests (default=%d, maximum = %d)\n", DEF_NUM_PAYLOAD_LEN, MAX_NUM_PAYLOAD_LEN);
