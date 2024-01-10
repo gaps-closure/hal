@@ -102,6 +102,6 @@ if __name__=='__main__':
   parser.add_argument('-v', '--verbose',          help='Print debug', action='store_true')
   args = parser.parse_args()
   fields, rows = read_values(args.in_file_prefixes)
-#  plot_per_a_b_combo(COL_L, COL_T, COL_C, COL_E, COL_W)  # x=data length,    y=Throughput, z=copy func
-#  plot_per_a_b_combo(COL_W, COL_T, COL_C, COL_E, COL_L)  # x=worker threads, y=Throughput, z=copy func
-  plot_per_a_b_combo(COL_W, COL_T, COL_L, COL_E, COL_C)  # x=worker threads, y=Throughput, z=data length,
+  plot_per_a_b_combo(COL_W, COL_T, COL_L, COL_E, COL_C)  # A) x=worker threads, y=Throughput, z=data length,
+#  plot_per_a_b_combo(COL_W, COL_T, COL_C, COL_E, COL_L)  # B) x=worker threads, y=Throughput, z=copy func
+#  plot_per_a_b_combo(COL_L, COL_T, COL_C, COL_E, COL_W)  # C) x=data length,    y=Throughput, z=copy func
